@@ -30,14 +30,11 @@
                 </StackPanel>
 
                 <Button Content="Neuer Checkup"
+                        Style="{StaticResource AccentButtonStyle}"
                         DockPanel.Dock="Right"
                         Width="150"
                         Height="38"
-                        Margin="0,0,0,0"
-                        Background="#2563EB"
-                        Foreground="White"
-                        BorderThickness="0"
-                        FontWeight="SemiBold"/>
+                        Margin="0,0,0,0"/>
             </DockPanel>
         </Border>
 
@@ -71,13 +68,10 @@
                 <StackPanel>
 
                     <TextBlock Text="Dashboard"
-                               FontSize="28"
-                               FontWeight="SemiBold"
-                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                               Style="{StaticResource PageTitleTextStyle}"/>
 
                     <TextBlock Text="Übersicht über aktuelle Checkups, Kunden und offene Empfehlungen."
-                               FontSize="14"
-                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Style="{StaticResource PageSubtitleTextStyle}"
                                Margin="0,6,0,24"/>
 
                     <UniformGrid Columns="3" Rows="1" Margin="0,0,0,28">
@@ -118,13 +112,10 @@
                                        Margin="0,8,0,18"/>
 
                             <Button Content="Checkup vorbereiten"
+                                    Style="{StaticResource PrimaryButtonStyle}"
                                     Width="180"
                                     Height="38"
-                                    HorizontalAlignment="Left"
-                                    Background="#111827"
-                                    Foreground="White"
-                                    BorderThickness="0"
-                                    FontWeight="SemiBold"/>
+                                    HorizontalAlignment="Left"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
