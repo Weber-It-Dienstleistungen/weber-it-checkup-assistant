@@ -7,7 +7,7 @@
         MinHeight="650"
         MinWidth="1050"
         WindowStartupLocation="CenterScreen"
-        Background="#F4F6F8">
+        Background="{StaticResource BackgroundBrush}">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -17,7 +17,7 @@
         </Grid.RowDefinitions>
 
         <!-- Kopfbereich -->
-        <Border Grid.Row="0" Background="#111827" Padding="24,0">
+        <Border Grid.Row="0" Background="{StaticResource PrimaryBrush}" Padding="24,0">
             <DockPanel LastChildFill="True">
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="Weber IT Checkup Assistent"
@@ -49,7 +49,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Navigation -->
-            <Border Grid.Column="0" Background="#1F2937">
+            <Border Grid.Column="0" Background="{StaticResource SecondaryBrush}">
                 <StackPanel Margin="0,24,0,0">
                     <TextBlock Text="Navigation"
                                Foreground="#9CA3AF"
@@ -73,11 +73,11 @@
                     <TextBlock Text="Dashboard"
                                FontSize="28"
                                FontWeight="SemiBold"
-                               Foreground="#111827"/>
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
 
                     <TextBlock Text="Übersicht über aktuelle Checkups, Kunden und offene Empfehlungen."
                                FontSize="14"
-                               Foreground="#6B7280"
+                               Foreground="{StaticResource TextSecondaryBrush}"
                                Margin="0,6,0,24"/>
 
                     <UniformGrid Columns="3" Rows="1" Margin="0,0,0,28">
@@ -103,10 +103,10 @@
                         </Border>
                     </UniformGrid>
 
-                    <Border Background="White"
+                    <Border Background="{StaticResource SurfaceBrush}"
                             CornerRadius="12"
                             Padding="24"
-                            BorderBrush="#E5E7EB"
+                            BorderBrush="{StaticResource BorderBrush}"
                             BorderThickness="1">
                         <StackPanel>
                             <TextBlock Text="Nächster Schritt"
