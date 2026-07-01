@@ -1,4 +1,6 @@
-﻿public class Customer
+﻿namespace WeberIT.Checkup.App.Models;
+
+public class Customer
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
