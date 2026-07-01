@@ -33,9 +33,7 @@
                     SelectedItem="{Binding SelectedCustomer}">
 
                     <ListView.View>
-
                         <GridView>
-
                             <GridViewColumn
                                 Header="Kundennummer"
                                 Width="120"
@@ -50,9 +48,7 @@
                                 Header="Ort"
                                 Width="180"
                                 DisplayMemberBinding="{Binding City}" />
-
                         </GridView>
-
                     </ListView.View>
 
                 </ListView>
@@ -76,6 +72,48 @@
                             FontSize="18"
                             FontWeight="SemiBold"
                             Text="{Binding SelectedCustomer.DisplayName}" />
+
+                        <TextBlock
+                            Margin="0,16,0,0"
+                            Text="Kundennummer" />
+
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Text="{Binding SelectedCustomer.CustomerNumber}" />
+
+                        <TextBlock
+                            Margin="0,12,0,0"
+                            Text="E-Mail" />
+
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Text="{Binding SelectedCustomer.Email}" />
+
+                        <TextBlock
+                            Margin="0,12,0,0"
+                            Text="Telefon" />
+
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Text="{Binding SelectedCustomer.Phone}" />
+
+                        <TextBlock
+                            Margin="0,12,0,0"
+                            Text="Adresse" />
+
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Text="{Binding SelectedCustomer.Street}" />
+
+                        <TextBlock
+                            FontWeight="SemiBold">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0} {1}">
+                                    <Binding Path="SelectedCustomer.PostalCode" />
+                                    <Binding Path="SelectedCustomer.City" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
 
                     </StackPanel>
 
