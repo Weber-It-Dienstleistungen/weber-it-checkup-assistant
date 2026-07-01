@@ -1,7 +1,9 @@
 ﻿<Application x:Class="WeberIT.Checkup.App.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             >
+             xmlns:viewModels="clr-namespace:WeberIT.Checkup.App.ViewModels"
+             xmlns:views="clr-namespace:WeberIT.Checkup.App.Views.Pages">
+
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -10,6 +12,10 @@
                 <ResourceDictionary Source="Resources/Styles/Buttons.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Cards.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <DataTemplate DataType="{x:Type viewModels:DashboardViewModel}">
+                <views:DashboardView />
+            </DataTemplate>
 
             <Style x:Key="NavButtonStyle" TargetType="Button">
                 <Setter Property="Height" Value="44"/>

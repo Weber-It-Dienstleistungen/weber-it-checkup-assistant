@@ -1,6 +1,4 @@
-﻿using WeberIT.Checkup.App.Views.Pages;
-
-namespace WeberIT.Checkup.App.ViewModels;
+﻿namespace WeberIT.Checkup.App.ViewModels;
 
 public class MainViewModel : BaseViewModel
 {
@@ -9,20 +7,20 @@ public class MainViewModel : BaseViewModel
     public string ApplicationSubtitle { get; } =
         "Professioneller Windows-Checkup für Kunden, Geräte und Dokumentation.";
 
-    private object? _currentView;
+    private object? _currentViewModel;
 
-    public object? CurrentView
+    public object? CurrentViewModel
     {
-        get => _currentView;
+        get => _currentViewModel;
         set
         {
-            _currentView = value;
+            _currentViewModel = value;
             OnPropertyChanged();
         }
     }
 
-    public MainViewModel()
+    public MainViewModel(DashboardViewModel dashboardViewModel)
     {
-        CurrentView = new DashboardView();
+        CurrentViewModel = dashboardViewModel;
     }
 }
