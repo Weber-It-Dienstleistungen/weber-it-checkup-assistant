@@ -1,6 +1,7 @@
 ﻿<Window x:Class="WeberIT.Checkup.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:pages="clr-namespace:WeberIT.Checkup.App.Views.Pages"
         Title="Weber IT Checkup Assistent"
         Height="720"
         Width="1180"
@@ -64,62 +65,7 @@
             </Border>
 
             <!-- Arbeitsbereich -->
-            <ScrollViewer Grid.Column="1" Padding="28">
-                <StackPanel>
-
-                    <TextBlock Text="Dashboard"
-                               Style="{StaticResource PageTitleTextStyle}"/>
-
-                    <TextBlock Text="Übersicht über aktuelle Checkups, Kunden und offene Empfehlungen."
-                               Style="{StaticResource PageSubtitleTextStyle}"
-                               Margin="0,6,0,24"/>
-
-                    <UniformGrid Columns="3" Rows="1" Margin="0,0,0,28">
-                        <Border Style="{StaticResource DashboardCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Letzte Checkups" Foreground="#6B7280"/>
-                                <TextBlock Text="0" FontSize="36" FontWeight="SemiBold" Foreground="#111827"/>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource DashboardCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Offene Hinweise" Foreground="#6B7280"/>
-                                <TextBlock Text="0" FontSize="36" FontWeight="SemiBold" Foreground="#92400E"/>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource DashboardCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Kritische Befunde" Foreground="#6B7280"/>
-                                <TextBlock Text="0" FontSize="36" FontWeight="SemiBold" Foreground="#991B1B"/>
-                            </StackPanel>
-                        </Border>
-                    </UniformGrid>
-
-                    <Border Background="{StaticResource SurfaceBrush}"
-                            CornerRadius="12"
-                            Padding="24"
-                            BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1">
-                        <StackPanel>
-                            <TextBlock Text="Nächster Schritt"
-                                       FontSize="20"
-                                       FontWeight="SemiBold"
-                                       Foreground="#111827"/>
-                            <TextBlock Text="Starte einen neuen Checkup oder lege zunächst einen Kunden und ein Gerät an."
-                                       Foreground="#6B7280"
-                                       Margin="0,8,0,18"/>
-
-                            <Button Content="Checkup vorbereiten"
-                                    Style="{StaticResource PrimaryButtonStyle}"
-                                    Width="180"
-                                    Height="38"
-                                    HorizontalAlignment="Left"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
+            <pages:DashboardView Grid.Column="1"/>
         </Grid>
 
         <!-- Statusleiste -->
