@@ -6,7 +6,19 @@ namespace WeberIT.Checkup.App.ViewModels;
 
 public class CustomersViewModel : BaseViewModel
 {
+    private Customer? _selectedCustomer;
+
     public ObservableCollection<Customer> Customers { get; }
+
+    public Customer? SelectedCustomer
+    {
+        get => _selectedCustomer;
+        set
+        {
+            _selectedCustomer = value;
+            OnPropertyChanged();
+        }
+    }
 
     public CustomersViewModel(ICustomerService customerService)
     {

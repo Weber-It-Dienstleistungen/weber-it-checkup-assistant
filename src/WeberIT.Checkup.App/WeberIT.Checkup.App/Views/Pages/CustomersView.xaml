@@ -20,7 +20,8 @@
 
                 <ListView
                     Grid.Row="2"
-                    ItemsSource="{Binding Customers}">
+                    ItemsSource="{Binding Customers}"
+                    SelectedItem="{Binding SelectedCustomer}">
 
                     <ListView.View>
 
