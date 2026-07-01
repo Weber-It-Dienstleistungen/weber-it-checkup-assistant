@@ -26,32 +26,60 @@
                     Text="Kunden"
                     Style="{StaticResource SectionTitleTextStyle}" />
 
-                <ListView
+                <StackPanel
                     Grid.Row="2"
-                    Grid.Column="0"
-                    ItemsSource="{Binding Customers}"
-                    SelectedItem="{Binding SelectedCustomer}">
+                    Grid.Column="0">
 
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn
-                                Header="Kundennummer"
-                                Width="120"
-                                DisplayMemberBinding="{Binding CustomerNumber}" />
+                    <TextBox
+                        Height="36"
+                        Margin="0,0,0,12"
+                        Padding="10,0"
+                        VerticalContentAlignment="Center"
+                        Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <GridViewColumn
-                                Header="Name"
-                                Width="220"
-                                DisplayMemberBinding="{Binding DisplayName}" />
+                    <ListBox
+                        ItemsSource="{Binding CustomersView}"
+                        SelectedItem="{Binding SelectedCustomer}"
+                        BorderThickness="0">
 
-                            <GridViewColumn
-                                Header="Ort"
-                                Width="180"
-                                DisplayMemberBinding="{Binding City}" />
-                        </GridView>
-                    </ListView.View>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
 
-                </ListView>
+                                <Border
+                                    Padding="12"
+                                    Margin="0,0,0,8"
+                                    BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8">
+
+                                    <StackPanel>
+
+                                        <TextBlock
+                                            FontSize="15"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding DisplayName}" />
+
+                                        <TextBlock
+                                            Margin="0,4,0,0"
+                                            Foreground="{StaticResource TextSecondaryBrush}">
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0} · {1}">
+                                                    <Binding Path="CustomerNumber" />
+                                                    <Binding Path="City" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+
+                                    </StackPanel>
+
+                                </Border>
+
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+
+                    </ListBox>
+
+                </StackPanel>
 
                 <Border
                     Grid.Row="2"
