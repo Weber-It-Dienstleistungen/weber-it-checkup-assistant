@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using System.Windows;
 using WeberIT.Checkup.App.ViewModels;
 using WeberIT.Checkup.App.Views.Pages;
-using WeberIT.Checkup.App.Views.Pages;
+using WeberIT.Checkup.App.Services;
 
 namespace WeberIT.Checkup.App;
 
@@ -21,6 +21,11 @@ public partial class App : Application
 
                 services.AddSingleton<DashboardViewModel>();
                 services.AddSingleton<DashboardView>();
+
+                services.AddSingleton<NavigationService>();
+
+                services.AddSingleton<CustomersViewModel>();
+                services.AddSingleton<CustomersView>();
             })
             .Build();
     }

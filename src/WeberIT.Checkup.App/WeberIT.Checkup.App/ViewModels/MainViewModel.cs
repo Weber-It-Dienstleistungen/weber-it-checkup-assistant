@@ -1,26 +1,42 @@
-﻿namespace WeberIT.Checkup.App.ViewModels;
+﻿using System.Windows.Input;
+using WeberIT.Checkup.App.Services;
+
+namespace WeberIT.Checkup.App.ViewModels;
 
 public class MainViewModel : BaseViewModel
 {
+    private readonly NavigationService _navigationService;
+    private readonly DashboardViewModel _dashboardViewModel;
+    private readonly CustomersViewModel _customersViewModel;
+
     public string ApplicationTitle { get; } = "Weber IT Checkup Assistent";
 
     public string ApplicationSubtitle { get; } =
         "Professioneller Windows-Checkup für Kunden, Geräte und Dokumentation.";
 
-    private object? _currentViewModel;
+    public BaseViewModel? CurrentViewModel => _navigationService.CurrentViewModel;
 
-    public object? CurrentViewModel
+    public ICommand ShowDashboardCommand { get; }
+    public ICommand ShowCustomersCommand { get; }
+
+    public MainViewModel(
+        NavigationService navigationService,
+        DashboardViewModel dashboardViewModel,
+        CustomersViewModel customersViewModel)
     {
-        get => _currentViewModel;
-        set
-        {
-            _currentViewModel = value;
-            OnPropertyChanged();
-        }
+        _navigationService = navigationService;
+        _dashboardViewModel = dashboardViewModel;
+        _customersViewModel = customersViewModel;
+
+        ShowDashboardCommand = new RelayCommand(_ => _navigationService.NavigateTo(_dashboardViewModel));
+        ShowCustomersCommand = new RelayCommand(_ => _navigationService.NavigateTo(_customersViewModel));
+
+        _navigationService.CurrentViewChanged += OnCurrentViewChanged;
+        _navigationService.NavigateTo(_dashboardViewModel);
     }
 
-    public MainViewModel(DashboardViewModel dashboardViewModel)
+    private void OnCurrentViewChanged()
     {
-        CurrentViewModel = dashboardViewModel;
+        OnPropertyChanged(nameof(CurrentViewModel));
     }
 }

@@ -17,6 +17,10 @@
                 <views:DashboardView />
             </DataTemplate>
 
+            <DataTemplate DataType="{x:Type viewModels:CustomersViewModel}">
+                <views:CustomersView />
+            </DataTemplate>
+
             <Style x:Key="NavButtonStyle" TargetType="Button">
                 <Setter Property="Height" Value="44"/>
                 <Setter Property="Margin" Value="12,2"/>

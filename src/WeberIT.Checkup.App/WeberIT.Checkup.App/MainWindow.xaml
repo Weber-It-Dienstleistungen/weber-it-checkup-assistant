@@ -54,8 +54,12 @@
                                FontWeight="SemiBold"
                                Margin="24,0,0,12"/>
 
-                    <Button Content="Dashboard" Style="{StaticResource NavButtonStyle}"/>
-                    <Button Content="Kunden" Style="{StaticResource NavButtonStyle}"/>
+                    <Button Content="Dashboard"
+        Style="{StaticResource NavButtonStyle}"
+        Command="{Binding ShowDashboardCommand}" />
+                    <Button Content="Kunden"
+        Style="{StaticResource NavButtonStyle}"
+        Command="{Binding ShowCustomersCommand}" />
                     <Button Content="Geräte" Style="{StaticResource NavButtonStyle}"/>
                     <Button Content="Checkup starten" Style="{StaticResource NavButtonStyle}"/>
                     <Button Content="Dokumentation" Style="{StaticResource NavButtonStyle}"/>
