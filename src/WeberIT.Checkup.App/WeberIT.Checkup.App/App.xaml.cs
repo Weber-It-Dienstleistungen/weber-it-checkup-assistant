@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Windows;
+using WeberIT.Checkup.App.Repositories;
+using WeberIT.Checkup.App.Repositories.Interfaces;
 using WeberIT.Checkup.App.Services;
 using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.ViewModels;
@@ -28,6 +30,7 @@ public partial class App : Application
                 services.AddSingleton<CustomersViewModel>();
                 services.AddSingleton<CustomersView>();
 
+                services.AddSingleton<ICustomerRepository, InMemoryCustomerRepository>();
                 services.AddSingleton<ICustomerService, CustomerService>();
             })
             .Build();
