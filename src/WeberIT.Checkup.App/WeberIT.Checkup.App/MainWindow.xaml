@@ -1,7 +1,6 @@
 ﻿<Window x:Class="WeberIT.Checkup.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:pages="clr-namespace:WeberIT.Checkup.App.Views.Pages"
         Title="Weber IT Checkup Assistent"
         Height="720"
         Width="1180"
@@ -65,7 +64,8 @@
             </Border>
 
             <!-- Arbeitsbereich -->
-            <pages:DashboardView Grid.Column="1"/>
+            <ContentControl Grid.Column="1"
+                Content="{Binding CurrentView}" />
         </Grid>
 
         <!-- Statusleiste -->
