@@ -1,8 +1,9 @@
-﻿using WeberIT.Checkup.App.ViewModels;
+﻿using WeberIT.Checkup.App.Services.Interfaces;
+using WeberIT.Checkup.App.ViewModels;
 
 namespace WeberIT.Checkup.App.Services;
 
-public class NavigationService
+public class NavigationService : INavigationService
 {
     public BaseViewModel? CurrentViewModel { get; private set; }
 

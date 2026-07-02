@@ -1,11 +1,11 @@
 ﻿using System.Windows.Input;
-using WeberIT.Checkup.App.Services;
+using WeberIT.Checkup.App.Services.Interfaces;
 
 namespace WeberIT.Checkup.App.ViewModels;
 
 public class MainViewModel : BaseViewModel
 {
-    private readonly NavigationService _navigationService;
+    private readonly INavigationService _navigationService;
     private readonly DashboardViewModel _dashboardViewModel;
     private readonly CustomersViewModel _customersViewModel;
 
@@ -20,7 +20,7 @@ public class MainViewModel : BaseViewModel
     public ICommand ShowCustomersCommand { get; }
 
     public MainViewModel(
-        NavigationService navigationService,
+        INavigationService navigationService,
         DashboardViewModel dashboardViewModel,
         CustomersViewModel customersViewModel)
     {

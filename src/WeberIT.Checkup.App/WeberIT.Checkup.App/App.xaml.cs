@@ -25,7 +25,8 @@ public partial class App : Application
                 services.AddSingleton<DashboardViewModel>();
                 services.AddSingleton<DashboardView>();
 
-                services.AddSingleton<NavigationService>();
+                services.AddSingleton<INavigationService, NavigationService>();
+                services.AddSingleton<IDialogService, DialogService>();
 
                 services.AddSingleton<CustomersViewModel>();
                 services.AddSingleton<CustomersView>();

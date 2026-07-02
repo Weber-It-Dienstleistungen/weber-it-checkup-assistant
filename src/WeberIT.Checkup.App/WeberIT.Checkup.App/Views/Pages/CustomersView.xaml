@@ -20,11 +20,27 @@
                     <ColumnDefinition Width="3*" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock
+                <Grid
                     Grid.Row="0"
-                    Grid.Column="0"
-                    Text="Kunden"
-                    Style="{StaticResource SectionTitleTextStyle}" />
+                    Grid.Column="0">
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock
+                        Grid.Column="0"
+                        Text="Kunden"
+                        Style="{StaticResource SectionTitleTextStyle}" />
+
+                    <Button
+                        Grid.Column="1"
+                        Width="130"
+                        Content="Neu"
+                        Command="{Binding AddCustomerCommand}" />
+
+                </Grid>
 
                 <StackPanel
                     Grid.Row="2"

@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
+using System.Windows.Input;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
@@ -8,12 +9,16 @@ namespace WeberIT.Checkup.App.ViewModels;
 
 public class CustomersViewModel : BaseViewModel
 {
+    private readonly IDialogService _dialogService;
+
     private string _searchText = string.Empty;
     private Customer? _selectedCustomer;
 
     public ObservableCollection<Customer> Customers { get; }
 
     public ICollectionView CustomersView { get; }
+
+    public ICommand AddCustomerCommand { get; }
 
     public string SearchText
     {
@@ -36,13 +41,27 @@ public class CustomersViewModel : BaseViewModel
         }
     }
 
-    public CustomersViewModel(ICustomerService customerService)
+    public CustomersViewModel(
+        ICustomerService customerService,
+        IDialogService dialogService)
     {
+        _dialogService = dialogService;
+
         Customers = new ObservableCollection<Customer>(
             customerService.GetCustomers());
 
         CustomersView = CollectionViewSource.GetDefaultView(Customers);
         CustomersView.Filter = FilterCustomer;
+
+        AddCustomerCommand = new RelayCommand(_ => AddCustomer());
+    }
+
+    private void AddCustomer()
+    {
+        var customer = new Customer();
+        var viewModel = new CustomerEditViewModel(customer);
+
+        _dialogService.ShowCustomerEditDialog(viewModel);
     }
 
     private bool FilterCustomer(object item)
