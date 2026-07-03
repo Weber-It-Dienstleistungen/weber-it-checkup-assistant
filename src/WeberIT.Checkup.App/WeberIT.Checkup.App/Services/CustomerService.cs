@@ -17,4 +17,24 @@ public class CustomerService : ICustomerService
     {
         return _customerRepository.GetAll();
     }
+
+    public void CreateCustomer(Customer customer)
+    {
+        customer.CreatedAt = DateTime.Now;
+        customer.UpdatedAt = null;
+
+        _customerRepository.Add(customer);
+    }
+
+    public void UpdateCustomer(Customer customer)
+    {
+        customer.UpdatedAt = DateTime.Now;
+
+        _customerRepository.Update(customer);
+    }
+
+    public void DeleteCustomer(Guid customerId)
+    {
+        _customerRepository.Delete(customerId);
+    }
 }

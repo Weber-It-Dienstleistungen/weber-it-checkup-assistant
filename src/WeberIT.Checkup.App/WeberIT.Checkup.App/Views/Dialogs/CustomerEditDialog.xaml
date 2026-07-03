@@ -24,19 +24,29 @@
         <StackPanel Grid.Row="2">
 
             <TextBlock Text="Vorname" Style="{StaticResource FormLabelTextStyle}" />
-            <TextBox Style="{StaticResource FormTextBoxStyle}" />
+            <TextBox
+                Style="{StaticResource FormTextBoxStyle}"
+                Text="{Binding FirstName, UpdateSourceTrigger=PropertyChanged}" />
 
             <TextBlock Text="Nachname" Style="{StaticResource FormLabelTextStyle}" />
-            <TextBox Style="{StaticResource FormTextBoxStyle}" />
+            <TextBox
+                Style="{StaticResource FormTextBoxStyle}"
+                Text="{Binding LastName, UpdateSourceTrigger=PropertyChanged}" />
 
             <TextBlock Text="E-Mail" Style="{StaticResource FormLabelTextStyle}" />
-            <TextBox Style="{StaticResource FormTextBoxStyle}" />
+            <TextBox
+                Style="{StaticResource FormTextBoxStyle}"
+                Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" />
 
             <TextBlock Text="Telefon" Style="{StaticResource FormLabelTextStyle}" />
-            <TextBox Style="{StaticResource FormTextBoxStyle}" />
+            <TextBox
+                Style="{StaticResource FormTextBoxStyle}"
+                Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}" />
 
             <TextBlock Text="Straße" Style="{StaticResource FormLabelTextStyle}" />
-            <TextBox Style="{StaticResource FormTextBoxStyle}" />
+            <TextBox
+                Style="{StaticResource FormTextBoxStyle}"
+                Text="{Binding Street, UpdateSourceTrigger=PropertyChanged}" />
 
             <Grid Margin="0,0,0,16">
 
@@ -48,12 +58,18 @@
 
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="PLZ" Style="{StaticResource FormLabelTextStyle}" />
-                    <TextBox Style="{StaticResource FormTextBoxStyle}" Margin="0"/>
+                    <TextBox
+                        Style="{StaticResource FormTextBoxStyle}"
+                        Margin="0"
+                        Text="{Binding PostalCode, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="2">
                     <TextBlock Text="Ort" Style="{StaticResource FormLabelTextStyle}" />
-                    <TextBox Style="{StaticResource FormTextBoxStyle}" Margin="0"/>
+                    <TextBox
+                        Style="{StaticResource FormTextBoxStyle}"
+                        Margin="0"
+                        Text="{Binding City, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
 
             </Grid>
