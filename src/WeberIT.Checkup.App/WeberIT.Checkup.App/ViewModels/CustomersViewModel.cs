@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Windows.Data;
 using System.Windows.Input;
+using WeberIT.Checkup.App.Infrastructure.Commands;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 

@@ -1,6 +1,6 @@
 ﻿using System.Windows.Input;
 
-namespace WeberIT.Checkup.App.ViewModels;
+namespace WeberIT.Checkup.App.Infrastructure.Commands;
 
 public class RelayCommand : ICommand
 {

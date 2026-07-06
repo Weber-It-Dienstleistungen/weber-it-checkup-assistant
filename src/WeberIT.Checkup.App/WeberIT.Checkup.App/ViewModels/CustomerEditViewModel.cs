@@ -1,6 +1,7 @@
 ﻿using System.Windows.Input;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
+using WeberIT.Checkup.App.Infrastructure.Commands;
 
 namespace WeberIT.Checkup.App.ViewModels;
 
