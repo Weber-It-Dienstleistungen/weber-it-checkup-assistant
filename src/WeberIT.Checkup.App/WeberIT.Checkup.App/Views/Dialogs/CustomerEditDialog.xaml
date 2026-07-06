@@ -26,7 +26,8 @@
             <TextBlock Text="Kundennummer" Style="{StaticResource FormLabelTextStyle}" />
             <TextBox
                 Style="{StaticResource FormTextBoxStyle}"
-                Text="{Binding CustomerNumber, UpdateSourceTrigger=PropertyChanged}" />
+                IsReadOnly="True"
+                Text="{Binding CustomerNumber}" />
 
             <TextBlock Text="Vorname" Style="{StaticResource FormLabelTextStyle}" />
             <TextBox
