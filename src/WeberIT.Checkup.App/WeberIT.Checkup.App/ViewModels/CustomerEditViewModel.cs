@@ -52,6 +52,7 @@ public class CustomerEditViewModel : ValidatableViewModel
         {
             _firstName = value;
             OnPropertyChanged();
+            Validate();
         }
     }
 
@@ -62,6 +63,7 @@ public class CustomerEditViewModel : ValidatableViewModel
         {
             _lastName = value;
             OnPropertyChanged();
+            Validate();
         }
     }
 
@@ -142,11 +144,35 @@ public class CustomerEditViewModel : ValidatableViewModel
         Street = customer.Street;
         PostalCode = customer.PostalCode;
         City = customer.City;
+
+        Validate();
+    }
+
+    private void Validate()
+    {
+        ValidateProperty(
+            nameof(FirstName),
+            string.IsNullOrWhiteSpace(FirstName)
+                ? "Vorname ist erforderlich."
+                : string.Empty);
+
+        ValidateProperty(
+            nameof(LastName),
+            string.IsNullOrWhiteSpace(LastName)
+                ? "Nachname ist erforderlich."
+                : string.Empty);
     }
 
     private void Save()
     {
         if (_customer is null)
+        {
+            return;
+        }
+
+        Validate();
+
+        if (HasErrors)
         {
             return;
         }
