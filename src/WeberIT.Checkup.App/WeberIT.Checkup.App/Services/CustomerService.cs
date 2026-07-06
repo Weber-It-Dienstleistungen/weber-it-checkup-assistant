@@ -20,6 +20,7 @@ public class CustomerService : ICustomerService
 
     public void CreateCustomer(Customer customer)
     {
+        customer.CustomerNumber = GenerateCustomerNumber();
         customer.CreatedAt = DateTime.Now;
         customer.UpdatedAt = null;
 
@@ -36,5 +37,22 @@ public class CustomerService : ICustomerService
     public void DeleteCustomer(Guid customerId)
     {
         _customerRepository.Delete(customerId);
+    }
+
+    private string GenerateCustomerNumber()
+    {
+        var existingCustomerNumbers = _customerRepository
+            .GetAll()
+            .Select(c => c.CustomerNumber)
+            .Where(n => n.StartsWith("K-"))
+            .Select(n => n.Replace("K-", string.Empty))
+            .Where(n => int.TryParse(n, out _))
+            .Select(int.Parse);
+
+        var nextNumber = existingCustomerNumbers.Any()
+            ? existingCustomerNumbers.Max() + 1
+            : 1;
+
+        return $"K-{nextNumber:0000}";
     }
 }
