@@ -9,6 +9,7 @@ public class CustomerEditViewModel : ValidatableViewModel
 {
     private readonly ICustomerService _customerService;
     private readonly IDialogService _dialogService;
+    private readonly RelayCommand _saveCommand;
 
     private Customer? _customer;
     private bool _isNewCustomer;
@@ -23,7 +24,7 @@ public class CustomerEditViewModel : ValidatableViewModel
     private string _postalCode = string.Empty;
     private string _city = string.Empty;
 
-    public ICommand SaveCommand { get; }
+    public ICommand SaveCommand => _saveCommand;
 
     public string Title
     {
@@ -124,7 +125,7 @@ public class CustomerEditViewModel : ValidatableViewModel
         _customerService = customerService;
         _dialogService = dialogService;
 
-        SaveCommand = new RelayCommand(_ => Save());
+        _saveCommand = new RelayCommand(_ => Save(), _ => CanSave());
     }
 
     public void Initialize(Customer customer, bool isNewCustomer)
@@ -148,6 +149,11 @@ public class CustomerEditViewModel : ValidatableViewModel
         Validate();
     }
 
+    private bool CanSave()
+    {
+        return !HasErrors;
+    }
+
     private void Validate()
     {
         ValidateProperty(
@@ -161,6 +167,8 @@ public class CustomerEditViewModel : ValidatableViewModel
             string.IsNullOrWhiteSpace(LastName)
                 ? "Nachname ist erforderlich."
                 : string.Empty);
+
+        _saveCommand.RaiseCanExecuteChanged();
     }
 
     private void Save()
