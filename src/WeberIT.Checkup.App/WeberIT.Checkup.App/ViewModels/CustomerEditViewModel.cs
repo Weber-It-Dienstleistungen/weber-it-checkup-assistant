@@ -20,6 +20,8 @@ public class CustomerEditViewModel : BaseViewModel
     private string _postalCode = string.Empty;
     private string _city = string.Empty;
 
+    public string Title { get; }
+
     public ICommand SaveCommand { get; }
 
     public string CustomerNumber
@@ -112,6 +114,10 @@ public class CustomerEditViewModel : BaseViewModel
         _customerService = customerService;
         _dialogService = dialogService;
         _isNewCustomer = isNewCustomer;
+
+        Title = _isNewCustomer
+            ? "Neuen Kunden anlegen"
+            : "Kunden bearbeiten";
 
         CustomerNumber = customer.CustomerNumber;
         FirstName = customer.FirstName;
