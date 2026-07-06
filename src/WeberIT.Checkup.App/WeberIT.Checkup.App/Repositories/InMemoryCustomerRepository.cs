@@ -12,27 +12,27 @@ public class InMemoryCustomerRepository : ICustomerRepository
         _customers =
         [
             new Customer
-            {
-                CustomerNumber = "K-0001",
-                FirstName = "Max",
-                LastName = "Mustermann",
-                Email = "max.mustermann@example.com",
-                Phone = "09568 123456",
-                Street = "Musterstraße 1",
-                PostalCode = "96465",
-                City = "Neustadt bei Coburg"
-            },
-            new Customer
-            {
-                CustomerNumber = "K-0002",
-                FirstName = "Erika",
-                LastName = "Musterfrau",
-                Email = "erika.musterfrau@example.com",
-                Phone = "09568 654321",
-                Street = "Beispielweg 5",
-                PostalCode = "96465",
-                City = "Neustadt bei Coburg"
-            }
+        {
+            CustomerNumber = "K-0001",
+            FirstName = "Max",
+            LastName = "Mustermann",
+            Email = "max.mustermann@example.com",
+            Phone = "09568 123456",
+            Street = "Musterstraße 1",
+            PostalCode = "96465",
+            City = "Neustadt bei Coburg"
+        },
+        new Customer
+        {
+            CustomerNumber = "K-0002",
+            FirstName = "Erika",
+            LastName = "Musterfrau",
+            Email = "erika.musterfrau@example.com",
+            Phone = "09568 654321",
+            Street = "Beispielweg 5",
+            PostalCode = "96465",
+            City = "Neustadt bei Coburg"
+        }
         ];
     }
 
@@ -63,7 +63,6 @@ public class InMemoryCustomerRepository : ICustomerRepository
         existingCustomer.Street = customer.Street;
         existingCustomer.PostalCode = customer.PostalCode;
         existingCustomer.City = customer.City;
-        existingCustomer.UpdatedAt = DateTime.Now;
     }
 
     public void Delete(Guid customerId)
@@ -75,4 +74,5 @@ public class InMemoryCustomerRepository : ICustomerRepository
             _customers.Remove(customer);
         }
     }
+
 }
