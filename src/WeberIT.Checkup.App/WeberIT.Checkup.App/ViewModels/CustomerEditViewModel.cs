@@ -1,11 +1,11 @@
 ﻿using System.Windows.Input;
+using WeberIT.Checkup.App.Infrastructure.Commands;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
-using WeberIT.Checkup.App.Infrastructure.Commands;
 
 namespace WeberIT.Checkup.App.ViewModels;
 
-public class CustomerEditViewModel : BaseViewModel
+public class CustomerEditViewModel : ValidatableViewModel
 {
     private readonly ICustomerService _customerService;
     private readonly IDialogService _dialogService;
