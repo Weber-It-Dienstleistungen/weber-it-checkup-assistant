@@ -9,6 +9,7 @@ namespace WeberIT.Checkup.App.ViewModels;
 
 public class CustomersViewModel : BaseViewModel
 {
+    private readonly ICustomerService _customerService;
     private readonly IDialogService _dialogService;
 
     private string _searchText = string.Empty;
@@ -45,10 +46,11 @@ public class CustomersViewModel : BaseViewModel
         ICustomerService customerService,
         IDialogService dialogService)
     {
+        _customerService = customerService;
         _dialogService = dialogService;
 
         Customers = new ObservableCollection<Customer>(
-            customerService.GetCustomers());
+            _customerService.GetCustomers());
 
         CustomersView = CollectionViewSource.GetDefaultView(Customers);
         CustomersView.Filter = FilterCustomer;
@@ -59,9 +61,21 @@ public class CustomersViewModel : BaseViewModel
     private void AddCustomer()
     {
         var customer = new Customer();
-        var viewModel = new CustomerEditViewModel(customer);
 
-        _dialogService.ShowCustomerEditDialog(viewModel);
+        var viewModel = new CustomerEditViewModel(
+            customer,
+            _customerService,
+            _dialogService,
+            true);
+
+        var result = _dialogService.ShowCustomerEditDialog(viewModel);
+
+        if (result == true)
+        {
+            Customers.Add(customer);
+            SelectedCustomer = customer;
+            CustomersView.Refresh();
+        }
     }
 
     private bool FilterCustomer(object item)

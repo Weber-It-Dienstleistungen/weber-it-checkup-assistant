@@ -89,7 +89,8 @@
 
             <Button
                 Width="110"
-                Content="Speichern" />
+                Content="Speichern"
+                Command="{Binding SaveCommand}" />
 
         </StackPanel>
 

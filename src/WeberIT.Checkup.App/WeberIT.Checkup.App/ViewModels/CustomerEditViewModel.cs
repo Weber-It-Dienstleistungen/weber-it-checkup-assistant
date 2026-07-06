@@ -1,10 +1,15 @@
-﻿using WeberIT.Checkup.App.Models;
+﻿using System.Windows.Input;
+using WeberIT.Checkup.App.Models;
+using WeberIT.Checkup.App.Services.Interfaces;
 
 namespace WeberIT.Checkup.App.ViewModels;
 
 public class CustomerEditViewModel : BaseViewModel
 {
     private readonly Customer _customer;
+    private readonly ICustomerService _customerService;
+    private readonly IDialogService _dialogService;
+    private readonly bool _isNewCustomer;
 
     private string _customerNumber = string.Empty;
     private string _firstName = string.Empty;
@@ -14,6 +19,8 @@ public class CustomerEditViewModel : BaseViewModel
     private string _street = string.Empty;
     private string _postalCode = string.Empty;
     private string _city = string.Empty;
+
+    public ICommand SaveCommand { get; }
 
     public string CustomerNumber
     {
@@ -95,14 +102,16 @@ public class CustomerEditViewModel : BaseViewModel
         }
     }
 
-    public CustomerEditViewModel()
-        : this(new Customer())
-    {
-    }
-
-    public CustomerEditViewModel(Customer customer)
+    public CustomerEditViewModel(
+        Customer customer,
+        ICustomerService customerService,
+        IDialogService dialogService,
+        bool isNewCustomer)
     {
         _customer = customer;
+        _customerService = customerService;
+        _dialogService = dialogService;
+        _isNewCustomer = isNewCustomer;
 
         CustomerNumber = customer.CustomerNumber;
         FirstName = customer.FirstName;
@@ -112,5 +121,30 @@ public class CustomerEditViewModel : BaseViewModel
         Street = customer.Street;
         PostalCode = customer.PostalCode;
         City = customer.City;
+
+        SaveCommand = new RelayCommand(_ => Save());
+    }
+
+    private void Save()
+    {
+        _customer.CustomerNumber = CustomerNumber;
+        _customer.FirstName = FirstName;
+        _customer.LastName = LastName;
+        _customer.Email = Email;
+        _customer.Phone = Phone;
+        _customer.Street = Street;
+        _customer.PostalCode = PostalCode;
+        _customer.City = City;
+
+        if (_isNewCustomer)
+        {
+            _customerService.CreateCustomer(_customer);
+        }
+        else
+        {
+            _customerService.UpdateCustomer(_customer);
+        }
+
+        _dialogService.CloseDialog(true);
     }
 }
