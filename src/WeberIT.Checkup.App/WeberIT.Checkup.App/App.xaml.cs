@@ -5,6 +5,7 @@ using WeberIT.Checkup.App.Repositories;
 using WeberIT.Checkup.App.Repositories.Interfaces;
 using WeberIT.Checkup.App.Services;
 using WeberIT.Checkup.App.Services.Interfaces;
+using WeberIT.Checkup.App.Services.Scanners;
 using WeberIT.Checkup.App.Services.Windows;
 using WeberIT.Checkup.App.ViewModels;
 using WeberIT.Checkup.App.Views.Pages;
@@ -38,6 +39,8 @@ public partial class App : Application
                 services.AddSingleton<ICustomerService, CustomerService>();
 
                 services.AddSingleton<IWindowsInformationProvider, WindowsInformationProvider>();
+                services.AddSingleton<IDeviceInformationScanner, DeviceInformationScanner>();
+                services.AddSingleton<IDeviceScanner, DeviceScanner>();
             })
             .Build();
     }
