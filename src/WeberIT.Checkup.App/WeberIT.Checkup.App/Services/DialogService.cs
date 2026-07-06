@@ -37,6 +37,18 @@ public class DialogService : IDialogService
         return result;
     }
 
+    public bool Confirm(string title, string message)
+    {
+        var result = MessageBox.Show(
+            Application.Current.MainWindow,
+            message,
+            title,
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        return result == MessageBoxResult.Yes;
+    }
+
     public void CloseDialog(bool? dialogResult)
     {
         if (_currentDialog is null)

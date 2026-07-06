@@ -112,6 +112,8 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock
@@ -124,6 +126,12 @@
                                 Width="130"
                                 Content="Bearbeiten"
                                 Command="{Binding EditCustomerCommand}" />
+
+                            <Button
+                                Grid.Column="3"
+                                Width="110"
+                                Content="Löschen"
+                                Command="{Binding DeleteCustomerCommand}" />
 
                         </Grid>
 

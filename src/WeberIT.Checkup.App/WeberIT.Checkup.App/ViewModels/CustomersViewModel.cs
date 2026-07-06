@@ -23,6 +23,8 @@ public class CustomersViewModel : BaseViewModel
 
     public RelayCommand EditCustomerCommand { get; }
 
+    public RelayCommand DeleteCustomerCommand { get; }
+
     public string SearchText
     {
         get => _searchText;
@@ -42,6 +44,7 @@ public class CustomersViewModel : BaseViewModel
             _selectedCustomer = value;
             OnPropertyChanged();
             EditCustomerCommand.RaiseCanExecuteChanged();
+            DeleteCustomerCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -60,6 +63,7 @@ public class CustomersViewModel : BaseViewModel
 
         AddCustomerCommand = new RelayCommand(_ => AddCustomer());
         EditCustomerCommand = new RelayCommand(_ => EditCustomer(), _ => SelectedCustomer is not null);
+        DeleteCustomerCommand = new RelayCommand(_ => DeleteCustomer(), _ => SelectedCustomer is not null);
     }
 
     private void AddCustomer()
@@ -90,6 +94,31 @@ public class CustomersViewModel : BaseViewModel
             CustomersView.Refresh();
             OnPropertyChanged(nameof(SelectedCustomer));
         }
+    }
+
+    private void DeleteCustomer()
+    {
+        if (SelectedCustomer is null)
+        {
+            return;
+        }
+
+        var customer = SelectedCustomer;
+
+        var confirmed = _dialogService.Confirm(
+            "Kunden löschen",
+            $"Soll der Kunde \"{customer.DisplayName}\" wirklich gelöscht werden?");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        _customerService.DeleteCustomer(customer.Id);
+        Customers.Remove(customer);
+
+        SelectedCustomer = Customers.FirstOrDefault();
+        CustomersView.Refresh();
     }
 
     private bool FilterCustomer(object item)
