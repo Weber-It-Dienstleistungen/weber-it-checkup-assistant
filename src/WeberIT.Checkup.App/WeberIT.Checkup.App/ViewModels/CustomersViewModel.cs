@@ -66,13 +66,7 @@ public class CustomersViewModel : BaseViewModel
     {
         var customer = new Customer();
 
-        var viewModel = new CustomerEditViewModel(
-            customer,
-            _customerService,
-            _dialogService,
-            true);
-
-        var result = _dialogService.ShowCustomerEditDialog(viewModel);
+        var result = _dialogService.ShowCustomerEditDialog(customer, true);
 
         if (result == true)
         {
@@ -89,13 +83,7 @@ public class CustomersViewModel : BaseViewModel
             return;
         }
 
-        var viewModel = new CustomerEditViewModel(
-            SelectedCustomer,
-            _customerService,
-            _dialogService,
-            false);
-
-        var result = _dialogService.ShowCustomerEditDialog(viewModel);
+        var result = _dialogService.ShowCustomerEditDialog(SelectedCustomer, false);
 
         if (result == true)
         {

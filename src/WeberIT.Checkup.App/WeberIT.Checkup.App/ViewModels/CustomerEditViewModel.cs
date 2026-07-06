@@ -6,11 +6,13 @@ namespace WeberIT.Checkup.App.ViewModels;
 
 public class CustomerEditViewModel : BaseViewModel
 {
-    private readonly Customer _customer;
     private readonly ICustomerService _customerService;
     private readonly IDialogService _dialogService;
-    private readonly bool _isNewCustomer;
 
+    private Customer? _customer;
+    private bool _isNewCustomer;
+
+    private string _title = string.Empty;
     private string _customerNumber = string.Empty;
     private string _firstName = string.Empty;
     private string _lastName = string.Empty;
@@ -20,9 +22,17 @@ public class CustomerEditViewModel : BaseViewModel
     private string _postalCode = string.Empty;
     private string _city = string.Empty;
 
-    public string Title { get; }
-
     public ICommand SaveCommand { get; }
+
+    public string Title
+    {
+        get => _title;
+        private set
+        {
+            _title = value;
+            OnPropertyChanged();
+        }
+    }
 
     public string CustomerNumber
     {
@@ -105,14 +115,18 @@ public class CustomerEditViewModel : BaseViewModel
     }
 
     public CustomerEditViewModel(
-        Customer customer,
         ICustomerService customerService,
-        IDialogService dialogService,
-        bool isNewCustomer)
+        IDialogService dialogService)
     {
-        _customer = customer;
         _customerService = customerService;
         _dialogService = dialogService;
+
+        SaveCommand = new RelayCommand(_ => Save());
+    }
+
+    public void Initialize(Customer customer, bool isNewCustomer)
+    {
+        _customer = customer;
         _isNewCustomer = isNewCustomer;
 
         Title = _isNewCustomer
@@ -127,12 +141,15 @@ public class CustomerEditViewModel : BaseViewModel
         Street = customer.Street;
         PostalCode = customer.PostalCode;
         City = customer.City;
-
-        SaveCommand = new RelayCommand(_ => Save());
     }
 
     private void Save()
     {
+        if (_customer is null)
+        {
+            return;
+        }
+
         _customer.CustomerNumber = CustomerNumber;
         _customer.FirstName = FirstName;
         _customer.LastName = LastName;

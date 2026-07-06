@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System.Windows;
+using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.ViewModels;
 using WeberIT.Checkup.App.Views.Dialogs;
@@ -7,10 +9,19 @@ namespace WeberIT.Checkup.App.Services;
 
 public class DialogService : IDialogService
 {
+    private readonly IServiceProvider _serviceProvider;
     private Window? _currentDialog;
 
-    public bool? ShowCustomerEditDialog(CustomerEditViewModel viewModel)
+    public DialogService(IServiceProvider serviceProvider)
     {
+        _serviceProvider = serviceProvider;
+    }
+
+    public bool? ShowCustomerEditDialog(Customer customer, bool isNewCustomer)
+    {
+        var viewModel = _serviceProvider.GetRequiredService<CustomerEditViewModel>();
+        viewModel.Initialize(customer, isNewCustomer);
+
         var dialog = new CustomerEditDialog
         {
             DataContext = viewModel,

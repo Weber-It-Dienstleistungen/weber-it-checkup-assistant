@@ -31,6 +31,8 @@ public partial class App : Application
                 services.AddSingleton<CustomersViewModel>();
                 services.AddSingleton<CustomersView>();
 
+                services.AddTransient<CustomerEditViewModel>();
+
                 services.AddSingleton<ICustomerRepository, InMemoryCustomerRepository>();
                 services.AddSingleton<ICustomerService, CustomerService>();
             })
