@@ -7,4 +7,6 @@ public class Device
     public string CustomerNumber { get; set; } = string.Empty;
 
     public DeviceInformation Information { get; set; } = new();
+
+    public DeviceScanResult? LastScan { get; set; }
 }
