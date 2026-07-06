@@ -107,9 +107,25 @@
 
                     <StackPanel>
 
-                        <TextBlock
-                            Text="Kundendetails"
-                            Style="{StaticResource SectionTitleTextStyle}" />
+                        <Grid>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock
+                                Grid.Column="0"
+                                Text="Kundendetails"
+                                Style="{StaticResource SectionTitleTextStyle}" />
+
+                            <Button
+                                Grid.Column="1"
+                                Width="130"
+                                Content="Bearbeiten"
+                                Command="{Binding EditCustomerCommand}" />
+
+                        </Grid>
 
                         <TextBlock
                             Margin="0,16,0,0"

@@ -21,6 +21,8 @@ public class CustomersViewModel : BaseViewModel
 
     public ICommand AddCustomerCommand { get; }
 
+    public RelayCommand EditCustomerCommand { get; }
+
     public string SearchText
     {
         get => _searchText;
@@ -39,6 +41,7 @@ public class CustomersViewModel : BaseViewModel
         {
             _selectedCustomer = value;
             OnPropertyChanged();
+            EditCustomerCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -56,6 +59,7 @@ public class CustomersViewModel : BaseViewModel
         CustomersView.Filter = FilterCustomer;
 
         AddCustomerCommand = new RelayCommand(_ => AddCustomer());
+        EditCustomerCommand = new RelayCommand(_ => EditCustomer(), _ => SelectedCustomer is not null);
     }
 
     private void AddCustomer()
@@ -75,6 +79,28 @@ public class CustomersViewModel : BaseViewModel
             Customers.Add(customer);
             SelectedCustomer = customer;
             CustomersView.Refresh();
+        }
+    }
+
+    private void EditCustomer()
+    {
+        if (SelectedCustomer is null)
+        {
+            return;
+        }
+
+        var viewModel = new CustomerEditViewModel(
+            SelectedCustomer,
+            _customerService,
+            _dialogService,
+            false);
+
+        var result = _dialogService.ShowCustomerEditDialog(viewModel);
+
+        if (result == true)
+        {
+            CustomersView.Refresh();
+            OnPropertyChanged(nameof(SelectedCustomer));
         }
     }
 
