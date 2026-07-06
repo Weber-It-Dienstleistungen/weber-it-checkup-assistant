@@ -1,5 +1,6 @@
 ﻿using System.Windows.Input;
 using WeberIT.Checkup.App.Infrastructure.Commands;
+using WeberIT.Checkup.App.Infrastructure.Validation;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
@@ -158,15 +159,11 @@ public class CustomerEditViewModel : ValidatableViewModel
     {
         ValidateProperty(
             nameof(FirstName),
-            string.IsNullOrWhiteSpace(FirstName)
-                ? "Vorname ist erforderlich."
-                : string.Empty);
+            ValidationRules.Required(FirstName, "Vorname"));
 
         ValidateProperty(
             nameof(LastName),
-            string.IsNullOrWhiteSpace(LastName)
-                ? "Nachname ist erforderlich."
-                : string.Empty);
+            ValidationRules.Required(LastName, "Nachname"));
 
         _saveCommand.RaiseCanExecuteChanged();
     }
