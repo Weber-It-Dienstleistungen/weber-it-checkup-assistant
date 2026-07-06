@@ -154,7 +154,7 @@ public class CustomerEditViewModel : ValidatableViewModel
         return !HasErrors;
     }
 
-    private void Validate()
+    protected override void Validate()
     {
         ValidateProperty(
             nameof(FirstName),

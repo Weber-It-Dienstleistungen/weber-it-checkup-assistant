@@ -23,6 +23,8 @@ public abstract class ValidatableViewModel : BaseViewModel, INotifyDataErrorInfo
             : Enumerable.Empty<string>();
     }
 
+    protected abstract void Validate();
+
     protected void ValidateProperty(string propertyName, params string[] errors)
     {
         var validErrors = errors
