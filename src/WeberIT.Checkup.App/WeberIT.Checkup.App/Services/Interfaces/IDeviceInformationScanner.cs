@@ -4,5 +4,5 @@ namespace WeberIT.Checkup.App.Services.Interfaces;
 
 public interface IDeviceInformationScanner
 {
-    DeviceInformation Scan();
+    ScanResult<DeviceInformation> Scan();
 }

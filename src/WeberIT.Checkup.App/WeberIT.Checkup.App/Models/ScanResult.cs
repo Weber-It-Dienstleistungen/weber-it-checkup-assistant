@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace WeberIT.Checkup.App.Models;
 
-namespace WeberIT.Checkup.App.Models
+public class ScanResult<T>
 {
-    internal class ScanResult
-    {
-    }
+    public bool IsSuccessful { get; set; }
+
+    public string? Message { get; set; }
+
+    public T? Data { get; set; }
 }
