@@ -9,9 +9,11 @@ public class RelayCommand : ICommand
 
     public RelayCommand(Action<object?> execute, Predicate<object?>? canExecute = null)
     {
-        _execute = execute;
+        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
         _canExecute = canExecute;
     }
+
+    public event EventHandler? CanExecuteChanged;
 
     public bool CanExecute(object? parameter)
     {
@@ -23,19 +25,8 @@ public class RelayCommand : ICommand
         _execute(parameter);
     }
 
-    public event EventHandler? CanExecuteChanged
-    {
-        add => CommandManager.RequerySuggested += value;
-        remove => CommandManager.RequerySuggested -= value;
-    }
-
-    public void NotifyCanExecuteChanged()
-    {
-        CommandManager.InvalidateRequerySuggested();
-    }
-
     public void RaiseCanExecuteChanged()
     {
-        NotifyCanExecuteChanged();
+        CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 }
