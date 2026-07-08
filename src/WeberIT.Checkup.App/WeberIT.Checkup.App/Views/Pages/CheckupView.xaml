@@ -14,6 +14,10 @@
                         <TextBlock Text="{Binding Subtitle}"
                                    Style="{StaticResource PageSubtitleTextStyle}"
                                    Margin="0,6,0,0" />
+
+                        <TextBlock Text="{Binding ScanStatusText}"
+                                   Margin="0,10,0,0"
+                                   Foreground="#666666" />
                     </StackPanel>
 
                     <Button Content="System auslesen"
@@ -51,10 +55,39 @@
                                        FontWeight="SemiBold"
                                        Foreground="#222222" />
 
-                            <TextBlock Text="Computername, Gerätetyp, Hersteller, Modell, Seriennummer und BIOS-Version."
-                                       Margin="0,8,0,0"
-                                       Foreground="#666666"
-                                       TextWrapping="Wrap" />
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Computername:" FontWeight="SemiBold" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DeviceInformation.Name}" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Gerätetyp:" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DeviceInformation.DeviceType}" Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Hersteller:" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DeviceInformation.Manufacturer}" Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Modell:" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding DeviceInformation.Model}" Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Seriennummer:" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding DeviceInformation.SerialNumber}" Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="BIOS-Version:" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding DeviceInformation.BiosVersion}" Margin="0,8,0,0" />
+                            </Grid>
                         </StackPanel>
                     </Border>
 
@@ -72,10 +105,23 @@
                                        FontWeight="SemiBold"
                                        Foreground="#222222" />
 
-                            <TextBlock Text="Prozessor, Arbeitsspeicher, Grafikkarte, Mainboard und Datenträger."
-                                       Margin="0,8,0,0"
-                                       Foreground="#666666"
-                                       TextWrapping="Wrap" />
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Prozessor:" FontWeight="SemiBold" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DeviceInformation.ProcessorName}" TextWrapping="Wrap" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Arbeitsspeicher:" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DeviceInformation.InstalledMemory}" Margin="0,8,0,0" />
+                            </Grid>
                         </StackPanel>
                     </Border>
 
@@ -93,10 +139,27 @@
                                        FontWeight="SemiBold"
                                        Foreground="#222222" />
 
-                            <TextBlock Text="Windows-Version, Build, Architektur, Updates und relevante Systemzustände."
-                                       Margin="0,8,0,0"
-                                       Foreground="#666666"
-                                       TextWrapping="Wrap" />
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Windows:" FontWeight="SemiBold" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DeviceInformation.OperatingSystemName}" TextWrapping="Wrap" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Version / Build:" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DeviceInformation.OperatingSystemVersion}" Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Architektur:" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DeviceInformation.OperatingSystemArchitecture}" Margin="0,8,0,0" />
+                            </Grid>
                         </StackPanel>
                     </Border>
 
@@ -114,7 +177,7 @@
                                        FontWeight="SemiBold"
                                        Foreground="#222222" />
 
-                            <TextBlock Text="Hier entstehen später Prüfergebnisse, Warnungen und Empfehlungen."
+                            <TextBlock Text="Die erweiterten Prüfergebnisse, Warnungen und Empfehlungen folgen in einem späteren Schritt."
                                        Margin="0,8,0,0"
                                        Foreground="#666666"
                                        TextWrapping="Wrap" />
