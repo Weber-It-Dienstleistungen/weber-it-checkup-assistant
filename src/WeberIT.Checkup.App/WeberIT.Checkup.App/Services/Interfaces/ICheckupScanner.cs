@@ -2,7 +2,7 @@
 
 namespace WeberIT.Checkup.App.Services.Interfaces;
 
-public interface IDeviceScanner
+public interface ICheckupScanner
 {
-    DeviceScanResult Scan();
+    CheckupSession Scan();
 }

@@ -21,18 +21,11 @@ public class DeviceInformationScanner : IDeviceInformationScanner
         var deviceInformation = new DeviceInformation
         {
             Name = _windowsInformationProvider.GetComputerName(),
-
             Manufacturer = _hardwareInformationProvider.GetManufacturer(),
             Model = _hardwareInformationProvider.GetModel(),
             SerialNumber = _hardwareInformationProvider.GetSerialNumber(),
             DeviceType = _hardwareInformationProvider.GetDeviceType(),
-            BiosVersion = _hardwareInformationProvider.GetBiosVersion(),
-            ProcessorName = _hardwareInformationProvider.GetProcessorName(),
-            InstalledMemory = _hardwareInformationProvider.GetInstalledMemory(),
-
-            OperatingSystemName = _windowsInformationProvider.GetOperatingSystemName(),
-            OperatingSystemVersion = _windowsInformationProvider.GetOperatingSystemVersion(),
-            OperatingSystemArchitecture = _windowsInformationProvider.GetOperatingSystemArchitecture()
+            BiosVersion = _hardwareInformationProvider.GetBiosVersion()
         };
 
         return new ScanResult<DeviceInformation>

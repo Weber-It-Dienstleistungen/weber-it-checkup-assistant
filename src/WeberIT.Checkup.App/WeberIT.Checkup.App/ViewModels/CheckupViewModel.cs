@@ -7,36 +7,37 @@ namespace WeberIT.Checkup.App.ViewModels;
 
 public class CheckupViewModel : BaseViewModel
 {
-    private readonly IDeviceScanner _deviceScanner;
+    private readonly ICheckupScanner _checkupScanner;
 
-    private DeviceInformation _deviceInformation = new();
-    private DateTime? _scanDate;
+    private CheckupSession _currentCheckup = new();
 
     public string Title => "Gerät / Checkup";
 
     public string Subtitle =>
         "Systeminformationen auslesen und für den späteren Checkup vorbereiten.";
 
-    public DeviceInformation DeviceInformation
+    public CheckupSession CurrentCheckup
     {
-        get => _deviceInformation;
+        get => _currentCheckup;
         private set
         {
-            _deviceInformation = value;
+            _currentCheckup = value;
             OnPropertyChanged();
-        }
-    }
-
-    public DateTime? ScanDate
-    {
-        get => _scanDate;
-        private set
-        {
-            _scanDate = value;
-            OnPropertyChanged();
+            OnPropertyChanged(nameof(DeviceInformation));
+            OnPropertyChanged(nameof(HardwareInformation));
+            OnPropertyChanged(nameof(OperatingSystemInformation));
+            OnPropertyChanged(nameof(ScanDate));
             OnPropertyChanged(nameof(ScanStatusText));
         }
     }
+
+    public DeviceInformation DeviceInformation => CurrentCheckup.DeviceInformation;
+
+    public HardwareInformation HardwareInformation => CurrentCheckup.HardwareInformation;
+
+    public OperatingSystemInformation OperatingSystemInformation => CurrentCheckup.OperatingSystemInformation;
+
+    public DateTime? ScanDate => CurrentCheckup.ScanDate;
 
     public string ScanStatusText =>
         ScanDate.HasValue
@@ -45,18 +46,15 @@ public class CheckupViewModel : BaseViewModel
 
     public ICommand ReadSystemCommand { get; }
 
-    public CheckupViewModel(IDeviceScanner deviceScanner)
+    public CheckupViewModel(ICheckupScanner checkupScanner)
     {
-        _deviceScanner = deviceScanner;
+        _checkupScanner = checkupScanner;
 
         ReadSystemCommand = new RelayCommand(_ => ReadSystem());
     }
 
     private void ReadSystem()
     {
-        var scanResult = _deviceScanner.Scan();
-
-        DeviceInformation = scanResult.DeviceInformation;
-        ScanDate = scanResult.ScanDate;
+        CurrentCheckup = _checkupScanner.Scan();
     }
 }

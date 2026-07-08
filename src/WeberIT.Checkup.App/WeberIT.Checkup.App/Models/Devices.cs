@@ -8,5 +8,5 @@ public class Device
 
     public DeviceInformation Information { get; set; } = new();
 
-    public DeviceScanResult? LastScan { get; set; }
+    public CheckupSession? LastCheckup { get; set; }
 }

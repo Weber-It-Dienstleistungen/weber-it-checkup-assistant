@@ -41,6 +41,8 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
+                    <!-- Allgemeine Informationen -->
+
                     <Border Grid.Row="0"
                             Grid.Column="0"
                             Padding="24"
@@ -50,12 +52,14 @@
                             CornerRadius="10">
 
                         <StackPanel>
+
                             <TextBlock Text="Allgemeine Informationen"
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        Foreground="#222222" />
 
                             <Grid Margin="0,16,0,0">
+
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="160" />
                                     <ColumnDefinition Width="*" />
@@ -70,26 +74,77 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Computername:" FontWeight="SemiBold" />
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DeviceInformation.Name}" />
+                                <TextBlock Grid.Row="0"
+                                           Grid.Column="0"
+                                           Text="Computername:"
+                                           FontWeight="SemiBold" />
 
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Gerätetyp:" FontWeight="SemiBold" Margin="0,8,0,0" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DeviceInformation.DeviceType}" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="0"
+                                           Grid.Column="1"
+                                           Text="{Binding DeviceInformation.Name}" />
 
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Hersteller:" FontWeight="SemiBold" Margin="0,8,0,0" />
-                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DeviceInformation.Manufacturer}" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="1"
+                                           Grid.Column="0"
+                                           Text="Gerätetyp:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
 
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Modell:" FontWeight="SemiBold" Margin="0,8,0,0" />
-                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding DeviceInformation.Model}" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="1"
+                                           Grid.Column="1"
+                                           Text="{Binding DeviceInformation.DeviceType}"
+                                           Margin="0,8,0,0" />
 
-                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Seriennummer:" FontWeight="SemiBold" Margin="0,8,0,0" />
-                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding DeviceInformation.SerialNumber}" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="0"
+                                           Text="Hersteller:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
 
-                                <TextBlock Grid.Row="5" Grid.Column="0" Text="BIOS-Version:" FontWeight="SemiBold" Margin="0,8,0,0" />
-                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding DeviceInformation.BiosVersion}" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="1"
+                                           Text="{Binding DeviceInformation.Manufacturer}"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="3"
+                                           Grid.Column="0"
+                                           Text="Modell:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="3"
+                                           Grid.Column="1"
+                                           Text="{Binding DeviceInformation.Model}"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="4"
+                                           Grid.Column="0"
+                                           Text="Seriennummer:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="4"
+                                           Grid.Column="1"
+                                           Text="{Binding DeviceInformation.SerialNumber}"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="5"
+                                           Grid.Column="0"
+                                           Text="BIOS-Version:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="5"
+                                           Grid.Column="1"
+                                           Text="{Binding DeviceInformation.BiosVersion}"
+                                           Margin="0,8,0,0" />
+
                             </Grid>
+
                         </StackPanel>
+
                     </Border>
+
+                    <!-- Hardware -->
 
                     <Border Grid.Row="0"
                             Grid.Column="2"
@@ -100,12 +155,14 @@
                             CornerRadius="10">
 
                         <StackPanel>
+
                             <TextBlock Text="Hardware"
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        Foreground="#222222" />
 
                             <Grid Margin="0,16,0,0">
+
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="160" />
                                     <ColumnDefinition Width="*" />
@@ -116,14 +173,34 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Prozessor:" FontWeight="SemiBold" />
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DeviceInformation.ProcessorName}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Row="0"
+                                           Grid.Column="0"
+                                           Text="Prozessor:"
+                                           FontWeight="SemiBold" />
 
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Arbeitsspeicher:" FontWeight="SemiBold" Margin="0,8,0,0" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DeviceInformation.InstalledMemory}" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="0"
+                                           Grid.Column="1"
+                                           Text="{Binding HardwareInformation.ProcessorName}"
+                                           TextWrapping="Wrap" />
+
+                                <TextBlock Grid.Row="1"
+                                           Grid.Column="0"
+                                           Text="Arbeitsspeicher:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="1"
+                                           Grid.Column="1"
+                                           Text="{Binding HardwareInformation.InstalledMemory}"
+                                           Margin="0,8,0,0" />
+
                             </Grid>
+
                         </StackPanel>
+
                     </Border>
+
+                    <!-- Betriebssystem -->
 
                     <Border Grid.Row="2"
                             Grid.Column="0"
@@ -134,12 +211,14 @@
                             CornerRadius="10">
 
                         <StackPanel>
+
                             <TextBlock Text="Software / System"
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        Foreground="#222222" />
 
                             <Grid Margin="0,16,0,0">
+
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="160" />
                                     <ColumnDefinition Width="*" />
@@ -151,17 +230,45 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Windows:" FontWeight="SemiBold" />
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DeviceInformation.OperatingSystemName}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Row="0"
+                                           Grid.Column="0"
+                                           Text="Windows:"
+                                           FontWeight="SemiBold" />
 
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Version / Build:" FontWeight="SemiBold" Margin="0,8,0,0" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DeviceInformation.OperatingSystemVersion}" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="0"
+                                           Grid.Column="1"
+                                           Text="{Binding OperatingSystemInformation.Name}"
+                                           TextWrapping="Wrap" />
 
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Architektur:" FontWeight="SemiBold" Margin="0,8,0,0" />
-                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DeviceInformation.OperatingSystemArchitecture}" Margin="0,8,0,0" />
+                                <TextBlock Grid.Row="1"
+                                           Grid.Column="0"
+                                           Text="Version / Build:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="1"
+                                           Grid.Column="1"
+                                           Text="{Binding OperatingSystemInformation.Version}"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="0"
+                                           Text="Architektur:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="1"
+                                           Text="{Binding OperatingSystemInformation.Architecture}"
+                                           Margin="0,8,0,0" />
+
                             </Grid>
+
                         </StackPanel>
+
                     </Border>
+
+                    <!-- Checkup-Status -->
 
                     <Border Grid.Row="2"
                             Grid.Column="2"
@@ -172,6 +279,7 @@
                             CornerRadius="10">
 
                         <StackPanel>
+
                             <TextBlock Text="Checkup-Status"
                                        FontSize="20"
                                        FontWeight="SemiBold"
@@ -181,8 +289,11 @@
                                        Margin="0,8,0,0"
                                        Foreground="#666666"
                                        TextWrapping="Wrap" />
+
                         </StackPanel>
+
                     </Border>
+
                 </Grid>
 
             </StackPanel>

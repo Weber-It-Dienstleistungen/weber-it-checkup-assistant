@@ -46,7 +46,9 @@ public partial class App : Application
                 services.AddSingleton<IHardwareInformationProvider, HardwareInformationProvider>();
 
                 services.AddSingleton<IDeviceInformationScanner, DeviceInformationScanner>();
-                services.AddSingleton<IDeviceScanner, DeviceScanner>();
+                services.AddSingleton<IHardwareInformationScanner, HardwareInformationScanner>();
+                services.AddSingleton<IOperatingSystemInformationScanner, OperatingSystemInformationScanner>();
+                services.AddSingleton<ICheckupScanner, CheckupScanner>();
             })
             .Build();
     }
