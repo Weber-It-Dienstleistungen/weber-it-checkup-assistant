@@ -43,6 +43,11 @@ public class HardwareInformationProvider : IHardwareInformationProvider
         return GetWmiValue("Win32_BIOS", "SMBIOSBIOSVersion");
     }
 
+    public string GetProcessorName()
+    {
+        return GetWmiValue("Win32_Processor", "Name");
+    }
+
     private static string GetWmiValue(string className, string propertyName)
     {
         try

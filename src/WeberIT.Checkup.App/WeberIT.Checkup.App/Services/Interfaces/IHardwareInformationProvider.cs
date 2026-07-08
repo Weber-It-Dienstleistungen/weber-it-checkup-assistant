@@ -7,4 +7,5 @@ public interface IHardwareInformationProvider
     string GetSerialNumber();
     string GetDeviceType();
     string GetBiosVersion();
+    string GetProcessorName();
 }

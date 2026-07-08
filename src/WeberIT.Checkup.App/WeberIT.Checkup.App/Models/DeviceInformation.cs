@@ -19,4 +19,6 @@ public class DeviceInformation
     public string OperatingSystemArchitecture { get; set; } = string.Empty;
 
     public string BiosVersion { get; set; } = string.Empty;
+
+    public string ProcessorName { get; set; } = string.Empty;
 }
