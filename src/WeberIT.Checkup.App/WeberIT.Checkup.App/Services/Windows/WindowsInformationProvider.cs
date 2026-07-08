@@ -11,39 +11,6 @@ public class WindowsInformationProvider : IWindowsInformationProvider
         return Environment.MachineName;
     }
 
-    public string GetManufacturer()
-    {
-        return GetWmiValue("Win32_ComputerSystem", "Manufacturer");
-    }
-
-    public string GetModel()
-    {
-        return GetWmiValue("Win32_ComputerSystem", "Model");
-    }
-
-    public string GetSerialNumber()
-    {
-        return GetWmiValue("Win32_BIOS", "SerialNumber");
-    }
-
-    public string GetDeviceType()
-    {
-        var pcSystemType = GetWmiValue("Win32_ComputerSystem", "PCSystemType");
-
-        return pcSystemType switch
-        {
-            "1" => "Desktop",
-            "2" => "Notebook",
-            "3" => "Workstation",
-            "4" => "Enterprise Server",
-            "5" => "Small Office/Home Office Server",
-            "6" => "Appliance PC",
-            "7" => "Performance Server",
-            "8" => "Tablet",
-            _ => "Unbekannt"
-        };
-    }
-
     public string GetOperatingSystemName()
     {
         return GetWmiValue("Win32_OperatingSystem", "Caption");
@@ -57,11 +24,6 @@ public class WindowsInformationProvider : IWindowsInformationProvider
     public string GetOperatingSystemArchitecture()
     {
         return GetWmiValue("Win32_OperatingSystem", "OSArchitecture");
-    }
-
-    public string GetBiosVersion()
-    {
-        return GetWmiValue("Win32_BIOS", "SMBIOSBIOSVersion");
     }
 
     private static string GetWmiValue(string className, string propertyName)
@@ -83,8 +45,7 @@ public class WindowsInformationProvider : IWindowsInformationProvider
         }
         catch
         {
-            // WMI kann je nach Gerät, Rechten oder Windows-Installation fehlschlagen.
-            // Der Scan soll dadurch nicht abbrechen.
+            // WMI darf den Scan nicht abbrechen.
         }
 
         return "Unbekannt";

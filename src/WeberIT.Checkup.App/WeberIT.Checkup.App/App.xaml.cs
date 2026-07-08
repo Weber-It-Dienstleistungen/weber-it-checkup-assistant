@@ -4,6 +4,7 @@ using System.Windows;
 using WeberIT.Checkup.App.Repositories;
 using WeberIT.Checkup.App.Repositories.Interfaces;
 using WeberIT.Checkup.App.Services;
+using WeberIT.Checkup.App.Services.Hardware;
 using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.Services.Scanners;
 using WeberIT.Checkup.App.Services.Windows;
@@ -39,6 +40,8 @@ public partial class App : Application
                 services.AddSingleton<ICustomerService, CustomerService>();
 
                 services.AddSingleton<IWindowsInformationProvider, WindowsInformationProvider>();
+                services.AddSingleton<IHardwareInformationProvider, HardwareInformationProvider>();
+
                 services.AddSingleton<IDeviceInformationScanner, DeviceInformationScanner>();
                 services.AddSingleton<IDeviceScanner, DeviceScanner>();
             })
