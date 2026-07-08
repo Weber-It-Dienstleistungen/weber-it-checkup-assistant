@@ -26,6 +26,10 @@
                 <views:CustomersView />
             </DataTemplate>
 
+            <DataTemplate DataType="{x:Type viewModels:CheckupViewModel}">
+                <views:CheckupView />
+            </DataTemplate>
+
             <Style x:Key="NavButtonStyle"
                    TargetType="Button">
 

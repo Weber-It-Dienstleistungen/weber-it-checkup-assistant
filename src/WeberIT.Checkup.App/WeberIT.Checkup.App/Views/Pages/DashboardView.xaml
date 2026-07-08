@@ -7,9 +7,29 @@
             <TextBlock Text="Dashboard"
                        Style="{StaticResource PageTitleTextStyle}" />
 
-            <TextBlock Text="Willkommen im Weber IT Checkup Assistent."
+            <TextBlock Text="{Binding WelcomeText}"
                        Style="{StaticResource PageSubtitleTextStyle}"
                        Margin="0,6,0,0" />
+
+            <Border Margin="0,28,0,0"
+                    Padding="24"
+                    Background="White"
+                    BorderBrush="#DDDDDD"
+                    BorderThickness="1"
+                    CornerRadius="10">
+
+                <StackPanel>
+                    <TextBlock Text="Übersicht"
+                               FontSize="20"
+                               FontWeight="SemiBold"
+                               Foreground="#222222" />
+
+                    <TextBlock Text="{Binding DescriptionText}"
+                               Margin="0,8,0,0"
+                               Foreground="#666666"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
         </StackPanel>
     </Grid>
 

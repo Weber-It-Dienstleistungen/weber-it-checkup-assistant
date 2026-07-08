@@ -16,7 +16,6 @@
             <RowDefinition Height="32"/>
         </Grid.RowDefinitions>
 
-        <!-- Kopfbereich -->
         <Border Grid.Row="0" Background="{StaticResource PrimaryBrush}" Padding="24,0">
             <DockPanel LastChildFill="True">
                 <StackPanel VerticalAlignment="Center">
@@ -38,14 +37,12 @@
             </DockPanel>
         </Border>
 
-        <!-- Hauptbereich -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="230"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Navigation -->
             <Border Grid.Column="0" Background="{StaticResource SecondaryBrush}">
                 <StackPanel Margin="0,24,0,0">
                     <TextBlock Text="Navigation"
@@ -55,24 +52,29 @@
                                Margin="24,0,0,12"/>
 
                     <Button Content="Dashboard"
-        Style="{StaticResource NavButtonStyle}"
-        Command="{Binding ShowDashboardCommand}" />
+                            Style="{StaticResource NavButtonStyle}"
+                            Command="{Binding ShowDashboardCommand}" />
+
                     <Button Content="Kunden"
-        Style="{StaticResource NavButtonStyle}"
-        Command="{Binding ShowCustomersCommand}" />
-                    <Button Content="Geräte" Style="{StaticResource NavButtonStyle}"/>
-                    <Button Content="Checkup starten" Style="{StaticResource NavButtonStyle}"/>
-                    <Button Content="Dokumentation" Style="{StaticResource NavButtonStyle}"/>
-                    <Button Content="Einstellungen" Style="{StaticResource NavButtonStyle}"/>
+                            Style="{StaticResource NavButtonStyle}"
+                            Command="{Binding ShowCustomersCommand}" />
+
+                    <Button Content="Gerät / Checkup"
+                            Style="{StaticResource NavButtonStyle}"
+                            Command="{Binding ShowCheckupCommand}" />
+
+                    <Button Content="Dokumentation"
+                            Style="{StaticResource NavButtonStyle}" />
+
+                    <Button Content="Einstellungen"
+                            Style="{StaticResource NavButtonStyle}" />
                 </StackPanel>
             </Border>
 
-            <!-- Arbeitsbereich -->
             <ContentControl Grid.Column="1"
-                Content="{Binding CurrentViewModel}" />
+                            Content="{Binding CurrentViewModel}" />
         </Grid>
 
-        <!-- Statusleiste -->
         <Border Grid.Row="2" Background="#E5E7EB" Padding="16,0">
             <DockPanel>
                 <TextBlock Text="Bereit"
