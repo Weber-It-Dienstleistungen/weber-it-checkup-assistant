@@ -44,6 +44,26 @@ public class WindowsInformationProvider : IWindowsInformationProvider
         };
     }
 
+    public string GetOperatingSystemName()
+    {
+        return GetWmiValue("Win32_OperatingSystem", "Caption");
+    }
+
+    public string GetOperatingSystemVersion()
+    {
+        return GetWmiValue("Win32_OperatingSystem", "Version");
+    }
+
+    public string GetOperatingSystemArchitecture()
+    {
+        return GetWmiValue("Win32_OperatingSystem", "OSArchitecture");
+    }
+
+    public string GetBiosVersion()
+    {
+        return GetWmiValue("Win32_BIOS", "SMBIOSBIOSVersion");
+    }
+
     private static string GetWmiValue(string className, string propertyName)
     {
         try

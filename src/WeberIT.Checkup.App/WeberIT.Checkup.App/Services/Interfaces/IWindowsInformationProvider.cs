@@ -7,4 +7,9 @@ public interface IWindowsInformationProvider
     string GetModel();
     string GetSerialNumber();
     string GetDeviceType();
+
+    string GetOperatingSystemName();
+    string GetOperatingSystemVersion();
+    string GetOperatingSystemArchitecture();
+    string GetBiosVersion();
 }

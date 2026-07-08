@@ -11,4 +11,12 @@ public class DeviceInformation
     public string Model { get; set; } = string.Empty;
 
     public string SerialNumber { get; set; } = string.Empty;
+
+    public string OperatingSystemName { get; set; } = string.Empty;
+
+    public string OperatingSystemVersion { get; set; } = string.Empty;
+
+    public string OperatingSystemArchitecture { get; set; } = string.Empty;
+
+    public string BiosVersion { get; set; } = string.Empty;
 }
