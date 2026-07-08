@@ -3,4 +3,8 @@
 public interface IWindowsInformationProvider
 {
     string GetComputerName();
+    string GetManufacturer();
+    string GetModel();
+    string GetSerialNumber();
+    string GetDeviceType();
 }

@@ -7,8 +7,7 @@ public class DeviceInformationScanner : IDeviceInformationScanner
 {
     private readonly IWindowsInformationProvider _windowsInformationProvider;
 
-    public DeviceInformationScanner(
-        IWindowsInformationProvider windowsInformationProvider)
+    public DeviceInformationScanner(IWindowsInformationProvider windowsInformationProvider)
     {
         _windowsInformationProvider = windowsInformationProvider;
     }
@@ -17,13 +16,17 @@ public class DeviceInformationScanner : IDeviceInformationScanner
     {
         var deviceInformation = new DeviceInformation
         {
-            Name = _windowsInformationProvider.GetComputerName()
+            Manufacturer = _windowsInformationProvider.GetManufacturer(),
+            Model = _windowsInformationProvider.GetModel(),
+            SerialNumber = _windowsInformationProvider.GetSerialNumber(),
+            DeviceType = _windowsInformationProvider.GetDeviceType()
         };
 
         return new ScanResult<DeviceInformation>
         {
             IsSuccessful = true,
-            Data = deviceInformation
+            Data = deviceInformation,
+            Message = null
         };
     }
 }
