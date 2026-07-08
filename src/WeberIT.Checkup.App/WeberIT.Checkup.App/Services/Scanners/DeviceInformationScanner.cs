@@ -28,6 +28,7 @@ public class DeviceInformationScanner : IDeviceInformationScanner
             DeviceType = _hardwareInformationProvider.GetDeviceType(),
             BiosVersion = _hardwareInformationProvider.GetBiosVersion(),
             ProcessorName = _hardwareInformationProvider.GetProcessorName(),
+            InstalledMemory = _hardwareInformationProvider.GetInstalledMemory(),
 
             OperatingSystemName = _windowsInformationProvider.GetOperatingSystemName(),
             OperatingSystemVersion = _windowsInformationProvider.GetOperatingSystemVersion(),

@@ -21,4 +21,6 @@ public class DeviceInformation
     public string BiosVersion { get; set; } = string.Empty;
 
     public string ProcessorName { get; set; } = string.Empty;
+
+    public string InstalledMemory { get; set; } = string.Empty;
 }

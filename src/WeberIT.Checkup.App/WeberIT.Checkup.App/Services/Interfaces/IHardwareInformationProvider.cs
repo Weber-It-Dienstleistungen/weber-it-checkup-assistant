@@ -8,4 +8,5 @@ public interface IHardwareInformationProvider
     string GetDeviceType();
     string GetBiosVersion();
     string GetProcessorName();
+    string GetInstalledMemory();
 }

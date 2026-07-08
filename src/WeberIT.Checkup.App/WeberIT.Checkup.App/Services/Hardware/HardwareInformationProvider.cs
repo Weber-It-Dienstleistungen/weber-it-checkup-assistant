@@ -48,6 +48,20 @@ public class HardwareInformationProvider : IHardwareInformationProvider
         return GetWmiValue("Win32_Processor", "Name");
     }
 
+    public string GetInstalledMemory()
+    {
+        var totalPhysicalMemory = GetWmiValue("Win32_ComputerSystem", "TotalPhysicalMemory");
+
+        if (!ulong.TryParse(totalPhysicalMemory, out var bytes))
+        {
+            return "Unbekannt";
+        }
+
+        var gibibytes = bytes / 1024d / 1024d / 1024d;
+
+        return $"{gibibytes:0.#} GB";
+    }
+
     private static string GetWmiValue(string className, string propertyName)
     {
         try
