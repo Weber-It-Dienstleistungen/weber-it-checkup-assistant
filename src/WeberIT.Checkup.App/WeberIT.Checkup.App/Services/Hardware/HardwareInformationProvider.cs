@@ -38,6 +38,11 @@ public class HardwareInformationProvider : IHardwareInformationProvider
         };
     }
 
+    public string GetBiosManufacturer()
+    {
+        return GetWmiValue("Win32_BIOS", "Manufacturer");
+    }
+
     public string GetBiosVersion()
     {
         return GetWmiValue("Win32_BIOS", "SMBIOSBIOSVersion");
@@ -62,6 +67,53 @@ public class HardwareInformationProvider : IHardwareInformationProvider
         return $"{gibibytes:0.#} GB";
     }
 
+    public string GetMainboardManufacturer()
+    {
+        return GetWmiValue("Win32_BaseBoard", "Manufacturer");
+    }
+
+    public string GetMainboardProduct()
+    {
+        return GetWmiValue("Win32_BaseBoard", "Product");
+    }
+
+    public List<string> GetGraphicsCards()
+    {
+        var graphicsCards = GetWmiValues("Win32_VideoController", "Name");
+
+        return graphicsCards.Count > 0
+            ? graphicsCards
+            : new List<string> { "Unbekannt" };
+    }
+
+    public string GetTpmStatus()
+    {
+        var isEnabled = GetTpmValue("IsEnabled_InitialValue");
+        var isActivated = GetTpmValue("IsActivated_InitialValue");
+
+        if (isEnabled == "Unbekannt" && isActivated == "Unbekannt")
+        {
+            return "Nicht erkannt";
+        }
+
+        if (isEnabled.Equals("True", StringComparison.OrdinalIgnoreCase)
+            && isActivated.Equals("True", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Aktiv";
+        }
+
+        return "Vorhanden, aber nicht aktiv";
+    }
+
+    public string GetTpmVersion()
+    {
+        var specificationVersion = GetTpmValue("SpecVersion");
+
+        return string.IsNullOrWhiteSpace(specificationVersion)
+            ? "Unbekannt"
+            : specificationVersion;
+    }
+
     private static string GetWmiValue(string className, string propertyName)
     {
         try
@@ -82,6 +134,62 @@ public class HardwareInformationProvider : IHardwareInformationProvider
         catch
         {
             // WMI darf den Scan nicht abbrechen.
+        }
+
+        return "Unbekannt";
+    }
+
+    private static List<string> GetWmiValues(string className, string propertyName)
+    {
+        var values = new List<string>();
+
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                $"SELECT {propertyName} FROM {className}");
+
+            foreach (var result in searcher.Get())
+            {
+                var value = result[propertyName]?.ToString();
+
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    values.Add(value.Trim());
+                }
+            }
+        }
+        catch
+        {
+            // WMI darf den Scan nicht abbrechen.
+        }
+
+        return values;
+    }
+
+    private static string GetTpmValue(string propertyName)
+    {
+        try
+        {
+            var scope = new ManagementScope(@"\\.\root\CIMV2\Security\MicrosoftTpm");
+            scope.Connect();
+
+            using var searcher = new ManagementObjectSearcher(
+                scope,
+                new ObjectQuery($"SELECT {propertyName} FROM Win32_Tpm"));
+
+            foreach (var result in searcher.Get())
+            {
+                var value = result[propertyName]?.ToString();
+
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+        }
+        catch
+        {
+            // TPM-Abfrage darf den Scan nicht abbrechen.
         }
 
         return "Unbekannt";
