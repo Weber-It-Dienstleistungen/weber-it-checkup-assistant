@@ -71,7 +71,6 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.Row="0"
@@ -127,17 +126,6 @@
                                            Text="{Binding DeviceInformation.SerialNumber}"
                                            Margin="0,8,0,0" />
 
-                                <TextBlock Grid.Row="5"
-                                           Grid.Column="0"
-                                           Text="BIOS-Version:"
-                                           FontWeight="SemiBold"
-                                           Margin="0,8,0,0" />
-
-                                <TextBlock Grid.Row="5"
-                                           Grid.Column="1"
-                                           Text="{Binding DeviceInformation.BiosVersion}"
-                                           Margin="0,8,0,0" />
-
                             </Grid>
 
                         </StackPanel>
@@ -171,6 +159,12 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.Row="0"
@@ -194,7 +188,134 @@
                                            Text="{Binding HardwareInformation.InstalledMemory}"
                                            Margin="0,8,0,0" />
 
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="0"
+                                           Text="Mainboard-Hersteller:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="1"
+                                           Text="{Binding HardwareInformation.MainboardManufacturer}"
+                                           Margin="0,8,0,0"
+                                           TextWrapping="Wrap" />
+
+                                <TextBlock Grid.Row="3"
+                                           Grid.Column="0"
+                                           Text="Mainboard-Modell:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="3"
+                                           Grid.Column="1"
+                                           Text="{Binding HardwareInformation.MainboardProduct}"
+                                           Margin="0,8,0,0"
+                                           TextWrapping="Wrap" />
+
+                                <TextBlock Grid.Row="4"
+                                           Grid.Column="0"
+                                           Text="BIOS-Hersteller:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="4"
+                                           Grid.Column="1"
+                                           Text="{Binding HardwareInformation.BiosManufacturer}"
+                                           Margin="0,8,0,0"
+                                           TextWrapping="Wrap" />
+
+                                <TextBlock Grid.Row="5"
+                                           Grid.Column="0"
+                                           Text="BIOS-Version:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="5"
+                                           Grid.Column="1"
+                                           Text="{Binding HardwareInformation.BiosVersion}"
+                                           Margin="0,8,0,0"
+                                           TextWrapping="Wrap" />
+
+                                <TextBlock Grid.Row="6"
+                                           Grid.Column="0"
+                                           Text="TPM-Status:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="6"
+                                           Grid.Column="1"
+                                           Text="{Binding HardwareInformation.TpmStatus}"
+                                           Margin="0,8,0,0"
+                                           TextWrapping="Wrap" />
+
+                                <TextBlock Grid.Row="7"
+                                           Grid.Column="0"
+                                           Text="TPM-Version:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="7"
+                                           Grid.Column="1"
+                                           Text="{Binding HardwareInformation.TpmVersion}"
+                                           Margin="0,8,0,0"
+                                           TextWrapping="Wrap" />
+
                             </Grid>
+
+                            <TextBlock Text="Grafikkarten"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="#222222"
+                                       Margin="0,24,0,0" />
+
+                            <ItemsControl ItemsSource="{Binding HardwareInformation.GraphicsCards}"
+                                          Margin="0,8,0,0">
+
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,4,0,0" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+
+                            </ItemsControl>
+
+                            <TextBlock Text="Laufwerke"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="#222222"
+                                       Margin="0,24,0,0" />
+
+                            <ItemsControl ItemsSource="{Binding HardwareInformation.Drives}"
+                                          Margin="0,8,0,0">
+
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="0,6,0,6">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Model}"
+                                                           FontWeight="SemiBold"
+                                                           TextWrapping="Wrap" />
+
+                                                <StackPanel Orientation="Horizontal"
+                                                            Margin="0,2,0,0">
+                                                    <TextBlock Text="{Binding Capacity}" />
+
+                                                    <TextBlock Text=" | " />
+
+                                                    <TextBlock Text="{Binding DriveType}" />
+
+                                                    <TextBlock Text=" | " />
+
+                                                    <TextBlock Text="{Binding Manufacturer}" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+
+                            </ItemsControl>
 
                         </StackPanel>
 
