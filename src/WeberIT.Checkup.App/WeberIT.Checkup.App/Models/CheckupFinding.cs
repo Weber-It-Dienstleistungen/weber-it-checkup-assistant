@@ -6,7 +6,7 @@ public class CheckupFinding
 
     public string Description { get; set; } = string.Empty;
 
-    public string Category { get; set; } = string.Empty;
+    public FindingCategory Category { get; set; }
 
-    public string Severity { get; set; } = string.Empty;
+    public FindingSeverity Severity { get; set; }
 }

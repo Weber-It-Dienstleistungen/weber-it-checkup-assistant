@@ -10,5 +10,7 @@ public class CheckupSession
 
     public OperatingSystemInformation OperatingSystemInformation { get; set; } = new();
 
+    public StorageInformation StorageInformation { get; set; } = new();
+
     public CheckupAssessment Assessment { get; set; } = new();
 }

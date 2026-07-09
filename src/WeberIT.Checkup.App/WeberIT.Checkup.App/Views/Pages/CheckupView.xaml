@@ -1,6 +1,11 @@
 ﻿<UserControl x:Class="WeberIT.Checkup.App.Views.Pages.CheckupView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:WeberIT.Checkup.App.Infrastructure.Converters">
+
+    <UserControl.Resources>
+        <converters:FindingSeverityToSymbolConverter x:Key="FindingSeverityToSymbolConverter" />
+    </UserControl.Resources>
 
     <Grid Background="{StaticResource BackgroundBrush}">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -39,6 +44,8 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="24" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="24" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <!-- Allgemeine Informationen -->
@@ -52,14 +59,12 @@
                             CornerRadius="10">
 
                         <StackPanel>
-
                             <TextBlock Text="Allgemeine Informationen"
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        Foreground="#222222" />
 
                             <Grid Margin="0,16,0,0">
-
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="160" />
                                     <ColumnDefinition Width="*" />
@@ -125,11 +130,8 @@
                                            Grid.Column="1"
                                            Text="{Binding DeviceInformation.SerialNumber}"
                                            Margin="0,8,0,0" />
-
                             </Grid>
-
                         </StackPanel>
-
                     </Border>
 
                     <!-- Hardware -->
@@ -143,14 +145,12 @@
                             CornerRadius="10">
 
                         <StackPanel>
-
                             <TextBlock Text="Hardware"
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        Foreground="#222222" />
 
                             <Grid Margin="0,16,0,0">
-
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="160" />
                                     <ColumnDefinition Width="*" />
@@ -259,7 +259,6 @@
                                            Text="{Binding HardwareInformation.TpmVersion}"
                                            Margin="0,8,0,0"
                                            TextWrapping="Wrap" />
-
                             </Grid>
 
                             <TextBlock Text="Grafikkarten"
@@ -270,7 +269,6 @@
 
                             <ItemsControl ItemsSource="{Binding HardwareInformation.GraphicsCards}"
                                           Margin="0,8,0,0">
-
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding}"
@@ -278,7 +276,6 @@
                                                    Margin="0,4,0,0" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
-
                             </ItemsControl>
 
                             <TextBlock Text="Laufwerke"
@@ -289,7 +286,6 @@
 
                             <ItemsControl ItemsSource="{Binding HardwareInformation.Drives}"
                                           Margin="0,8,0,0">
-
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Padding="0,6,0,6">
@@ -301,24 +297,17 @@
                                                 <StackPanel Orientation="Horizontal"
                                                             Margin="0,2,0,0">
                                                     <TextBlock Text="{Binding Capacity}" />
-
                                                     <TextBlock Text=" | " />
-
                                                     <TextBlock Text="{Binding DriveType}" />
-
                                                     <TextBlock Text=" | " />
-
                                                     <TextBlock Text="{Binding Manufacturer}" />
                                                 </StackPanel>
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
-
                             </ItemsControl>
-
                         </StackPanel>
-
                     </Border>
 
                     <!-- Betriebssystem -->
@@ -332,14 +321,12 @@
                             CornerRadius="10">
 
                         <StackPanel>
-
                             <TextBlock Text="Software / System"
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        Foreground="#222222" />
 
                             <Grid Margin="0,16,0,0">
-
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="160" />
                                     <ColumnDefinition Width="*" />
@@ -394,14 +381,11 @@
                                            Grid.Column="1"
                                            Text="{Binding OperatingSystemInformation.Architecture}"
                                            Margin="0,8,0,0" />
-
                             </Grid>
-
                         </StackPanel>
-
                     </Border>
 
-                    <!-- Checkup-Status -->
+                    <!-- Bewertung -->
 
                     <Border Grid.Row="2"
                             Grid.Column="2"
@@ -412,19 +396,173 @@
                             CornerRadius="10">
 
                         <StackPanel>
-
-                            <TextBlock Text="Checkup-Status"
+                            <TextBlock Text="Bewertung"
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        Foreground="#222222" />
 
-                            <TextBlock Text="Die erweiterten Prüfergebnisse, Warnungen und Empfehlungen folgen in einem späteren Schritt."
-                                       Margin="0,8,0,0"
-                                       Foreground="#666666"
-                                       TextWrapping="Wrap" />
+                            <ItemsControl ItemsSource="{Binding Assessment.Findings}"
+                                          Margin="0,16,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="12"
+                                                Margin="0,0,0,10"
+                                                Background="#F7F7F7"
+                                                BorderBrush="#E0E0E0"
+                                                BorderThickness="1"
+                                                CornerRadius="8">
 
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="32" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding Severity, Converter={StaticResource FindingSeverityToSymbolConverter}}"
+                                                           FontSize="18"
+                                                           VerticalAlignment="Top" />
+
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="{Binding Title}"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#222222"
+                                                               TextWrapping="Wrap" />
+
+                                                    <TextBlock Text="{Binding Description}"
+                                                               Margin="0,4,0,0"
+                                                               Foreground="#666666"
+                                                               TextWrapping="Wrap" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
+                    </Border>
 
+                    <!-- Storage / Datenträger -->
+
+                    <Border Grid.Row="4"
+                            Grid.Column="0"
+                            Grid.ColumnSpan="3"
+                            Padding="24"
+                            Background="White"
+                            BorderBrush="#DDDDDD"
+                            BorderThickness="1"
+                            CornerRadius="10">
+
+                        <StackPanel>
+                            <TextBlock Text="Storage / Datenträger"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Foreground="#222222" />
+
+                            <TextBlock Text="Physische Laufwerke"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="#222222"
+                                       Margin="0,20,0,0" />
+
+                            <ItemsControl ItemsSource="{Binding StorageInformation.PhysicalDrives}"
+                                          Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="12"
+                                                Margin="0,0,0,10"
+                                                Background="#F7F7F7"
+                                                BorderBrush="#E0E0E0"
+                                                BorderThickness="1"
+                                                CornerRadius="8">
+
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="2*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding Model}"
+                                                           FontWeight="SemiBold"
+                                                           TextWrapping="Wrap" />
+
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Capacity}"
+                                                           Margin="16,0,0,0" />
+
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding DriveType}"
+                                                           Margin="16,0,0,0" />
+
+                                                <TextBlock Grid.Column="3"
+                                                           Text="{Binding Manufacturer}"
+                                                           Margin="16,0,0,0"
+                                                           TextWrapping="Wrap" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="Volumes / Laufwerksbuchstaben"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="#222222"
+                                       Margin="0,20,0,0" />
+
+                            <ItemsControl ItemsSource="{Binding StorageInformation.Volumes}"
+                                          Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="12"
+                                                Margin="0,0,0,10"
+                                                Background="#F7F7F7"
+                                                BorderBrush="#E0E0E0"
+                                                BorderThickness="1"
+                                                CornerRadius="8">
+
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="90" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="90" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding DriveLetter}"
+                                                           FontWeight="SemiBold" />
+
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding DriveType}"
+                                                           Margin="16,0,0,0" />
+
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding FileSystem}"
+                                                           Margin="16,0,0,0" />
+
+                                                <TextBlock Grid.Column="3"
+                                                           Text="{Binding TotalSize}"
+                                                           Margin="16,0,0,0" />
+
+                                                <TextBlock Grid.Column="4"
+                                                           Text="{Binding FreeSpace}"
+                                                           Margin="16,0,0,0" />
+
+                                                <TextBlock Grid.Column="5"
+                                                           Text="{Binding IsReady}"
+                                                           Margin="16,0,0,0" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </Border>
 
                 </Grid>

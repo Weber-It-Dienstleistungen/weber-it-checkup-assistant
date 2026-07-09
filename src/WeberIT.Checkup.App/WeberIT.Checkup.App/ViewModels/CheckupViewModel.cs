@@ -8,6 +8,7 @@ namespace WeberIT.Checkup.App.ViewModels;
 public class CheckupViewModel : BaseViewModel
 {
     private readonly ICheckupScanner _checkupScanner;
+    private readonly ICheckupAssessmentService _checkupAssessmentService;
 
     private CheckupSession _currentCheckup = new();
 
@@ -26,6 +27,8 @@ public class CheckupViewModel : BaseViewModel
             OnPropertyChanged(nameof(DeviceInformation));
             OnPropertyChanged(nameof(HardwareInformation));
             OnPropertyChanged(nameof(OperatingSystemInformation));
+            OnPropertyChanged(nameof(StorageInformation));
+            OnPropertyChanged(nameof(Assessment));
             OnPropertyChanged(nameof(ScanDate));
             OnPropertyChanged(nameof(ScanStatusText));
         }
@@ -37,6 +40,10 @@ public class CheckupViewModel : BaseViewModel
 
     public OperatingSystemInformation OperatingSystemInformation => CurrentCheckup.OperatingSystemInformation;
 
+    public StorageInformation StorageInformation => CurrentCheckup.StorageInformation;
+
+    public CheckupAssessment Assessment => CurrentCheckup.Assessment;
+
     public DateTime? ScanDate => CurrentCheckup.ScanDate;
 
     public string ScanStatusText =>
@@ -46,15 +53,21 @@ public class CheckupViewModel : BaseViewModel
 
     public ICommand ReadSystemCommand { get; }
 
-    public CheckupViewModel(ICheckupScanner checkupScanner)
+    public CheckupViewModel(
+        ICheckupScanner checkupScanner,
+        ICheckupAssessmentService checkupAssessmentService)
     {
         _checkupScanner = checkupScanner;
+        _checkupAssessmentService = checkupAssessmentService;
 
         ReadSystemCommand = new RelayCommand(_ => ReadSystem());
     }
 
     private void ReadSystem()
     {
-        CurrentCheckup = _checkupScanner.Scan();
+        var checkupSession = _checkupScanner.Scan();
+        checkupSession.Assessment = _checkupAssessmentService.Assess(checkupSession);
+
+        CurrentCheckup = checkupSession;
     }
 }

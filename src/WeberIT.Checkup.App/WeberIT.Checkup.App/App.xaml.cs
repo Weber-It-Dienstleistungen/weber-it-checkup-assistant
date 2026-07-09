@@ -4,9 +4,11 @@ using System.Windows;
 using WeberIT.Checkup.App.Repositories;
 using WeberIT.Checkup.App.Repositories.Interfaces;
 using WeberIT.Checkup.App.Services;
+using WeberIT.Checkup.App.Services.Assessment;
 using WeberIT.Checkup.App.Services.Hardware;
 using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.Services.Scanners;
+using WeberIT.Checkup.App.Services.Storage;
 using WeberIT.Checkup.App.Services.Windows;
 using WeberIT.Checkup.App.ViewModels;
 using WeberIT.Checkup.App.Views.Pages;
@@ -44,11 +46,16 @@ public partial class App : Application
 
                 services.AddSingleton<IWindowsInformationProvider, WindowsInformationProvider>();
                 services.AddSingleton<IHardwareInformationProvider, HardwareInformationProvider>();
+                services.AddSingleton<IStorageInformationProvider, StorageInformationProvider>();
 
                 services.AddSingleton<IDeviceInformationScanner, DeviceInformationScanner>();
                 services.AddSingleton<IHardwareInformationScanner, HardwareInformationScanner>();
                 services.AddSingleton<IOperatingSystemInformationScanner, OperatingSystemInformationScanner>();
+                services.AddSingleton<IStorageInformationScanner, StorageInformationScanner>();
                 services.AddSingleton<ICheckupScanner, CheckupScanner>();
+
+                services.AddSingleton<ICheckupAssessmentService, CheckupAssessmentService>();
+                services.AddSingleton<ICheckupAssessmentRule, StorageAssessmentRule>();
             })
             .Build();
     }
