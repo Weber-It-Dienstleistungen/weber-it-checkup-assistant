@@ -5,5 +5,6 @@ public interface IWindowsInformationProvider
     string GetComputerName();
     string GetOperatingSystemName();
     string GetOperatingSystemVersion();
+    string GetOperatingSystemBuildNumber();
     string GetOperatingSystemArchitecture();
 }

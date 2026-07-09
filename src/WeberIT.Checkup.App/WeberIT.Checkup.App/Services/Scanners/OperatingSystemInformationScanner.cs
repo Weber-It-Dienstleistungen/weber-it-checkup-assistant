@@ -18,6 +18,7 @@ public class OperatingSystemInformationScanner : IOperatingSystemInformationScan
         {
             Name = _windowsInformationProvider.GetOperatingSystemName(),
             Version = _windowsInformationProvider.GetOperatingSystemVersion(),
+            BuildNumber = _windowsInformationProvider.GetOperatingSystemBuildNumber(),
             Architecture = _windowsInformationProvider.GetOperatingSystemArchitecture()
         };
 

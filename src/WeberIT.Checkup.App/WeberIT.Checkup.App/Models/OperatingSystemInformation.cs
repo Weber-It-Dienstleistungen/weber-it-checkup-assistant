@@ -6,5 +6,7 @@ public class OperatingSystemInformation
 
     public string Version { get; set; } = string.Empty;
 
+    public string BuildNumber { get; set; } = string.Empty;
+
     public string Architecture { get; set; } = string.Empty;
 }

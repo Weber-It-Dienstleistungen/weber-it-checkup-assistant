@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Management;
+using Microsoft.Win32;
 using WeberIT.Checkup.App.Services.Interfaces;
 
 namespace WeberIT.Checkup.App.Services.Windows;
@@ -18,7 +19,27 @@ public class WindowsInformationProvider : IWindowsInformationProvider
 
     public string GetOperatingSystemVersion()
     {
-        return GetWmiValue("Win32_OperatingSystem", "Version");
+        var displayVersion = GetWindowsRegistryValue("DisplayVersion");
+
+        if (!string.IsNullOrWhiteSpace(displayVersion))
+        {
+            return displayVersion;
+        }
+
+        var releaseId = GetWindowsRegistryValue("ReleaseId");
+
+        return string.IsNullOrWhiteSpace(releaseId)
+            ? "Unbekannt"
+            : releaseId;
+    }
+
+    public string GetOperatingSystemBuildNumber()
+    {
+        var buildNumber = GetWindowsRegistryValue("CurrentBuildNumber");
+
+        return string.IsNullOrWhiteSpace(buildNumber)
+            ? "Unbekannt"
+            : buildNumber;
     }
 
     public string GetOperatingSystemArchitecture()
@@ -49,5 +70,26 @@ public class WindowsInformationProvider : IWindowsInformationProvider
         }
 
         return "Unbekannt";
+    }
+
+    private static string GetWindowsRegistryValue(string valueName)
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(
+                @"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
+
+            var value = key?.GetValue(valueName)?.ToString();
+
+            return string.IsNullOrWhiteSpace(value)
+                ? string.Empty
+                : value.Trim();
+        }
+        catch
+        {
+            // Registry-Abfragen dürfen den Scan nicht abbrechen.
+        }
+
+        return string.Empty;
     }
 }

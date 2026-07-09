@@ -349,6 +349,7 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.Row="0"
@@ -363,7 +364,7 @@
 
                                 <TextBlock Grid.Row="1"
                                            Grid.Column="0"
-                                           Text="Version / Build:"
+                                           Text="Version:"
                                            FontWeight="SemiBold"
                                            Margin="0,8,0,0" />
 
@@ -374,11 +375,22 @@
 
                                 <TextBlock Grid.Row="2"
                                            Grid.Column="0"
-                                           Text="Architektur:"
+                                           Text="Build:"
                                            FontWeight="SemiBold"
                                            Margin="0,8,0,0" />
 
                                 <TextBlock Grid.Row="2"
+                                           Grid.Column="1"
+                                           Text="{Binding OperatingSystemInformation.BuildNumber}"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="3"
+                                           Grid.Column="0"
+                                           Text="Architektur:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,8,0,0" />
+
+                                <TextBlock Grid.Row="3"
                                            Grid.Column="1"
                                            Text="{Binding OperatingSystemInformation.Architecture}"
                                            Margin="0,8,0,0" />
