@@ -9,4 +9,6 @@ public class CheckupSession
     public HardwareInformation HardwareInformation { get; set; } = new();
 
     public OperatingSystemInformation OperatingSystemInformation { get; set; } = new();
+
+    public CheckupAssessment Assessment { get; set; } = new();
 }
