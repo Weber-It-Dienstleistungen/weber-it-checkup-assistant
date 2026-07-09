@@ -24,7 +24,8 @@ public class HardwareInformationScanner : IHardwareInformationScanner
             BiosVersion = _hardwareInformationProvider.GetBiosVersion(),
             GraphicsCards = _hardwareInformationProvider.GetGraphicsCards(),
             TpmStatus = _hardwareInformationProvider.GetTpmStatus(),
-            TpmVersion = _hardwareInformationProvider.GetTpmVersion()
+            TpmVersion = _hardwareInformationProvider.GetTpmVersion(),
+            Drives = _hardwareInformationProvider.GetDrives()
         };
 
         return new ScanResult<HardwareInformation>

@@ -1,4 +1,6 @@
-﻿namespace WeberIT.Checkup.App.Services.Interfaces;
+﻿using WeberIT.Checkup.App.Models;
+
+namespace WeberIT.Checkup.App.Services.Interfaces;
 
 public interface IHardwareInformationProvider
 {
@@ -15,4 +17,5 @@ public interface IHardwareInformationProvider
     List<string> GetGraphicsCards();
     string GetTpmStatus();
     string GetTpmVersion();
+    List<DriveInformation> GetDrives();
 }
