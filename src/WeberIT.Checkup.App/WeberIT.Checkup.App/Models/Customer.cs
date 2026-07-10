@@ -24,5 +24,7 @@ public class Customer
 
     public DateTime? UpdatedAt { get; set; }
 
+    public List<CustomerDevice> Devices { get; set; } = new();
+
     public string DisplayName => $"{FirstName} {LastName}".Trim();
 }

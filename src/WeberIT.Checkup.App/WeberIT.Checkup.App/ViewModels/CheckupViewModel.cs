@@ -10,12 +10,32 @@ public class CheckupViewModel : BaseViewModel
     private readonly ICheckupScanner _checkupScanner;
     private readonly ICheckupAssessmentService _checkupAssessmentService;
 
+    private Customer? _selectedCustomer;
     private CheckupSession _currentCheckup = new();
 
     public string Title => "Gerät / Checkup";
 
     public string Subtitle =>
         "Systeminformationen auslesen und für den späteren Checkup vorbereiten.";
+
+    public Customer? SelectedCustomer
+    {
+        get => _selectedCustomer;
+        private set
+        {
+            _selectedCustomer = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectedCustomerText));
+            OnPropertyChanged(nameof(HasSelectedCustomer));
+        }
+    }
+
+    public bool HasSelectedCustomer => SelectedCustomer is not null;
+
+    public string SelectedCustomerText =>
+        SelectedCustomer is not null
+            ? $"Aktiver Kunde: {SelectedCustomer.CustomerNumber} - {SelectedCustomer.DisplayName}"
+            : "Kein Kunde ausgewählt.";
 
     public CheckupSession CurrentCheckup
     {
@@ -61,6 +81,11 @@ public class CheckupViewModel : BaseViewModel
         _checkupAssessmentService = checkupAssessmentService;
 
         ReadSystemCommand = new RelayCommand(_ => ReadSystem());
+    }
+
+    public void SetCustomer(Customer? customer)
+    {
+        SelectedCustomer = customer;
     }
 
     private void ReadSystem()

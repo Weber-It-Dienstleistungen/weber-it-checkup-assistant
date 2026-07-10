@@ -35,10 +35,16 @@ public class MainViewModel : BaseViewModel
 
         ShowDashboardCommand = new RelayCommand(_ => _navigationService.NavigateTo(_dashboardViewModel));
         ShowCustomersCommand = new RelayCommand(_ => _navigationService.NavigateTo(_customersViewModel));
-        ShowCheckupCommand = new RelayCommand(_ => _navigationService.NavigateTo(_checkupViewModel));
+        ShowCheckupCommand = new RelayCommand(_ => ShowCheckup());
 
         _navigationService.CurrentViewChanged += OnCurrentViewChanged;
         _navigationService.NavigateTo(_dashboardViewModel);
+    }
+
+    private void ShowCheckup()
+    {
+        _checkupViewModel.SetCustomer(_customersViewModel.SelectedCustomer);
+        _navigationService.NavigateTo(_checkupViewModel);
     }
 
     private void OnCurrentViewChanged()

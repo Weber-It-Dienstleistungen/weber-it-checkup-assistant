@@ -105,85 +105,169 @@
                     BorderThickness="1"
                     CornerRadius="8">
 
-                    <StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
 
-                        <Grid>
+                        <StackPanel>
 
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="Kundendetails"
+                                    Style="{StaticResource SectionTitleTextStyle}" />
+
+                                <Button
+                                    Grid.Column="1"
+                                    Width="130"
+                                    Content="Bearbeiten"
+                                    Command="{Binding EditCustomerCommand}" />
+
+                                <Button
+                                    Grid.Column="3"
+                                    Width="110"
+                                    Content="Löschen"
+                                    Command="{Binding DeleteCustomerCommand}" />
+
+                            </Grid>
 
                             <TextBlock
-                                Grid.Column="0"
-                                Text="Kundendetails"
-                                Style="{StaticResource SectionTitleTextStyle}" />
+                                Margin="0,16,0,0"
+                                FontSize="18"
+                                FontWeight="SemiBold"
+                                Text="{Binding SelectedCustomer.DisplayName}" />
 
-                            <Button
-                                Grid.Column="1"
-                                Width="130"
-                                Content="Bearbeiten"
-                                Command="{Binding EditCustomerCommand}" />
+                            <TextBlock
+                                Margin="0,16,0,0"
+                                Text="Kundennummer" />
 
-                            <Button
-                                Grid.Column="3"
-                                Width="110"
-                                Content="Löschen"
-                                Command="{Binding DeleteCustomerCommand}" />
+                            <TextBlock
+                                FontWeight="SemiBold"
+                                Text="{Binding SelectedCustomer.CustomerNumber}" />
 
-                        </Grid>
+                            <TextBlock
+                                Margin="0,12,0,0"
+                                Text="E-Mail" />
 
-                        <TextBlock
-                            Margin="0,16,0,0"
-                            FontSize="18"
-                            FontWeight="SemiBold"
-                            Text="{Binding SelectedCustomer.DisplayName}" />
+                            <TextBlock
+                                FontWeight="SemiBold"
+                                Text="{Binding SelectedCustomer.Email}" />
 
-                        <TextBlock
-                            Margin="0,16,0,0"
-                            Text="Kundennummer" />
+                            <TextBlock
+                                Margin="0,12,0,0"
+                                Text="Telefon" />
 
-                        <TextBlock
-                            FontWeight="SemiBold"
-                            Text="{Binding SelectedCustomer.CustomerNumber}" />
+                            <TextBlock
+                                FontWeight="SemiBold"
+                                Text="{Binding SelectedCustomer.Phone}" />
 
-                        <TextBlock
-                            Margin="0,12,0,0"
-                            Text="E-Mail" />
+                            <TextBlock
+                                Margin="0,12,0,0"
+                                Text="Adresse" />
 
-                        <TextBlock
-                            FontWeight="SemiBold"
-                            Text="{Binding SelectedCustomer.Email}" />
+                            <TextBlock
+                                FontWeight="SemiBold"
+                                Text="{Binding SelectedCustomer.Street}" />
 
-                        <TextBlock
-                            Margin="0,12,0,0"
-                            Text="Telefon" />
+                            <TextBlock
+                                FontWeight="SemiBold">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0} {1}">
+                                        <Binding Path="SelectedCustomer.PostalCode" />
+                                        <Binding Path="SelectedCustomer.City" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
 
-                        <TextBlock
-                            FontWeight="SemiBold"
-                            Text="{Binding SelectedCustomer.Phone}" />
+                            <Border
+                                Margin="0,24,0,0"
+                                Padding="16"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8">
 
-                        <TextBlock
-                            Margin="0,12,0,0"
-                            Text="Adresse" />
+                                <StackPanel>
 
-                        <TextBlock
-                            FontWeight="SemiBold"
-                            Text="{Binding SelectedCustomer.Street}" />
+                                    <Grid>
 
-                        <TextBlock
-                            FontWeight="SemiBold">
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0} {1}">
-                                    <Binding Path="SelectedCustomer.PostalCode" />
-                                    <Binding Path="SelectedCustomer.City" />
-                                </MultiBinding>
-                            </TextBlock.Text>
-                        </TextBlock>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="12" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
 
-                    </StackPanel>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock
+                                                Text="Geräte"
+                                                Style="{StaticResource SectionTitleTextStyle}" />
+
+                                            <TextBlock
+                                                Margin="0,4,0,0"
+                                                Foreground="{StaticResource TextSecondaryBrush}"
+                                                Text="{Binding SelectedCustomerDeviceCountText}" />
+                                        </StackPanel>
+
+                                        <Button
+                                            Grid.Column="3"
+                                            Width="140"
+                                            Content="Gerät hinzufügen"
+                                            Command="{Binding AddDeviceCommand}" />
+
+                                    </Grid>
+
+                                    <ItemsControl
+                                        Margin="0,16,0,0"
+                                        ItemsSource="{Binding SelectedCustomerDevices}">
+
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+
+                                                <Border
+                                                    Padding="12"
+                                                    Margin="0,0,0,8"
+                                                    BorderBrush="{StaticResource BorderBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8">
+
+                                                    <StackPanel>
+
+                                                        <TextBlock
+                                                            FontWeight="SemiBold"
+                                                            Text="{Binding DisplayName}" />
+
+                                                        <TextBlock
+                                                            Margin="0,4,0,0"
+                                                            Foreground="{StaticResource TextSecondaryBrush}">
+                                                            <TextBlock.Text>
+                                                                <MultiBinding StringFormat="{}Letzter Scan: {0:dd.MM.yyyy HH:mm}">
+                                                                    <Binding Path="CheckupSession.ScanDate" />
+                                                                </MultiBinding>
+                                                            </TextBlock.Text>
+                                                        </TextBlock>
+
+                                                    </StackPanel>
+
+                                                </Border>
+
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+
+                                    </ItemsControl>
+
+                                </StackPanel>
+
+                            </Border>
+
+                        </StackPanel>
+
+                    </ScrollViewer>
 
                 </Border>
 

@@ -12,6 +12,8 @@ public class CustomersViewModel : BaseViewModel
 {
     private readonly ICustomerService _customerService;
     private readonly IDialogService _dialogService;
+    private readonly ICheckupScanner _checkupScanner;
+    private readonly ICheckupAssessmentService _checkupAssessmentService;
 
     private string _searchText = string.Empty;
     private Customer? _selectedCustomer;
@@ -25,6 +27,8 @@ public class CustomersViewModel : BaseViewModel
     public RelayCommand EditCustomerCommand { get; }
 
     public RelayCommand DeleteCustomerCommand { get; }
+
+    public RelayCommand AddDeviceCommand { get; }
 
     public string SearchText
     {
@@ -44,17 +48,39 @@ public class CustomersViewModel : BaseViewModel
         {
             _selectedCustomer = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectedCustomerDevices));
+            OnPropertyChanged(nameof(SelectedCustomerDeviceCountText));
             EditCustomerCommand.RaiseCanExecuteChanged();
             DeleteCustomerCommand.RaiseCanExecuteChanged();
+            AddDeviceCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    public IEnumerable<CustomerDevice> SelectedCustomerDevices =>
+        SelectedCustomer?.Devices.ToList() ?? Enumerable.Empty<CustomerDevice>();
+
+    public string SelectedCustomerDeviceCountText
+    {
+        get
+        {
+            var count = SelectedCustomer?.Devices.Count ?? 0;
+
+            return count == 1
+                ? "1 Gerät gespeichert"
+                : $"{count} Geräte gespeichert";
         }
     }
 
     public CustomersViewModel(
         ICustomerService customerService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        ICheckupScanner checkupScanner,
+        ICheckupAssessmentService checkupAssessmentService)
     {
         _customerService = customerService;
         _dialogService = dialogService;
+        _checkupScanner = checkupScanner;
+        _checkupAssessmentService = checkupAssessmentService;
 
         Customers = new ObservableCollection<Customer>(
             _customerService.GetCustomers());
@@ -65,6 +91,7 @@ public class CustomersViewModel : BaseViewModel
         AddCustomerCommand = new RelayCommand(_ => AddCustomer());
         EditCustomerCommand = new RelayCommand(_ => EditCustomer(), _ => SelectedCustomer is not null);
         DeleteCustomerCommand = new RelayCommand(_ => DeleteCustomer(), _ => SelectedCustomer is not null);
+        AddDeviceCommand = new RelayCommand(_ => AddDevice(), _ => SelectedCustomer is not null);
     }
 
     private void AddCustomer()
@@ -94,6 +121,8 @@ public class CustomersViewModel : BaseViewModel
         {
             CustomersView.Refresh();
             OnPropertyChanged(nameof(SelectedCustomer));
+            OnPropertyChanged(nameof(SelectedCustomerDevices));
+            OnPropertyChanged(nameof(SelectedCustomerDeviceCountText));
         }
     }
 
@@ -120,6 +149,32 @@ public class CustomersViewModel : BaseViewModel
 
         SelectedCustomer = Customers.FirstOrDefault();
         CustomersView.Refresh();
+    }
+
+    private void AddDevice()
+    {
+        if (SelectedCustomer is null)
+        {
+            return;
+        }
+
+        var checkupSession = _checkupScanner.Scan();
+        checkupSession.Assessment = _checkupAssessmentService.Assess(checkupSession);
+
+        var displayName = !string.IsNullOrWhiteSpace(checkupSession.DeviceInformation.Name)
+            ? checkupSession.DeviceInformation.Name
+            : $"Gerät {SelectedCustomer.Devices.Count + 1}";
+
+        var device = new CustomerDevice
+        {
+            DisplayName = displayName,
+            CheckupSession = checkupSession
+        };
+
+        _customerService.AddDeviceToCustomer(SelectedCustomer.Id, device);
+
+        OnPropertyChanged(nameof(SelectedCustomerDevices));
+        OnPropertyChanged(nameof(SelectedCustomerDeviceCountText));
     }
 
     private bool FilterCustomer(object item)
