@@ -41,11 +41,34 @@
 
             </Grid>
 
-            <ItemsControl
+            <ListBox
                 Margin="0,16,0,0"
-                ItemsSource="{Binding Devices}">
+                ItemsSource="{Binding Devices}"
+                SelectedItem="{Binding SelectedDevice}"
+                BorderThickness="0"
+                Background="Transparent">
 
-                <ItemsControl.ItemTemplate>
+                <ListBox.ItemContainerStyle>
+
+                    <Style TargetType="ListBoxItem">
+
+                        <Setter
+                            Property="HorizontalContentAlignment"
+                            Value="Stretch" />
+
+                        <Setter
+                            Property="Padding"
+                            Value="0" />
+
+                        <Setter
+                            Property="Margin"
+                            Value="0" />
+
+                    </Style>
+
+                </ListBox.ItemContainerStyle>
+
+                <ListBox.ItemTemplate>
 
                     <DataTemplate>
 
@@ -82,9 +105,9 @@
 
                     </DataTemplate>
 
-                </ItemsControl.ItemTemplate>
+                </ListBox.ItemTemplate>
 
-            </ItemsControl>
+            </ListBox>
 
         </StackPanel>
 

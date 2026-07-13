@@ -11,6 +11,7 @@ public class CustomerDevicesViewModel : BaseViewModel
     private readonly ICheckupAssessmentService _checkupAssessmentService;
 
     private Customer? _selectedCustomer;
+    private CustomerDevice? _selectedDevice;
 
     public CustomerDevicesViewModel(
         ICustomerService customerService,
@@ -39,12 +40,28 @@ public class CustomerDevicesViewModel : BaseViewModel
             }
 
             _selectedCustomer = value;
+            SelectedDevice = null;
 
             OnPropertyChanged();
             OnPropertyChanged(nameof(Devices));
             OnPropertyChanged(nameof(DeviceCountText));
 
             AddDeviceCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    public CustomerDevice? SelectedDevice
+    {
+        get => _selectedDevice;
+        set
+        {
+            if (_selectedDevice == value)
+            {
+                return;
+            }
+
+            _selectedDevice = value;
+            OnPropertyChanged();
         }
     }
 
