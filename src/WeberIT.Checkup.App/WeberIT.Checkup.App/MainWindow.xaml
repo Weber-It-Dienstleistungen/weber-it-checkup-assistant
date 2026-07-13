@@ -10,81 +10,139 @@
         Background="{StaticResource BackgroundBrush}">
 
     <Grid>
+
         <Grid.RowDefinitions>
-            <RowDefinition Height="72"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="32"/>
+            <RowDefinition Height="76" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="32" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="{StaticResource PrimaryBrush}" Padding="24,0">
-            <DockPanel LastChildFill="True">
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Weber IT Checkup Assistent"
-                               Foreground="White"
-                               FontSize="24"
-                               FontWeight="SemiBold"/>
-                    <TextBlock Text="Professioneller Windows-PC-Check für Privatkunden"
-                               Foreground="#CBD5E1"
-                               FontSize="13"/>
+        <Border
+            Grid.Row="0"
+            Padding="24,0"
+            Background="{StaticResource PrimaryBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="0,0,0,1">
+
+            <Grid>
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel
+                    Grid.Column="0"
+                    VerticalAlignment="Center">
+
+                    <TextBlock
+                        Text="Weber IT Checkup Assistent"
+                        FontSize="24"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextPrimaryBrush}" />
+
+                    <TextBlock
+                        Margin="0,4,0,0"
+                        Text="Professioneller Windows-PC-Check für Privatkunden"
+                        FontSize="13"
+                        Foreground="{StaticResource TextSecondaryBrush}" />
+
                 </StackPanel>
 
-                <Button Content="Neuer Checkup"
-                        Style="{StaticResource AccentButtonStyle}"
-                        DockPanel.Dock="Right"
-                        Width="150"
-                        Height="38"
-                        Margin="0,0,0,0"/>
-            </DockPanel>
+                <Button
+                    Grid.Column="1"
+                    Width="150"
+                    Height="38"
+                    VerticalAlignment="Center"
+                    Content="Neuer Checkup"
+                    Command="{Binding ShowCheckupCommand}"
+                    Style="{StaticResource AccentButtonStyle}" />
+
+            </Grid>
+
         </Border>
 
         <Grid Grid.Row="1">
+
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="230"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="230" />
+                <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="{StaticResource SecondaryBrush}">
+            <Border
+                Grid.Column="0"
+                Background="{StaticResource SecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,1,0">
+
                 <StackPanel Margin="0,24,0,0">
-                    <TextBlock Text="Navigation"
-                               Foreground="#9CA3AF"
-                               FontSize="12"
-                               FontWeight="SemiBold"
-                               Margin="24,0,0,12"/>
 
-                    <Button Content="Dashboard"
-                            Style="{StaticResource NavButtonStyle}"
-                            Command="{Binding ShowDashboardCommand}" />
+                    <TextBlock
+                        Margin="26,0,0,12"
+                        Text="NAVIGATION"
+                        FontSize="11"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextMutedBrush}" />
 
-                    <Button Content="Kunden"
-                            Style="{StaticResource NavButtonStyle}"
-                            Command="{Binding ShowCustomersCommand}" />
+                    <Button
+                        Content="Dashboard"
+                        Command="{Binding ShowDashboardCommand}"
+                        Style="{StaticResource NavButtonStyle}" />
 
-                    <Button Content="Gerät / Checkup"
-                            Style="{StaticResource NavButtonStyle}"
-                            Command="{Binding ShowCheckupCommand}" />
+                    <Button
+                        Content="Kunden"
+                        Command="{Binding ShowCustomersCommand}"
+                        Style="{StaticResource NavButtonStyle}" />
 
-                    <Button Content="Dokumentation"
-                            Style="{StaticResource NavButtonStyle}" />
+                    <Button
+                        Content="Gerät / Checkup"
+                        Command="{Binding ShowCheckupCommand}"
+                        Style="{StaticResource NavButtonStyle}" />
 
-                    <Button Content="Einstellungen"
-                            Style="{StaticResource NavButtonStyle}" />
+                    <Button
+                        Content="Dokumentation"
+                        Style="{StaticResource NavButtonStyle}" />
+
+                    <Button
+                        Content="Einstellungen"
+                        Style="{StaticResource NavButtonStyle}" />
+
                 </StackPanel>
+
             </Border>
 
-            <ContentControl Grid.Column="1"
-                            Content="{Binding CurrentViewModel}" />
+            <ContentControl
+                Grid.Column="1"
+                Content="{Binding CurrentViewModel}" />
+
         </Grid>
 
-        <Border Grid.Row="2" Background="#E5E7EB" Padding="16,0">
+        <Border
+            Grid.Row="2"
+            Padding="16,0"
+            Background="{StaticResource PrimaryBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+
             <DockPanel>
-                <TextBlock Text="Bereit"
-                           VerticalAlignment="Center"
-                           Foreground="#374151"/>
-                <TextBlock Text="v0.1.0"
-                           DockPanel.Dock="Right"
-                           VerticalAlignment="Center"
-                           Foreground="#374151"/>
+
+                <TextBlock
+                    Text="Bereit"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="{StaticResource TextMutedBrush}" />
+
+                <TextBlock
+                    Text="v0.1.0"
+                    DockPanel.Dock="Right"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="{StaticResource TextMutedBrush}" />
+
             </DockPanel>
+
         </Border>
+
     </Grid>
+
 </Window>
