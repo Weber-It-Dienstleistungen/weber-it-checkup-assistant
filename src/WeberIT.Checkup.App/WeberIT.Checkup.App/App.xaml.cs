@@ -36,26 +36,59 @@ public partial class App : Application
                 services.AddSingleton<INavigationService, NavigationService>();
                 services.AddSingleton<IDialogService, DialogService>();
 
+                services.AddSingleton<CustomerDevicesViewModel>();
                 services.AddSingleton<CustomersViewModel>();
                 services.AddSingleton<CustomersView>();
 
                 services.AddTransient<CustomerEditViewModel>();
 
-                services.AddSingleton<ICustomerRepository, InMemoryCustomerRepository>();
-                services.AddSingleton<ICustomerService, CustomerService>();
+                services.AddSingleton<
+                    ICustomerRepository,
+                    InMemoryCustomerRepository>();
 
-                services.AddSingleton<IWindowsInformationProvider, WindowsInformationProvider>();
-                services.AddSingleton<IHardwareInformationProvider, HardwareInformationProvider>();
-                services.AddSingleton<IStorageInformationProvider, StorageInformationProvider>();
+                services.AddSingleton<
+                    ICustomerService,
+                    CustomerService>();
 
-                services.AddSingleton<IDeviceInformationScanner, DeviceInformationScanner>();
-                services.AddSingleton<IHardwareInformationScanner, HardwareInformationScanner>();
-                services.AddSingleton<IOperatingSystemInformationScanner, OperatingSystemInformationScanner>();
-                services.AddSingleton<IStorageInformationScanner, StorageInformationScanner>();
-                services.AddSingleton<ICheckupScanner, CheckupScanner>();
+                services.AddSingleton<
+                    IWindowsInformationProvider,
+                    WindowsInformationProvider>();
 
-                services.AddSingleton<ICheckupAssessmentService, CheckupAssessmentService>();
-                services.AddSingleton<ICheckupAssessmentRule, StorageAssessmentRule>();
+                services.AddSingleton<
+                    IHardwareInformationProvider,
+                    HardwareInformationProvider>();
+
+                services.AddSingleton<
+                    IStorageInformationProvider,
+                    StorageInformationProvider>();
+
+                services.AddSingleton<
+                    IDeviceInformationScanner,
+                    DeviceInformationScanner>();
+
+                services.AddSingleton<
+                    IHardwareInformationScanner,
+                    HardwareInformationScanner>();
+
+                services.AddSingleton<
+                    IOperatingSystemInformationScanner,
+                    OperatingSystemInformationScanner>();
+
+                services.AddSingleton<
+                    IStorageInformationScanner,
+                    StorageInformationScanner>();
+
+                services.AddSingleton<
+                    ICheckupScanner,
+                    CheckupScanner>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentService,
+                    CheckupAssessmentService>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    StorageAssessmentRule>();
             })
             .Build();
     }
@@ -64,7 +97,9 @@ public partial class App : Application
     {
         await _host.StartAsync();
 
-        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        var mainWindow =
+            _host.Services.GetRequiredService<MainWindow>();
+
         mainWindow.Show();
 
         base.OnStartup(e);

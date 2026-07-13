@@ -12,15 +12,42 @@ public class CustomersViewModel : BaseViewModel
 {
     private readonly ICustomerService _customerService;
     private readonly IDialogService _dialogService;
-    private readonly ICheckupScanner _checkupScanner;
-    private readonly ICheckupAssessmentService _checkupAssessmentService;
 
     private string _searchText = string.Empty;
     private Customer? _selectedCustomer;
 
+    public CustomersViewModel(
+        ICustomerService customerService,
+        IDialogService dialogService,
+        CustomerDevicesViewModel customerDevices)
+    {
+        _customerService = customerService;
+        _dialogService = dialogService;
+
+        CustomerDevices = customerDevices;
+
+        Customers = new ObservableCollection<Customer>(
+            _customerService.GetCustomers());
+
+        CustomersView = CollectionViewSource.GetDefaultView(Customers);
+        CustomersView.Filter = FilterCustomer;
+
+        AddCustomerCommand = new RelayCommand(_ => AddCustomer());
+
+        EditCustomerCommand = new RelayCommand(
+            _ => EditCustomer(),
+            _ => SelectedCustomer is not null);
+
+        DeleteCustomerCommand = new RelayCommand(
+            _ => DeleteCustomer(),
+            _ => SelectedCustomer is not null);
+    }
+
     public ObservableCollection<Customer> Customers { get; }
 
     public ICollectionView CustomersView { get; }
+
+    public CustomerDevicesViewModel CustomerDevices { get; }
 
     public ICommand AddCustomerCommand { get; }
 
@@ -28,14 +55,18 @@ public class CustomersViewModel : BaseViewModel
 
     public RelayCommand DeleteCustomerCommand { get; }
 
-    public RelayCommand AddDeviceCommand { get; }
-
     public string SearchText
     {
         get => _searchText;
         set
         {
+            if (_searchText == value)
+            {
+                return;
+            }
+
             _searchText = value;
+
             OnPropertyChanged();
             CustomersView.Refresh();
         }
@@ -46,64 +77,34 @@ public class CustomersViewModel : BaseViewModel
         get => _selectedCustomer;
         set
         {
+            if (_selectedCustomer == value)
+            {
+                return;
+            }
+
             _selectedCustomer = value;
+            CustomerDevices.SelectedCustomer = value;
+
             OnPropertyChanged();
-            OnPropertyChanged(nameof(SelectedCustomerDevices));
-            OnPropertyChanged(nameof(SelectedCustomerDeviceCountText));
+
             EditCustomerCommand.RaiseCanExecuteChanged();
             DeleteCustomerCommand.RaiseCanExecuteChanged();
-            AddDeviceCommand.RaiseCanExecuteChanged();
         }
-    }
-
-    public IEnumerable<CustomerDevice> SelectedCustomerDevices =>
-        SelectedCustomer?.Devices.ToList() ?? Enumerable.Empty<CustomerDevice>();
-
-    public string SelectedCustomerDeviceCountText
-    {
-        get
-        {
-            var count = SelectedCustomer?.Devices.Count ?? 0;
-
-            return count == 1
-                ? "1 Gerät gespeichert"
-                : $"{count} Geräte gespeichert";
-        }
-    }
-
-    public CustomersViewModel(
-        ICustomerService customerService,
-        IDialogService dialogService,
-        ICheckupScanner checkupScanner,
-        ICheckupAssessmentService checkupAssessmentService)
-    {
-        _customerService = customerService;
-        _dialogService = dialogService;
-        _checkupScanner = checkupScanner;
-        _checkupAssessmentService = checkupAssessmentService;
-
-        Customers = new ObservableCollection<Customer>(
-            _customerService.GetCustomers());
-
-        CustomersView = CollectionViewSource.GetDefaultView(Customers);
-        CustomersView.Filter = FilterCustomer;
-
-        AddCustomerCommand = new RelayCommand(_ => AddCustomer());
-        EditCustomerCommand = new RelayCommand(_ => EditCustomer(), _ => SelectedCustomer is not null);
-        DeleteCustomerCommand = new RelayCommand(_ => DeleteCustomer(), _ => SelectedCustomer is not null);
-        AddDeviceCommand = new RelayCommand(_ => AddDevice(), _ => SelectedCustomer is not null);
     }
 
     private void AddCustomer()
     {
         var customer = new Customer();
 
-        var result = _dialogService.ShowCustomerEditDialog(customer, true);
+        var result = _dialogService.ShowCustomerEditDialog(
+            customer,
+            true);
 
         if (result == true)
         {
             Customers.Add(customer);
             SelectedCustomer = customer;
+
             CustomersView.Refresh();
         }
     }
@@ -115,14 +116,14 @@ public class CustomersViewModel : BaseViewModel
             return;
         }
 
-        var result = _dialogService.ShowCustomerEditDialog(SelectedCustomer, false);
+        var result = _dialogService.ShowCustomerEditDialog(
+            SelectedCustomer,
+            false);
 
         if (result == true)
         {
             CustomersView.Refresh();
             OnPropertyChanged(nameof(SelectedCustomer));
-            OnPropertyChanged(nameof(SelectedCustomerDevices));
-            OnPropertyChanged(nameof(SelectedCustomerDeviceCountText));
         }
     }
 
@@ -148,50 +149,41 @@ public class CustomersViewModel : BaseViewModel
         Customers.Remove(customer);
 
         SelectedCustomer = Customers.FirstOrDefault();
+
         CustomersView.Refresh();
-    }
-
-    private void AddDevice()
-    {
-        if (SelectedCustomer is null)
-        {
-            return;
-        }
-
-        var checkupSession = _checkupScanner.Scan();
-        checkupSession.Assessment = _checkupAssessmentService.Assess(checkupSession);
-
-        var displayName = !string.IsNullOrWhiteSpace(checkupSession.DeviceInformation.Name)
-            ? checkupSession.DeviceInformation.Name
-            : $"Gerät {SelectedCustomer.Devices.Count + 1}";
-
-        var device = new CustomerDevice
-        {
-            DisplayName = displayName,
-            CheckupSession = checkupSession
-        };
-
-        _customerService.AddDeviceToCustomer(SelectedCustomer.Id, device);
-
-        OnPropertyChanged(nameof(SelectedCustomerDevices));
-        OnPropertyChanged(nameof(SelectedCustomerDeviceCountText));
     }
 
     private bool FilterCustomer(object item)
     {
         if (item is not Customer customer)
+        {
             return false;
+        }
 
         if (string.IsNullOrWhiteSpace(SearchText))
+        {
             return true;
+        }
 
         var searchText = SearchText.Trim();
 
-        return customer.CustomerNumber.Contains(searchText, StringComparison.OrdinalIgnoreCase)
-            || customer.FirstName.Contains(searchText, StringComparison.OrdinalIgnoreCase)
-            || customer.LastName.Contains(searchText, StringComparison.OrdinalIgnoreCase)
-            || customer.Email.Contains(searchText, StringComparison.OrdinalIgnoreCase)
-            || customer.Phone.Contains(searchText, StringComparison.OrdinalIgnoreCase)
-            || customer.City.Contains(searchText, StringComparison.OrdinalIgnoreCase);
+        return customer.CustomerNumber.Contains(
+                   searchText,
+                   StringComparison.OrdinalIgnoreCase)
+               || customer.FirstName.Contains(
+                   searchText,
+                   StringComparison.OrdinalIgnoreCase)
+               || customer.LastName.Contains(
+                   searchText,
+                   StringComparison.OrdinalIgnoreCase)
+               || customer.Email.Contains(
+                   searchText,
+                   StringComparison.OrdinalIgnoreCase)
+               || customer.Phone.Contains(
+                   searchText,
+                   StringComparison.OrdinalIgnoreCase)
+               || customer.City.Contains(
+                   searchText,
+                   StringComparison.OrdinalIgnoreCase);
     }
 }
