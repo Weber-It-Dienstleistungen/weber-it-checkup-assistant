@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Windows;
+using WeberIT.Checkup.App.Infrastructure.Persistence;
 using WeberIT.Checkup.App.Repositories;
 using WeberIT.Checkup.App.Repositories.Interfaces;
 using WeberIT.Checkup.App.Services;
@@ -24,6 +25,10 @@ public partial class App : Application
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices((context, services) =>
             {
+                services.AddSingleton<DatabasePaths>();
+                services.AddSingleton<DatabaseConnectionFactory>();
+                services.AddSingleton<DatabaseInitializer>();
+
                 services.AddSingleton<MainViewModel>();
                 services.AddSingleton<MainWindow>();
 
@@ -96,6 +101,11 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         await _host.StartAsync();
+
+        var databaseInitializer =
+            _host.Services.GetRequiredService<DatabaseInitializer>();
+
+        databaseInitializer.Initialize();
 
         var mainWindow =
             _host.Services.GetRequiredService<MainWindow>();
