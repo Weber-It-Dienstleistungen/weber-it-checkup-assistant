@@ -409,6 +409,9 @@ public class SQLiteCustomerRepository : ICustomerRepository
                 device.CheckupSession,
                 _jsonSerializerOptions);
 
+        var deviceInformation =
+            device.CheckupSession.DeviceInformation;
+
         using var command = connection.CreateCommand();
 
         command.Transaction = transaction;
@@ -469,27 +472,21 @@ public class SQLiteCustomerRepository : ICustomerRepository
             "$displayName",
             device.DisplayName);
 
-        /*
-         * Die Detailwerte liegen vollständig im JSON.
-         * Die zusätzlichen Spalten werden vorerst leer gehalten,
-         * bis wir im nächsten Schritt den exakten Ist-Zustand
-         * von DeviceInformation geprüft haben.
-         */
         command.Parameters.AddWithValue(
             "$computerName",
-            string.Empty);
+            deviceInformation.Name);
 
         command.Parameters.AddWithValue(
             "$manufacturer",
-            string.Empty);
+            deviceInformation.Manufacturer);
 
         command.Parameters.AddWithValue(
             "$model",
-            string.Empty);
+            deviceInformation.Model);
 
         command.Parameters.AddWithValue(
             "$serialNumber",
-            string.Empty);
+            deviceInformation.SerialNumber);
 
         command.Parameters.AddWithValue(
             "$createdAt",

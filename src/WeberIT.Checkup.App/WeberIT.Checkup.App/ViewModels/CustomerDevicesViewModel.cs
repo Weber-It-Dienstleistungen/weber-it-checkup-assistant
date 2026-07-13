@@ -114,7 +114,8 @@ public class CustomerDevicesViewModel : BaseViewModel
         var checkupSession = CreateCheckupSession();
 
         var displayName =
-            !string.IsNullOrWhiteSpace(checkupSession.DeviceInformation.Name)
+            !string.IsNullOrWhiteSpace(
+                checkupSession.DeviceInformation.Name)
                 ? checkupSession.DeviceInformation.Name
                 : $"Gerät {SelectedCustomer.Devices.Count + 1}";
 
@@ -127,6 +128,9 @@ public class CustomerDevicesViewModel : BaseViewModel
         _customerService.AddDeviceToCustomer(
             SelectedCustomer.Id,
             device);
+
+        SelectedCustomer.Devices.Add(device);
+        SelectedDevice = device;
 
         OnPropertyChanged(nameof(Devices));
         OnPropertyChanged(nameof(DeviceCountText));
@@ -149,6 +153,7 @@ public class CustomerDevicesViewModel : BaseViewModel
         }
 
         SelectedDevice.CheckupSession = checkupSession;
+        SelectedDevice.UpdatedAt = DateTime.Now;
 
         _customerService.UpdateCustomerDevice(
             SelectedCustomer.Id,
@@ -180,6 +185,7 @@ public class CustomerDevicesViewModel : BaseViewModel
             SelectedCustomer.Id,
             device.Id);
 
+        SelectedCustomer.Devices.Remove(device);
         SelectedDevice = null;
 
         OnPropertyChanged(nameof(Devices));
