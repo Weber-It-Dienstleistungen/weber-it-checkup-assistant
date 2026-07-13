@@ -49,7 +49,7 @@ public partial class App : Application
 
                 services.AddSingleton<
                     ICustomerRepository,
-                    InMemoryCustomerRepository>();
+                    SQLiteCustomerRepository>();
 
                 services.AddSingleton<
                     ICustomerService,
