@@ -1,7 +1,8 @@
 ﻿<UserControl x:Class="WeberIT.Checkup.App.Views.Controls.CustomerDevicesView"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+             xmlns:checkup="clr-namespace:WeberIT.Checkup.App.Views.Controls.Checkup">
 
     <Border
         Margin="0,24,0,0"
@@ -217,6 +218,49 @@
                 </ListBox.ItemTemplate>
 
             </ListBox>
+
+            <StackPanel
+                Margin="0,24,0,0"
+                DataContext="{Binding SelectedDevice.CheckupSession}">
+
+                <StackPanel.Style>
+
+                    <Style TargetType="StackPanel">
+
+                        <Setter
+                            Property="Visibility"
+                            Value="Visible" />
+
+                        <Style.Triggers>
+
+                            <DataTrigger
+                                Binding="{Binding DataContext.SelectedDevice, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                Value="{x:Null}">
+
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Collapsed" />
+
+                            </DataTrigger>
+
+                        </Style.Triggers>
+
+                    </Style>
+
+                </StackPanel.Style>
+
+                <TextBlock
+                    Text="Gerätedaten"
+                    Style="{StaticResource SectionTitleTextStyle}" />
+
+                <TextBlock
+                    Margin="0,4,0,16"
+                    Foreground="{StaticResource TextSecondaryBrush}"
+                    Text="Vollständiger Stand des zuletzt gespeicherten Systemscans." />
+
+                <checkup:CheckupDetailsView />
+
+            </StackPanel>
 
         </StackPanel>
 
