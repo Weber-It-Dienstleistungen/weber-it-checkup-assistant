@@ -1,42 +1,686 @@
 ﻿<UserControl x:Class="WeberIT.Checkup.App.Views.Pages.DashboardView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:WeberIT.Checkup.App.Models">
 
-    <Grid Background="{StaticResource BackgroundBrush}">
+    <ScrollViewer
+        VerticalScrollBarVisibility="Auto"
+        HorizontalScrollBarVisibility="Disabled"
+        Background="{StaticResource BackgroundBrush}">
 
-        <StackPanel Margin="40">
+        <Grid Margin="40,32,40,40">
 
-            <TextBlock
-                Text="Dashboard"
-                Style="{StaticResource PageTitleTextStyle}" />
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="20" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="20" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <TextBlock
-                Margin="0,6,0,0"
-                Text="{Binding WelcomeText}"
-                Style="{StaticResource PageSubtitleTextStyle}" />
+            <StackPanel Grid.Row="0">
+
+                <TextBlock
+                    Text="Dashboard"
+                    Style="{StaticResource PageTitleTextStyle}" />
+
+                <TextBlock
+                    Margin="0,6,0,0"
+                    Text="{Binding WelcomeText}"
+                    Style="{StaticResource PageSubtitleTextStyle}" />
+
+            </StackPanel>
+
+            <Grid Grid.Row="2">
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border
+                    Grid.Column="0"
+                    Style="{StaticResource PanelCardStyle}"
+                    Padding="20">
+
+                    <Grid>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border
+                            Grid.Column="0"
+                            Width="38"
+                            Height="38"
+                            VerticalAlignment="Top"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            CornerRadius="8">
+
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="18"
+                                Foreground="{StaticResource AccentBrush}"
+                                Text="&#xE716;" />
+
+                        </Border>
+
+                        <StackPanel Grid.Column="1">
+
+                            <TextBlock
+                                Text="KUNDEN"
+                                Style="{StaticResource CardTitleTextStyle}" />
+
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Text="{Binding CustomerCount}"
+                                Style="{StaticResource CardNumberTextStyle}" />
+
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                FontSize="12"
+                                Text="gespeicherte Kunden" />
+
+                        </StackPanel>
+
+                    </Grid>
+
+                </Border>
+
+                <Border
+                    Grid.Column="2"
+                    Style="{StaticResource PanelCardStyle}"
+                    Padding="20">
+
+                    <Grid>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border
+                            Grid.Column="0"
+                            Width="38"
+                            Height="38"
+                            VerticalAlignment="Top"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            CornerRadius="8">
+
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="18"
+                                Foreground="{StaticResource InformationBrush}"
+                                Text="&#xE7F8;" />
+
+                        </Border>
+
+                        <StackPanel Grid.Column="1">
+
+                            <TextBlock
+                                Text="GERÄTE"
+                                Style="{StaticResource CardTitleTextStyle}" />
+
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Text="{Binding DeviceCount}"
+                                Style="{StaticResource CardNumberTextStyle}" />
+
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                FontSize="12"
+                                Text="inventarisierte Geräte" />
+
+                        </StackPanel>
+
+                    </Grid>
+
+                </Border>
+
+                <Border
+                    Grid.Column="4"
+                    Style="{StaticResource PanelCardStyle}"
+                    Padding="20">
+
+                    <Grid>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border
+                            Grid.Column="0"
+                            Width="38"
+                            Height="38"
+                            VerticalAlignment="Top"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            CornerRadius="8">
+
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="18"
+                                Foreground="{StaticResource SuccessBrush}"
+                                Text="&#xE9D9;" />
+
+                        </Border>
+
+                        <StackPanel Grid.Column="1">
+
+                            <TextBlock
+                                Text="CHECKUPS"
+                                Style="{StaticResource CardTitleTextStyle}" />
+
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Text="{Binding CheckupCount}"
+                                Style="{StaticResource CardNumberTextStyle}" />
+
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                FontSize="12"
+                                Text="abgeschlossene Scans" />
+
+                        </StackPanel>
+
+                    </Grid>
+
+                </Border>
+
+                <Border
+                    Grid.Column="6"
+                    Style="{StaticResource PanelCardStyle}"
+                    Padding="20">
+
+                    <Grid>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border
+                            Grid.Column="0"
+                            Width="38"
+                            Height="38"
+                            VerticalAlignment="Top"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            CornerRadius="8">
+
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="18"
+                                Foreground="{StaticResource WarningBrush}"
+                                Text="&#xE7BA;" />
+
+                        </Border>
+
+                        <StackPanel Grid.Column="1">
+
+                            <TextBlock
+                                Text="EMPFEHLUNGEN"
+                                Style="{StaticResource CardTitleTextStyle}" />
+
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Text="{Binding RecommendationCount}"
+                                Style="{StaticResource CardNumberTextStyle}" />
+
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                FontSize="12"
+                                Text="offene Hinweise" />
+
+                        </StackPanel>
+
+                    </Grid>
+
+                </Border>
+
+            </Grid>
+
+            <Grid Grid.Row="4">
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="20" />
+                    <ColumnDefinition Width="2*" />
+                </Grid.ColumnDefinitions>
+
+                <Border
+                    Grid.Column="0"
+                    Style="{StaticResource PanelCardStyle}">
+
+                    <Grid>
+
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="16" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Text="Letzte Aktivitäten"
+                            Style="{StaticResource SectionTitleTextStyle}" />
+
+                        <Grid Grid.Row="2">
+
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="Noch keine Aktivitäten vorhanden.">
+
+                                <TextBlock.Style>
+
+                                    <Style TargetType="TextBlock">
+
+                                        <Setter
+                                            Property="Visibility"
+                                            Value="Collapsed" />
+
+                                        <Style.Triggers>
+
+                                            <DataTrigger
+                                                Binding="{Binding HasRecentActivities}"
+                                                Value="False">
+
+                                                <Setter
+                                                    Property="Visibility"
+                                                    Value="Visible" />
+
+                                            </DataTrigger>
+
+                                        </Style.Triggers>
+
+                                    </Style>
+
+                                </TextBlock.Style>
+
+                            </TextBlock>
+
+                            <ItemsControl ItemsSource="{Binding RecentActivities}">
+
+                                <ItemsControl.ItemTemplate>
+
+                                    <DataTemplate>
+
+                                        <Grid Margin="0,0,0,14">
+
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="38" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border
+                                                Grid.Column="0"
+                                                Width="30"
+                                                Height="30"
+                                                VerticalAlignment="Top"
+                                                Background="{StaticResource SurfaceSecondaryBrush}"
+                                                CornerRadius="15">
+
+                                                <TextBlock
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    FontFamily="Segoe MDL2 Assets"
+                                                    FontSize="13"
+                                                    Foreground="{StaticResource AccentBrush}"
+                                                    Text="&#xE946;" />
+
+                                            </Border>
+
+                                            <StackPanel Grid.Column="1">
+
+                                                <TextBlock
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                                    Text="{Binding Title}" />
+
+                                                <TextBlock
+                                                    Margin="0,3,0,0"
+                                                    FontSize="12"
+                                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                                    Text="{Binding Description}"
+                                                    TextTrimming="CharacterEllipsis" />
+
+                                            </StackPanel>
+
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                Margin="16,2,0,0"
+                                                VerticalAlignment="Top"
+                                                FontSize="11"
+                                                Foreground="{StaticResource TextMutedBrush}"
+                                                Text="{Binding TimestampText}" />
+
+                                        </Grid>
+
+                                    </DataTemplate>
+
+                                </ItemsControl.ItemTemplate>
+
+                            </ItemsControl>
+
+                        </Grid>
+
+                    </Grid>
+
+                </Border>
+
+                <Border
+                    Grid.Column="2"
+                    Style="{StaticResource PanelCardStyle}">
+
+                    <Grid>
+
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="20" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="22" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="12" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Text="Systemzustand"
+                            Style="{StaticResource SectionTitleTextStyle}" />
+
+                        <Grid Grid.Row="2">
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Grid
+                                Grid.Column="0"
+                                Width="92"
+                                Height="92"
+                                HorizontalAlignment="Left">
+
+                                <Ellipse
+                                    Stroke="{StaticResource SurfaceSecondaryBrush}"
+                                    StrokeThickness="10" />
+
+                                <Ellipse
+                                    Margin="12"
+                                    Fill="{StaticResource BackgroundBrush}" />
+
+                                <StackPanel
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        FontSize="25"
+                                        FontWeight="Bold"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        Text="{Binding SystemScore, Mode=OneWay, StringFormat={}{0}%}" />
+
+                                </StackPanel>
+
+                            </Grid>
+
+                            <StackPanel
+                                Grid.Column="1"
+                                VerticalAlignment="Center">
+
+                                <TextBlock
+                                    FontSize="18"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource SuccessBrush}"
+                                    Text="{Binding SystemStatusText}" />
+
+                                <TextBlock
+                                    Margin="0,7,0,0"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Text="{Binding SystemStatusDescription}"
+                                    TextWrapping="Wrap" />
+
+                            </StackPanel>
+
+                        </Grid>
+
+                        <ProgressBar
+                            Grid.Row="4"
+                            Height="8"
+                            Minimum="0"
+                            Maximum="100"
+                            Value="{Binding SystemScore, Mode=OneWay}"
+                            Foreground="{StaticResource SuccessBrush}"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            BorderThickness="0" />
+
+                        <TextBlock
+                            Grid.Row="6"
+                            Foreground="{StaticResource TextMutedBrush}"
+                            FontSize="12"
+                            Text="Grundlage sind die Bewertungen aller gespeicherten Systemchecks."
+                            TextWrapping="Wrap" />
+
+                    </Grid>
+
+                </Border>
+
+            </Grid>
 
             <Border
-                Margin="0,28,0,0"
-                Style="{StaticResource PanelCardStyle}">
+                Grid.Row="6"
+                Style="{StaticResource PanelCardStyle}"
+                Padding="20">
 
-                <StackPanel>
+                <Grid>
 
-                    <TextBlock
-                        Text="Übersicht"
-                        Style="{StaticResource SectionTitleTextStyle}" />
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                    <TextBlock
-                        Margin="0,8,0,0"
-                        Text="{Binding DescriptionText}"
-                        Foreground="{StaticResource TextSecondaryBrush}"
-                        TextWrapping="Wrap" />
+                    <Grid Grid.Row="0">
 
-                </StackPanel>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+
+                            <TextBlock
+                                Text="Empfehlungen mit hoher Priorität"
+                                Style="{StaticResource SectionTitleTextStyle}" />
+
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Die wichtigsten offenen Hinweise aus den gespeicherten Gerätebewertungen." />
+
+                        </StackPanel>
+
+                        <TextBlock
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Foreground="{StaticResource TextMutedBrush}"
+                            Text="Maximal 5 Einträge" />
+
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Foreground="{StaticResource TextMutedBrush}"
+                            Text="Aktuell liegen keine priorisierten Empfehlungen vor.">
+
+                            <TextBlock.Style>
+
+                                <Style TargetType="TextBlock">
+
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Collapsed" />
+
+                                    <Style.Triggers>
+
+                                        <DataTrigger
+                                            Binding="{Binding HasPriorityRecommendations}"
+                                            Value="False">
+
+                                            <Setter
+                                                Property="Visibility"
+                                                Value="Visible" />
+
+                                        </DataTrigger>
+
+                                    </Style.Triggers>
+
+                                </Style>
+
+                            </TextBlock.Style>
+
+                        </TextBlock>
+
+                        <ItemsControl ItemsSource="{Binding PriorityRecommendations}">
+
+                            <ItemsControl.ItemTemplate>
+
+                                <DataTemplate>
+
+                                    <Border
+                                        Margin="0,0,0,8"
+                                        Padding="12"
+                                        Background="{StaticResource SurfaceSecondaryBrush}"
+                                        CornerRadius="8">
+
+                                        <Grid>
+
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock
+                                                Grid.Column="0"
+                                                VerticalAlignment="Top"
+                                                FontFamily="Segoe MDL2 Assets"
+                                                FontSize="17"
+                                                Foreground="{StaticResource WarningBrush}"
+                                                Text="&#xE7BA;" />
+
+                                            <StackPanel Grid.Column="1">
+
+                                                <TextBlock
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                                    Text="{Binding Title}" />
+
+                                                <TextBlock
+                                                    Margin="0,3,0,0"
+                                                    FontSize="12"
+                                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                                    Text="{Binding Description}"
+                                                    TextWrapping="Wrap" />
+
+                                                <TextBlock
+                                                    Margin="0,4,0,0"
+                                                    FontSize="11"
+                                                    Foreground="{StaticResource TextMutedBrush}"
+                                                    Text="{Binding ContextText}" />
+
+                                            </StackPanel>
+
+                                            <Border
+                                                Grid.Column="2"
+                                                Margin="16,0,0,0"
+                                                Padding="10,4"
+                                                VerticalAlignment="Top"
+                                                Background="{StaticResource BackgroundBrush}"
+                                                BorderBrush="{StaticResource WarningBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="5">
+
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource WarningBrush}"
+                                                    Text="{Binding SeverityText}" />
+
+                                            </Border>
+
+                                        </Grid>
+
+                                    </Border>
+
+                                </DataTemplate>
+
+                            </ItemsControl.ItemTemplate>
+
+                        </ItemsControl>
+
+                    </Grid>
+
+                    <Grid Grid.Row="4">
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Button
+                            Grid.Column="0"
+                            Width="160"
+                            Height="40"
+                            Content="Neuer Checkup"
+                            Command="{Binding StartCheckupCommand}"
+                            Style="{StaticResource AccentButtonStyle}" />
+
+                        <Button
+                            Grid.Column="2"
+                            Width="160"
+                            Height="40"
+                            Content="Kunden verwalten"
+                            Command="{Binding ShowCustomersCommand}" />
+
+                    </Grid>
+
+                </Grid>
 
             </Border>
 
-        </StackPanel>
+        </Grid>
 
-    </Grid>
+    </ScrollViewer>
 
 </UserControl>
