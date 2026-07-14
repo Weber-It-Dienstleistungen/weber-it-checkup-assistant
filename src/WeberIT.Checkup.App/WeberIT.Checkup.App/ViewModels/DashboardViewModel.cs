@@ -325,48 +325,69 @@ public class DashboardViewModel : BaseViewModel
         }
 
         var deviceScores = scannedDevices
-            .Select(item =>
-            {
-                var deduction = item.Device.CheckupSession.Assessment.Findings.Sum(finding =>
-                    finding.Severity switch
-                    {
-                        FindingSeverity.Information => 0,
-                        FindingSeverity.Recommendation => 5,
-                        FindingSeverity.Warning => 12,
-                        FindingSeverity.Critical => 25,
-                        _ => 0
-                    });
-
-                return Math.Clamp(100 - deduction, 0, 100);
-            })
+            .Select(item => CalculateDeviceScore(
+                item.Device.CheckupSession.Assessment.Findings))
             .ToList();
 
-        SystemScore = (int)Math.Round(deviceScores.Average());
+        SystemScore = deviceScores.Min();
 
-        if (SystemScore >= 90)
-        {
-            SystemStatusText = "Sehr guter Zustand";
-            SystemStatusDescription =
-                "Die gespeicherten Geräte weisen keine wesentlichen Probleme auf.";
-        }
-        else if (SystemScore >= 70)
-        {
-            SystemStatusText = "Guter Zustand";
-            SystemStatusDescription =
-                "Einige Empfehlungen zur Optimierung sind vorhanden.";
-        }
-        else if (SystemScore >= 50)
-        {
-            SystemStatusText = "Handlungsbedarf";
-            SystemStatusDescription =
-                "Mehrere Hinweise sollten bei den nächsten Checkups geprüft werden.";
-        }
-        else
+        var findings = scannedDevices
+            .SelectMany(item =>
+                item.Device.CheckupSession.Assessment.Findings)
+            .ToList();
+
+        if (findings.Any(finding =>
+                finding.Severity == FindingSeverity.Critical))
         {
             SystemStatusText = "Kritischer Zustand";
             SystemStatusDescription =
-                "Mindestens ein gespeichertes Gerät benötigt besondere Aufmerksamkeit.";
+                "Mindestens ein gespeichertes Gerät weist einen kritischen Befund auf.";
+
+            return;
         }
+
+        if (findings.Any(finding =>
+                finding.Severity == FindingSeverity.Warning))
+        {
+            SystemStatusText = "Handlungsbedarf";
+            SystemStatusDescription =
+                "Mindestens ein gespeichertes Gerät weist einen relevanten Warnhinweis auf.";
+
+            return;
+        }
+
+        if (findings.Any(finding =>
+                finding.Severity == FindingSeverity.Recommendation))
+        {
+            SystemStatusText = "Optimierung empfohlen";
+            SystemStatusDescription =
+                "Für mindestens ein gespeichertes Gerät liegt eine konkrete Empfehlung vor.";
+
+            return;
+        }
+
+        SystemStatusText = "Sehr guter Zustand";
+        SystemStatusDescription =
+            "Die gespeicherten Geräte weisen derzeit keine wesentlichen Probleme auf.";
+    }
+
+    private static int CalculateDeviceScore(
+        IEnumerable<CheckupFinding> findings)
+    {
+        var deduction = findings.Sum(finding =>
+            finding.Severity switch
+            {
+                FindingSeverity.Information => 0,
+                FindingSeverity.Recommendation => 8,
+                FindingSeverity.Warning => 20,
+                FindingSeverity.Critical => 50,
+                _ => 0
+            });
+
+        return Math.Clamp(
+            100 - deduction,
+            0,
+            100);
     }
 
     private static int GetSeverityPriority(FindingSeverity severity)
