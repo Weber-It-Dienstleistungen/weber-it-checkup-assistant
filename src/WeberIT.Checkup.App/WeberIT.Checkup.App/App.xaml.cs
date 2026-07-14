@@ -8,6 +8,7 @@ using WeberIT.Checkup.App.Services;
 using WeberIT.Checkup.App.Services.Assessment;
 using WeberIT.Checkup.App.Services.Hardware;
 using WeberIT.Checkup.App.Services.Interfaces;
+using WeberIT.Checkup.App.Services.Maintenance;
 using WeberIT.Checkup.App.Services.Scanners;
 using WeberIT.Checkup.App.Services.Storage;
 using WeberIT.Checkup.App.Services.Windows;
@@ -38,6 +39,9 @@ public partial class App : Application
                 services.AddSingleton<CheckupViewModel>();
                 services.AddSingleton<CheckupView>();
 
+                services.AddSingleton<MaintenanceViewModel>();
+                services.AddSingleton<MaintenanceView>();
+
                 services.AddSingleton<INavigationService, NavigationService>();
                 services.AddSingleton<IDialogService, DialogService>();
                 services.AddSingleton<IDeviceIdentityService, DeviceIdentityService>();
@@ -47,6 +51,14 @@ public partial class App : Application
                 services.AddSingleton<CustomersView>();
 
                 services.AddTransient<CustomerEditViewModel>();
+
+                services.AddSingleton<
+                    IMaintenanceProcessRunner,
+                    MaintenanceProcessRunner>();
+
+                services.AddSingleton<
+                    ISystemFileChecker,
+                    SystemFileChecker>();
 
                 services.AddSingleton<
                     ICustomerRepository,

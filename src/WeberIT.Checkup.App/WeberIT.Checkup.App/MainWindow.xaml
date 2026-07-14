@@ -172,6 +172,8 @@
                             Foreground="{StaticResource TextMutedBrush}"
                             Text="NAVIGATION" />
 
+                        <!-- Dashboard -->
+
                         <Button
                             Command="{Binding ShowDashboardCommand}"
                             Style="{StaticResource NavButtonStyle}">
@@ -199,6 +201,8 @@
                             </Grid>
 
                         </Button>
+
+                        <!-- Kunden -->
 
                         <Button
                             Command="{Binding ShowCustomersCommand}"
@@ -228,6 +232,8 @@
 
                         </Button>
 
+                        <!-- Gerät und Checkup -->
+
                         <Button
                             Command="{Binding ShowCheckupCommand}"
                             Style="{StaticResource NavButtonStyle}">
@@ -251,6 +257,36 @@
                                     Grid.Column="1"
                                     VerticalAlignment="Center"
                                     Text="Gerät / Checkup" />
+
+                            </Grid>
+
+                        </Button>
+
+                        <!-- Werkzeuge -->
+
+                        <Button
+                            Command="{Binding ShowMaintenanceCommand}"
+                            Style="{StaticResource NavButtonStyle}">
+
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="32" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock
+                                    Grid.Column="0"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="16"
+                                    Foreground="{StaticResource AccentBrush}"
+                                    Text="&#xE90F;" />
+
+                                <TextBlock
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    Text="Werkzeuge" />
 
                             </Grid>
 
