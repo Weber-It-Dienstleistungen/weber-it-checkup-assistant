@@ -3,50 +3,377 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:checkup="clr-namespace:WeberIT.Checkup.App.Views.Controls.Checkup">
 
-    <Grid Background="{StaticResource BackgroundBrush}">
+    <ScrollViewer
+        VerticalScrollBarVisibility="Auto"
+        HorizontalScrollBarVisibility="Disabled"
+        Background="{StaticResource BackgroundBrush}">
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="40,32,40,40">
 
-            <StackPanel Margin="40">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="20" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-                <DockPanel>
+            <StackPanel Grid.Row="0">
 
-                    <StackPanel>
+                <TextBlock
+                    Text="{Binding Title}"
+                    Style="{StaticResource PageTitleTextStyle}" />
+
+                <TextBlock
+                    Margin="0,6,0,0"
+                    Text="{Binding Subtitle}"
+                    Style="{StaticResource PageSubtitleTextStyle}" />
+
+            </StackPanel>
+
+            <Border
+                Grid.Row="2"
+                Style="{StaticResource PanelCardStyle}"
+                Padding="24">
+
+                <Grid>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Grid.Column="0">
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="56" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border
+                            Grid.Column="0"
+                            Width="44"
+                            Height="44"
+                            VerticalAlignment="Top"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            CornerRadius="10">
+
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="20"
+                                Foreground="{StaticResource AccentBrush}"
+                                Text="&#xE9D9;" />
+
+                        </Border>
+
+                        <StackPanel Grid.Column="1">
+
+                            <TextBlock
+                                FontSize="18"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="Systemscan" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Liest die aktuellen Hardware-, Windows-, Speicher- und Systeminformationen dieses Computers aus."
+                                TextWrapping="Wrap" />
+
+                            <Border
+                                Margin="0,14,0,0"
+                                Padding="10,7"
+                                HorizontalAlignment="Left"
+                                Background="{StaticResource SurfaceSecondaryBrush}"
+                                CornerRadius="6">
+
+                                <Border.Style>
+
+                                    <Style TargetType="Border">
+
+                                        <Setter
+                                            Property="BorderBrush"
+                                            Value="{StaticResource BorderBrush}" />
+
+                                        <Setter
+                                            Property="BorderThickness"
+                                            Value="1" />
+
+                                        <Style.Triggers>
+
+                                            <DataTrigger
+                                                Binding="{Binding HasSelectedCustomer}"
+                                                Value="True">
+
+                                                <Setter
+                                                    Property="BorderBrush"
+                                                    Value="{StaticResource AccentBrush}" />
+
+                                            </DataTrigger>
+
+                                        </Style.Triggers>
+
+                                    </Style>
+
+                                </Border.Style>
+
+                                <StackPanel Orientation="Horizontal">
+
+                                    <TextBlock
+                                        Margin="0,0,8,0"
+                                        VerticalAlignment="Center"
+                                        FontFamily="Segoe MDL2 Assets"
+                                        FontSize="13"
+                                        Foreground="{StaticResource AccentBrush}"
+                                        Text="&#xE77B;" />
+
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                        Text="{Binding SelectedCustomerText}" />
+
+                                </StackPanel>
+
+                            </Border>
+
+                        </StackPanel>
+
+                    </Grid>
+
+                    <StackPanel
+                        Grid.Column="2"
+                        MinWidth="190"
+                        VerticalAlignment="Center">
+
+                        <Button
+                            Width="190"
+                            Height="42"
+                            Content="System jetzt auslesen"
+                            Command="{Binding ReadSystemCommand}"
+                            Style="{StaticResource AccentButtonStyle}" />
 
                         <TextBlock
-                            Text="{Binding Title}"
-                            Style="{StaticResource PageTitleTextStyle}" />
-
-                        <TextBlock
-                            Margin="0,6,0,0"
-                            Text="{Binding Subtitle}"
-                            Style="{StaticResource PageSubtitleTextStyle}" />
-
-                        <TextBlock
-                            Margin="0,10,0,0"
-                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Margin="0,8,0,0"
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            Foreground="{StaticResource TextMutedBrush}"
                             Text="{Binding ScanStatusText}" />
 
                     </StackPanel>
 
-                    <Button
-                        Width="160"
-                        Height="38"
-                        Content="System auslesen"
-                        Command="{Binding ReadSystemCommand}"
-                        DockPanel.Dock="Right"
-                        Style="{StaticResource AccentButtonStyle}" />
+                </Grid>
 
-                </DockPanel>
+            </Border>
 
-                <checkup:CheckupDetailsView
-                    Margin="0,32,0,0"
-                    DataContext="{Binding CurrentCheckup}" />
+            <Grid Grid.Row="4">
 
-            </StackPanel>
+                <Border MinHeight="300">
 
-        </ScrollViewer>
+                    <Border.Style>
 
-    </Grid>
+                        <Style
+                            TargetType="Border"
+                            BasedOn="{StaticResource PanelCardStyle}">
+
+                            <Setter
+                                Property="Visibility"
+                                Value="Collapsed" />
+
+                            <Style.Triggers>
+
+                                <DataTrigger
+                                    Binding="{Binding ScanDate}"
+                                    Value="{x:Null}">
+
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Visible" />
+
+                                </DataTrigger>
+
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </Border.Style>
+
+                    <StackPanel
+                        MaxWidth="520"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+
+                        <Border
+                            Width="72"
+                            Height="72"
+                            HorizontalAlignment="Center"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            CornerRadius="36">
+
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="28"
+                                Foreground="{StaticResource AccentBrush}"
+                                Text="&#xE950;" />
+
+                        </Border>
+
+                        <TextBlock
+                            Margin="0,20,0,0"
+                            HorizontalAlignment="Center"
+                            FontSize="21"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Text="Noch kein Systemscan durchgeführt" />
+
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            HorizontalAlignment="Center"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Starten Sie den Scan, um die Systeminformationen dieses Computers auszulesen und automatisch bewerten zu lassen."
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
+
+                        <Border
+                            Margin="0,20,0,0"
+                            Padding="14,10"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="7">
+
+                            <StackPanel Orientation="Horizontal">
+
+                                <TextBlock
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="14"
+                                    Foreground="{StaticResource InformationBrush}"
+                                    Text="&#xE946;" />
+
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="12"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Text="Der Scan verändert keine Systemeinstellungen."
+                                    TextWrapping="Wrap" />
+
+                            </StackPanel>
+
+                        </Border>
+
+                    </StackPanel>
+
+                </Border>
+
+                <StackPanel>
+
+                    <StackPanel.Style>
+
+                        <Style TargetType="StackPanel">
+
+                            <Setter
+                                Property="Visibility"
+                                Value="Visible" />
+
+                            <Style.Triggers>
+
+                                <DataTrigger
+                                    Binding="{Binding ScanDate}"
+                                    Value="{x:Null}">
+
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Collapsed" />
+
+                                </DataTrigger>
+
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </StackPanel.Style>
+
+                    <Border
+                        Margin="0,0,0,20"
+                        Padding="18"
+                        Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource SuccessBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+
+                        <Grid>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="42" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border
+                                Grid.Column="0"
+                                Width="30"
+                                Height="30"
+                                VerticalAlignment="Center"
+                                Background="{StaticResource SurfaceSecondaryBrush}"
+                                CornerRadius="15">
+
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="14"
+                                    Foreground="{StaticResource SuccessBrush}"
+                                    Text="&#xE73E;" />
+
+                            </Border>
+
+                            <StackPanel
+                                Grid.Column="1"
+                                VerticalAlignment="Center">
+
+                                <TextBlock
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Text="Systemscan erfolgreich abgeschlossen" />
+
+                                <TextBlock
+                                    Margin="0,3,0,0"
+                                    FontSize="12"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Text="Die ausgelesenen Daten und die automatische Bewertung werden nachfolgend angezeigt."
+                                    TextWrapping="Wrap" />
+
+                            </StackPanel>
+
+                            <TextBlock
+                                Grid.Column="2"
+                                Margin="20,0,0,0"
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="{Binding ScanStatusText}" />
+
+                        </Grid>
+
+                    </Border>
+
+                    <checkup:CheckupDetailsView
+                        DataContext="{Binding CurrentCheckup}" />
+
+                </StackPanel>
+
+            </Grid>
+
+        </Grid>
+
+    </ScrollViewer>
 
 </UserControl>
