@@ -41,7 +41,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="24" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="210" />
                     </Grid.ColumnDefinitions>
 
                     <Grid Grid.Column="0">
@@ -141,24 +141,51 @@
 
                             </Border>
 
+                            <StackPanel
+                                Margin="0,10,0,0"
+                                Orientation="Horizontal">
+
+                                <TextBlock
+                                    Margin="0,0,8,0"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="12"
+                                    Foreground="{StaticResource InformationBrush}"
+                                    Text="&#xE946;" />
+
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="12"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    Text="{Binding PersistenceStatusText}"
+                                    TextWrapping="Wrap" />
+
+                            </StackPanel>
+
                         </StackPanel>
 
                     </Grid>
 
                     <StackPanel
                         Grid.Column="2"
-                        MinWidth="190"
                         VerticalAlignment="Center">
 
                         <Button
-                            Width="190"
+                            Width="210"
                             Height="42"
                             Content="System jetzt auslesen"
                             Command="{Binding ReadSystemCommand}"
                             Style="{StaticResource AccentButtonStyle}" />
 
+                        <Button
+                            Width="210"
+                            Height="40"
+                            Margin="0,10,0,0"
+                            Content="Beim Kunden speichern"
+                            Command="{Binding SaveCheckupCommand}" />
+
                         <TextBlock
-                            Margin="0,8,0,0"
+                            Margin="0,9,0,0"
                             HorizontalAlignment="Center"
                             FontSize="11"
                             Foreground="{StaticResource TextMutedBrush}"
@@ -262,7 +289,7 @@
                                     VerticalAlignment="Center"
                                     FontSize="12"
                                     Foreground="{StaticResource TextSecondaryBrush}"
-                                    Text="Der Scan verändert keine Systemeinstellungen."
+                                    Text="Der Scan verändert keine Systemeinstellungen und wird erst nach ausdrücklicher Bestätigung gespeichert."
                                     TextWrapping="Wrap" />
 
                             </StackPanel>
@@ -348,7 +375,7 @@
                                     Margin="0,3,0,0"
                                     FontSize="12"
                                     Foreground="{StaticResource TextSecondaryBrush}"
-                                    Text="Die ausgelesenen Daten und die automatische Bewertung werden nachfolgend angezeigt."
+                                    Text="{Binding PersistenceStatusText}"
                                     TextWrapping="Wrap" />
 
                             </StackPanel>

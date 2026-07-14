@@ -9,28 +9,64 @@ public class CheckupViewModel : BaseViewModel
 {
     private readonly ICheckupScanner _checkupScanner;
     private readonly ICheckupAssessmentService _checkupAssessmentService;
+    private readonly ICustomerService _customerService;
+
+    private readonly RelayCommand _saveCheckupCommand;
 
     private Customer? _selectedCustomer;
     private CheckupSession _currentCheckup = new();
+    private Guid? _savedCustomerId;
+
+    public CheckupViewModel(
+        ICheckupScanner checkupScanner,
+        ICheckupAssessmentService checkupAssessmentService,
+        ICustomerService customerService)
+    {
+        _checkupScanner = checkupScanner;
+        _checkupAssessmentService = checkupAssessmentService;
+        _customerService = customerService;
+
+        ReadSystemCommand =
+            new RelayCommand(_ => ReadSystem());
+
+        _saveCheckupCommand =
+            new RelayCommand(
+                _ => SaveCheckup(),
+                _ => CanSaveCheckup);
+
+        SaveCheckupCommand = _saveCheckupCommand;
+    }
 
     public string Title => "Gerät / Checkup";
 
     public string Subtitle =>
-        "Systeminformationen auslesen und für den späteren Checkup vorbereiten.";
+        "Systeminformationen auslesen, bewerten und bei Bedarf dauerhaft einem Kunden zuordnen.";
 
     public Customer? SelectedCustomer
     {
         get => _selectedCustomer;
         private set
         {
+            if (_selectedCustomer == value)
+            {
+                return;
+            }
+
             _selectedCustomer = value;
+
             OnPropertyChanged();
             OnPropertyChanged(nameof(SelectedCustomerText));
             OnPropertyChanged(nameof(HasSelectedCustomer));
+            OnPropertyChanged(nameof(IsCurrentCheckupSaved));
+            OnPropertyChanged(nameof(CanSaveCheckup));
+            OnPropertyChanged(nameof(PersistenceStatusText));
+
+            _saveCheckupCommand.RaiseCanExecuteChanged();
         }
     }
 
-    public bool HasSelectedCustomer => SelectedCustomer is not null;
+    public bool HasSelectedCustomer =>
+        SelectedCustomer is not null;
 
     public string SelectedCustomerText =>
         SelectedCustomer is not null
@@ -43,6 +79,7 @@ public class CheckupViewModel : BaseViewModel
         private set
         {
             _currentCheckup = value;
+
             OnPropertyChanged();
             OnPropertyChanged(nameof(DeviceInformation));
             OnPropertyChanged(nameof(HardwareInformation));
@@ -50,38 +87,77 @@ public class CheckupViewModel : BaseViewModel
             OnPropertyChanged(nameof(StorageInformation));
             OnPropertyChanged(nameof(Assessment));
             OnPropertyChanged(nameof(ScanDate));
+            OnPropertyChanged(nameof(HasCurrentCheckup));
+            OnPropertyChanged(nameof(IsCurrentCheckupSaved));
+            OnPropertyChanged(nameof(CanSaveCheckup));
             OnPropertyChanged(nameof(ScanStatusText));
+            OnPropertyChanged(nameof(PersistenceStatusText));
+
+            _saveCheckupCommand.RaiseCanExecuteChanged();
         }
     }
 
-    public DeviceInformation DeviceInformation => CurrentCheckup.DeviceInformation;
+    public DeviceInformation DeviceInformation =>
+        CurrentCheckup.DeviceInformation;
 
-    public HardwareInformation HardwareInformation => CurrentCheckup.HardwareInformation;
+    public HardwareInformation HardwareInformation =>
+        CurrentCheckup.HardwareInformation;
 
-    public OperatingSystemInformation OperatingSystemInformation => CurrentCheckup.OperatingSystemInformation;
+    public OperatingSystemInformation OperatingSystemInformation =>
+        CurrentCheckup.OperatingSystemInformation;
 
-    public StorageInformation StorageInformation => CurrentCheckup.StorageInformation;
+    public StorageInformation StorageInformation =>
+        CurrentCheckup.StorageInformation;
 
-    public CheckupAssessment Assessment => CurrentCheckup.Assessment;
+    public CheckupAssessment Assessment =>
+        CurrentCheckup.Assessment;
 
-    public DateTime? ScanDate => CurrentCheckup.ScanDate;
+    public DateTime? ScanDate =>
+        CurrentCheckup.ScanDate;
+
+    public bool HasCurrentCheckup =>
+        ScanDate.HasValue;
+
+    public bool IsCurrentCheckupSaved =>
+        SelectedCustomer is not null
+        && _savedCustomerId == SelectedCustomer.Id;
+
+    public bool CanSaveCheckup =>
+        HasCurrentCheckup
+        && SelectedCustomer is not null
+        && !IsCurrentCheckupSaved;
 
     public string ScanStatusText =>
         ScanDate.HasValue
             ? $"Letzter Scan: {ScanDate.Value:dd.MM.yyyy HH:mm}"
             : "Noch kein Systemscan durchgeführt.";
 
+    public string PersistenceStatusText
+    {
+        get
+        {
+            if (!HasCurrentCheckup)
+            {
+                return "Noch keine Daten zum Speichern vorhanden.";
+            }
+
+            if (SelectedCustomer is null)
+            {
+                return "Der Scan ist nicht dauerhaft gespeichert, da kein Kunde ausgewählt ist.";
+            }
+
+            if (IsCurrentCheckupSaved)
+            {
+                return $"Dauerhaft bei {SelectedCustomer.DisplayName} gespeichert.";
+            }
+
+            return $"Der Scan wurde noch nicht bei {SelectedCustomer.DisplayName} gespeichert.";
+        }
+    }
+
     public ICommand ReadSystemCommand { get; }
 
-    public CheckupViewModel(
-        ICheckupScanner checkupScanner,
-        ICheckupAssessmentService checkupAssessmentService)
-    {
-        _checkupScanner = checkupScanner;
-        _checkupAssessmentService = checkupAssessmentService;
-
-        ReadSystemCommand = new RelayCommand(_ => ReadSystem());
-    }
+    public ICommand SaveCheckupCommand { get; }
 
     public void SetCustomer(Customer? customer)
     {
@@ -91,8 +167,45 @@ public class CheckupViewModel : BaseViewModel
     private void ReadSystem()
     {
         var checkupSession = _checkupScanner.Scan();
-        checkupSession.Assessment = _checkupAssessmentService.Assess(checkupSession);
 
+        checkupSession.Assessment =
+            _checkupAssessmentService.Assess(checkupSession);
+
+        _savedCustomerId = null;
         CurrentCheckup = checkupSession;
+    }
+
+    private void SaveCheckup()
+    {
+        if (!CanSaveCheckup || SelectedCustomer is null)
+        {
+            return;
+        }
+
+        var displayName =
+            !string.IsNullOrWhiteSpace(
+                CurrentCheckup.DeviceInformation.Name)
+                ? CurrentCheckup.DeviceInformation.Name
+                : $"Gerät {SelectedCustomer.Devices.Count + 1}";
+
+        var device = new CustomerDevice
+        {
+            DisplayName = displayName,
+            CheckupSession = CurrentCheckup
+        };
+
+        _customerService.AddDeviceToCustomer(
+            SelectedCustomer.Id,
+            device);
+
+        SelectedCustomer.Devices.Add(device);
+
+        _savedCustomerId = SelectedCustomer.Id;
+
+        OnPropertyChanged(nameof(IsCurrentCheckupSaved));
+        OnPropertyChanged(nameof(CanSaveCheckup));
+        OnPropertyChanged(nameof(PersistenceStatusText));
+
+        _saveCheckupCommand.RaiseCanExecuteChanged();
     }
 }
