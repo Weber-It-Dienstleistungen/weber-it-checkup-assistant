@@ -3,6 +3,202 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:WeberIT.Checkup.App.Models">
 
+    <UserControl.Resources>
+
+        <Style
+            x:Key="MaintenanceStatusBorderStyle"
+            TargetType="Border">
+
+            <Setter Property="Padding" Value="12,7" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter
+                Property="Background"
+                Value="{StaticResource SurfaceSecondaryBrush}" />
+            <Setter
+                Property="BorderBrush"
+                Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="7" />
+
+            <Style.Triggers>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.Running}">
+                    <Setter
+                        Property="BorderBrush"
+                        Value="{StaticResource InformationBrush}" />
+                </Trigger>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.Successful}">
+                    <Setter
+                        Property="BorderBrush"
+                        Value="{StaticResource SuccessBrush}" />
+                </Trigger>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.SuccessfulWithRepairs}">
+                    <Setter
+                        Property="BorderBrush"
+                        Value="{StaticResource SuccessBrush}" />
+                </Trigger>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.ActionRequired}">
+                    <Setter
+                        Property="BorderBrush"
+                        Value="{StaticResource WarningBrush}" />
+                </Trigger>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.RestartRequired}">
+                    <Setter
+                        Property="BorderBrush"
+                        Value="{StaticResource WarningBrush}" />
+                </Trigger>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.Failed}">
+                    <Setter
+                        Property="BorderBrush"
+                        Value="{StaticResource DangerBrush}" />
+                </Trigger>
+
+            </Style.Triggers>
+
+        </Style>
+
+        <Style
+            x:Key="MaintenanceStatusEllipseStyle"
+            TargetType="Ellipse">
+
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter
+                Property="Fill"
+                Value="{StaticResource TextMutedBrush}" />
+
+            <Style.Triggers>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.Running}">
+                    <Setter
+                        Property="Fill"
+                        Value="{StaticResource InformationBrush}" />
+                </Trigger>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.Successful}">
+                    <Setter
+                        Property="Fill"
+                        Value="{StaticResource SuccessBrush}" />
+                </Trigger>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.SuccessfulWithRepairs}">
+                    <Setter
+                        Property="Fill"
+                        Value="{StaticResource SuccessBrush}" />
+                </Trigger>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.ActionRequired}">
+                    <Setter
+                        Property="Fill"
+                        Value="{StaticResource WarningBrush}" />
+                </Trigger>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.RestartRequired}">
+                    <Setter
+                        Property="Fill"
+                        Value="{StaticResource WarningBrush}" />
+                </Trigger>
+
+                <Trigger
+                    Property="Tag"
+                    Value="{x:Static models:MaintenanceToolStatus.Failed}">
+                    <Setter
+                        Property="Fill"
+                        Value="{StaticResource DangerBrush}" />
+                </Trigger>
+
+            </Style.Triggers>
+
+        </Style>
+
+        <Style
+            x:Key="MaintenanceProgressBarStyle"
+            TargetType="ProgressBar">
+
+            <Setter Property="Height" Value="10" />
+            <Setter Property="Margin" Value="0,16,0,0" />
+            <Setter Property="IsIndeterminate" Value="True" />
+            <Setter
+                Property="Foreground"
+                Value="{StaticResource InformationBrush}" />
+            <Setter
+                Property="Background"
+                Value="{StaticResource SurfaceSecondaryBrush}" />
+            <Setter
+                Property="BorderBrush"
+                Value="{StaticResource InformationBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Visibility" Value="Collapsed" />
+
+            <Style.Triggers>
+
+                <DataTrigger
+                    Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                    Value="True">
+
+                    <Setter
+                        Property="Visibility"
+                        Value="Visible" />
+
+                </DataTrigger>
+
+            </Style.Triggers>
+
+        </Style>
+
+        <Style
+            x:Key="MaintenanceDetailsExpanderStyle"
+            TargetType="Expander">
+
+            <Setter Property="Visibility" Value="Collapsed" />
+
+            <Style.Triggers>
+
+                <DataTrigger
+                    Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                    Value="True">
+
+                    <Setter
+                        Property="Visibility"
+                        Value="Visible" />
+
+                </DataTrigger>
+
+            </Style.Triggers>
+
+        </Style>
+
+    </UserControl.Resources>
+
     <ScrollViewer
         VerticalScrollBarVisibility="Auto"
         HorizontalScrollBarVisibility="Disabled"
@@ -13,6 +209,10 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="20" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="20" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
@@ -31,10 +231,47 @@
 
             </StackPanel>
 
-            <!-- SFC-Werkzeugkarte -->
+            <!-- Gemeinsamer Administratorhinweis -->
 
             <Border
                 Grid.Row="2"
+                Padding="14,11"
+                Background="{StaticResource SurfaceSecondaryBrush}"
+                BorderBrush="{StaticResource InformationBrush}"
+                BorderThickness="1"
+                CornerRadius="7">
+
+                <Grid>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="30" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock
+                        Grid.Column="0"
+                        VerticalAlignment="Top"
+                        FontFamily="Segoe MDL2 Assets"
+                        FontSize="15"
+                        Foreground="{StaticResource InformationBrush}"
+                        Text="&#xE72E;" />
+
+                    <TextBlock
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Text="{Binding AdministratorNotice}"
+                        TextWrapping="Wrap" />
+
+                </Grid>
+
+            </Border>
+
+            <!-- DISM-Werkzeugkarte -->
+
+            <Border
+                Grid.Row="4"
                 Padding="24"
                 Style="{StaticResource PanelCardStyle}">
 
@@ -45,10 +282,182 @@
                         <RowDefinition Height="20" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <!-- Werkzeugkopf -->
+                    <Grid Grid.Row="0">
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border
+                            Grid.Column="0"
+                            Width="46"
+                            Height="46"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            CornerRadius="10">
+
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="21"
+                                Foreground="{StaticResource AccentBrush}"
+                                Text="&#xE90F;" />
+
+                        </Border>
+
+                        <StackPanel Grid.Column="1">
+
+                            <TextBlock
+                                FontSize="18"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="Windows-Abbildreparatur (DISM)" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Prüft und repariert den Windows-Komponentenspeicher, der als Reparaturquelle für Systemdateien dient."
+                                TextWrapping="Wrap" />
+
+                        </StackPanel>
+
+                        <Border
+                            Grid.Column="3"
+                            Tag="{Binding DismResult.Status}"
+                            Style="{StaticResource MaintenanceStatusBorderStyle}">
+
+                            <StackPanel Orientation="Horizontal">
+
+                                <Ellipse
+                                    Tag="{Binding DismResult.Status}"
+                                    Style="{StaticResource MaintenanceStatusEllipseStyle}" />
+
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Text="{Binding DismStatusText}" />
+
+                            </StackPanel>
+
+                        </Border>
+
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="24" />
+                            <ColumnDefinition Width="230" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel
+                            Grid.Column="0"
+                            VerticalAlignment="Center">
+
+                            <TextBlock
+                                FontSize="15"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="{Binding DismSummary}"
+                                TextWrapping="Wrap" />
+
+                            <TextBlock
+                                Margin="0,6,0,0"
+                                FontSize="12"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="{Binding DismDetails}"
+                                TextWrapping="Wrap" />
+
+                            <ProgressBar
+                                Tag="{Binding IsDismRunning}"
+                                Style="{StaticResource MaintenanceProgressBarStyle}" />
+
+                        </StackPanel>
+
+                        <StackPanel
+                            Grid.Column="2"
+                            VerticalAlignment="Center">
+
+                            <Button
+                                Width="230"
+                                Height="42"
+                                Command="{Binding RunDismCommand}"
+                                Content="{Binding DismButtonText}"
+                                Style="{StaticResource AccentButtonStyle}" />
+
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                HorizontalAlignment="Center"
+                                FontSize="11"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="DISM.exe /Online /Cleanup-Image /RestoreHealth" />
+
+                        </StackPanel>
+
+                    </Grid>
+
+                    <Expander
+                        Grid.Row="3"
+                        Margin="0,20,0,0"
+                        Header="Technische Details"
+                        Tag="{Binding HasDismTechnicalDetails}"
+                        Style="{StaticResource MaintenanceDetailsExpanderStyle}">
+
+                        <Border
+                            Margin="0,10,0,0"
+                            Padding="14"
+                            Background="{StaticResource PrimaryBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="7">
+
+                            <ScrollViewer
+                                MaxHeight="320"
+                                VerticalScrollBarVisibility="Auto"
+                                HorizontalScrollBarVisibility="Auto">
+
+                                <TextBlock
+                                    FontFamily="Consolas"
+                                    FontSize="12"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Text="{Binding DismTechnicalDetails}"
+                                    TextWrapping="NoWrap" />
+
+                            </ScrollViewer>
+
+                        </Border>
+
+                    </Expander>
+
+                </Grid>
+
+            </Border>
+
+            <!-- SFC-Werkzeugkarte -->
+
+            <Border
+                Grid.Row="6"
+                Padding="24"
+                Style="{StaticResource PanelCardStyle}">
+
+                <Grid>
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="20" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0">
 
@@ -94,180 +503,16 @@
 
                         </StackPanel>
 
-                        <!-- Statusanzeige -->
-
                         <Border
                             Grid.Column="3"
-                            Padding="12,7"
-                            VerticalAlignment="Top"
-                            BorderThickness="1"
-                            CornerRadius="7">
-
-                            <Border.Style>
-
-                                <Style TargetType="Border">
-
-                                    <Setter
-                                        Property="Background"
-                                        Value="{StaticResource SurfaceSecondaryBrush}" />
-
-                                    <Setter
-                                        Property="BorderBrush"
-                                        Value="{StaticResource BorderBrush}" />
-
-                                    <Style.Triggers>
-
-                                        <DataTrigger
-                                            Binding="{Binding SfcResult.Status}"
-                                            Value="{x:Static models:MaintenanceToolStatus.Running}">
-
-                                            <Setter
-                                                Property="BorderBrush"
-                                                Value="{StaticResource InformationBrush}" />
-
-                                        </DataTrigger>
-
-                                        <DataTrigger
-                                            Binding="{Binding SfcResult.Status}"
-                                            Value="{x:Static models:MaintenanceToolStatus.Successful}">
-
-                                            <Setter
-                                                Property="BorderBrush"
-                                                Value="{StaticResource SuccessBrush}" />
-
-                                        </DataTrigger>
-
-                                        <DataTrigger
-                                            Binding="{Binding SfcResult.Status}"
-                                            Value="{x:Static models:MaintenanceToolStatus.SuccessfulWithRepairs}">
-
-                                            <Setter
-                                                Property="BorderBrush"
-                                                Value="{StaticResource SuccessBrush}" />
-
-                                        </DataTrigger>
-
-                                        <DataTrigger
-                                            Binding="{Binding SfcResult.Status}"
-                                            Value="{x:Static models:MaintenanceToolStatus.ActionRequired}">
-
-                                            <Setter
-                                                Property="BorderBrush"
-                                                Value="{StaticResource WarningBrush}" />
-
-                                        </DataTrigger>
-
-                                        <DataTrigger
-                                            Binding="{Binding SfcResult.Status}"
-                                            Value="{x:Static models:MaintenanceToolStatus.RestartRequired}">
-
-                                            <Setter
-                                                Property="BorderBrush"
-                                                Value="{StaticResource WarningBrush}" />
-
-                                        </DataTrigger>
-
-                                        <DataTrigger
-                                            Binding="{Binding SfcResult.Status}"
-                                            Value="{x:Static models:MaintenanceToolStatus.Failed}">
-
-                                            <Setter
-                                                Property="BorderBrush"
-                                                Value="{StaticResource DangerBrush}" />
-
-                                        </DataTrigger>
-
-                                    </Style.Triggers>
-
-                                </Style>
-
-                            </Border.Style>
+                            Tag="{Binding SfcResult.Status}"
+                            Style="{StaticResource MaintenanceStatusBorderStyle}">
 
                             <StackPanel Orientation="Horizontal">
 
                                 <Ellipse
-                                    Width="8"
-                                    Height="8"
-                                    Margin="0,0,8,0"
-                                    VerticalAlignment="Center">
-
-                                    <Ellipse.Style>
-
-                                        <Style TargetType="Ellipse">
-
-                                            <Setter
-                                                Property="Fill"
-                                                Value="{StaticResource TextMutedBrush}" />
-
-                                            <Style.Triggers>
-
-                                                <DataTrigger
-                                                    Binding="{Binding SfcResult.Status}"
-                                                    Value="{x:Static models:MaintenanceToolStatus.Running}">
-
-                                                    <Setter
-                                                        Property="Fill"
-                                                        Value="{StaticResource InformationBrush}" />
-
-                                                </DataTrigger>
-
-                                                <DataTrigger
-                                                    Binding="{Binding SfcResult.Status}"
-                                                    Value="{x:Static models:MaintenanceToolStatus.Successful}">
-
-                                                    <Setter
-                                                        Property="Fill"
-                                                        Value="{StaticResource SuccessBrush}" />
-
-                                                </DataTrigger>
-
-                                                <DataTrigger
-                                                    Binding="{Binding SfcResult.Status}"
-                                                    Value="{x:Static models:MaintenanceToolStatus.SuccessfulWithRepairs}">
-
-                                                    <Setter
-                                                        Property="Fill"
-                                                        Value="{StaticResource SuccessBrush}" />
-
-                                                </DataTrigger>
-
-                                                <DataTrigger
-                                                    Binding="{Binding SfcResult.Status}"
-                                                    Value="{x:Static models:MaintenanceToolStatus.ActionRequired}">
-
-                                                    <Setter
-                                                        Property="Fill"
-                                                        Value="{StaticResource WarningBrush}" />
-
-                                                </DataTrigger>
-
-                                                <DataTrigger
-                                                    Binding="{Binding SfcResult.Status}"
-                                                    Value="{x:Static models:MaintenanceToolStatus.RestartRequired}">
-
-                                                    <Setter
-                                                        Property="Fill"
-                                                        Value="{StaticResource WarningBrush}" />
-
-                                                </DataTrigger>
-
-                                                <DataTrigger
-                                                    Binding="{Binding SfcResult.Status}"
-                                                    Value="{x:Static models:MaintenanceToolStatus.Failed}">
-
-                                                    <Setter
-                                                        Property="Fill"
-                                                        Value="{StaticResource DangerBrush}" />
-
-                                                </DataTrigger>
-
-                                            </Style.Triggers>
-
-                                        </Style>
-
-                                    </Ellipse.Style>
-
-                                </Ellipse>
+                                    Tag="{Binding SfcResult.Status}"
+                                    Style="{StaticResource MaintenanceStatusEllipseStyle}" />
 
                                 <TextBlock
                                     VerticalAlignment="Center"
@@ -282,48 +527,7 @@
 
                     </Grid>
 
-                    <!-- Administratorhinweis -->
-
-                    <Border
-                        Grid.Row="2"
-                        Padding="14,11"
-                        Background="{StaticResource SurfaceSecondaryBrush}"
-                        BorderBrush="{StaticResource InformationBrush}"
-                        BorderThickness="1"
-                        CornerRadius="7">
-
-                        <Grid>
-
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="30" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock
-                                Grid.Column="0"
-                                VerticalAlignment="Top"
-                                FontFamily="Segoe MDL2 Assets"
-                                FontSize="15"
-                                Foreground="{StaticResource InformationBrush}"
-                                Text="&#xE72E;" />
-
-                            <TextBlock
-                                Grid.Column="1"
-                                VerticalAlignment="Center"
-                                FontSize="12"
-                                Foreground="{StaticResource TextSecondaryBrush}"
-                                Text="{Binding AdministratorNotice}"
-                                TextWrapping="Wrap" />
-
-                        </Grid>
-
-                    </Border>
-
-                    <!-- Ergebnis und Startschaltfläche -->
-
-                    <Grid
-                        Grid.Row="3"
-                        Margin="0,20,0,0">
+                    <Grid Grid.Row="2">
 
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -350,38 +554,8 @@
                                 TextWrapping="Wrap" />
 
                             <ProgressBar
-                                Height="5"
-                                Margin="0,14,0,0"
-                                IsIndeterminate="True"
-                                Foreground="{StaticResource InformationBrush}">
-
-                                <ProgressBar.Style>
-
-                                    <Style TargetType="ProgressBar">
-
-                                        <Setter
-                                            Property="Visibility"
-                                            Value="Collapsed" />
-
-                                        <Style.Triggers>
-
-                                            <DataTrigger
-                                                Binding="{Binding IsSfcRunning}"
-                                                Value="True">
-
-                                                <Setter
-                                                    Property="Visibility"
-                                                    Value="Visible" />
-
-                                            </DataTrigger>
-
-                                        </Style.Triggers>
-
-                                    </Style>
-
-                                </ProgressBar.Style>
-
-                            </ProgressBar>
+                                Tag="{Binding IsSfcRunning}"
+                                Style="{StaticResource MaintenanceProgressBarStyle}" />
 
                         </StackPanel>
 
@@ -407,38 +581,12 @@
 
                     </Grid>
 
-                    <!-- Technische Details -->
-
                     <Expander
-                        Grid.Row="4"
+                        Grid.Row="3"
                         Margin="0,20,0,0"
-                        Header="Technische Details">
-
-                        <Expander.Style>
-
-                            <Style TargetType="Expander">
-
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Collapsed" />
-
-                                <Style.Triggers>
-
-                                    <DataTrigger
-                                        Binding="{Binding HasSfcTechnicalDetails}"
-                                        Value="True">
-
-                                        <Setter
-                                            Property="Visibility"
-                                            Value="Visible" />
-
-                                    </DataTrigger>
-
-                                </Style.Triggers>
-
-                            </Style>
-
-                        </Expander.Style>
+                        Header="Technische Details"
+                        Tag="{Binding HasSfcTechnicalDetails}"
+                        Style="{StaticResource MaintenanceDetailsExpanderStyle}">
 
                         <Border
                             Margin="0,10,0,0"

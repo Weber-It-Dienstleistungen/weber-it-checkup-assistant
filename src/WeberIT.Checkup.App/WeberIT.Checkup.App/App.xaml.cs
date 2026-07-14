@@ -61,6 +61,10 @@ public partial class App : Application
                     SystemFileChecker>();
 
                 services.AddSingleton<
+                    IWindowsImageRepairService,
+                    WindowsImageRepairService>();
+
+                services.AddSingleton<
                     ICustomerRepository,
                     SQLiteCustomerRepository>();
 

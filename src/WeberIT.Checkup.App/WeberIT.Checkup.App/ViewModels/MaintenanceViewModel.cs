@@ -9,24 +9,39 @@ namespace WeberIT.Checkup.App.ViewModels;
 public class MaintenanceViewModel : BaseViewModel
 {
     private readonly ISystemFileChecker _systemFileChecker;
+    private readonly IWindowsImageRepairService _windowsImageRepairService;
+
     private readonly AsyncRelayCommand _runSfcCommand;
+    private readonly AsyncRelayCommand _runDismCommand;
 
     private MaintenanceToolResult _sfcResult =
         new();
 
+    private MaintenanceToolResult _dismResult =
+        new();
+
     private bool _isSfcRunning;
+    private bool _isDismRunning;
 
     public MaintenanceViewModel(
-        ISystemFileChecker systemFileChecker)
+        ISystemFileChecker systemFileChecker,
+        IWindowsImageRepairService windowsImageRepairService)
     {
         _systemFileChecker = systemFileChecker;
+        _windowsImageRepairService = windowsImageRepairService;
 
         _runSfcCommand =
             new AsyncRelayCommand(
                 RunSfcAsync,
-                () => !IsSfcRunning);
+                () => CanRunSfc);
+
+        _runDismCommand =
+            new AsyncRelayCommand(
+                RunDismAsync,
+                () => CanRunDism);
 
         RunSfcCommand = _runSfcCommand;
+        RunDismCommand = _runDismCommand;
     }
 
     public string Title =>
@@ -36,7 +51,7 @@ public class MaintenanceViewModel : BaseViewModel
         "Windows-Wartungswerkzeuge kontrolliert ausführen und Ergebnisse prüfen.";
 
     public string AdministratorNotice =>
-        "Für die Systemdateiprüfung sind Administratorrechte erforderlich. "
+        "Für diese Wartungswerkzeuge sind Administratorrechte erforderlich. "
         + "Windows zeigt beim Start gegebenenfalls eine Sicherheitsabfrage an.";
 
     public MaintenanceToolResult SfcResult
@@ -59,6 +74,26 @@ public class MaintenanceViewModel : BaseViewModel
         }
     }
 
+    public MaintenanceToolResult DismResult
+    {
+        get => _dismResult;
+
+        private set
+        {
+            if (ReferenceEquals(
+                _dismResult,
+                value))
+            {
+                return;
+            }
+
+            _dismResult = value;
+
+            OnPropertyChanged();
+            NotifyDismResultPropertiesChanged();
+        }
+    }
+
     public bool IsSfcRunning
     {
         get => _isSfcRunning;
@@ -73,34 +108,228 @@ public class MaintenanceViewModel : BaseViewModel
             _isSfcRunning = value;
 
             OnPropertyChanged();
+            OnPropertyChanged(nameof(IsAnyMaintenanceRunning));
             OnPropertyChanged(nameof(SfcButtonText));
-            OnPropertyChanged(nameof(SfcStatusText));
             OnPropertyChanged(nameof(CanRunSfc));
+            OnPropertyChanged(nameof(CanRunDism));
 
-            _runSfcCommand.RaiseCanExecuteChanged();
+            RaiseMaintenanceCommandStates();
         }
     }
 
+    public bool IsDismRunning
+    {
+        get => _isDismRunning;
+
+        private set
+        {
+            if (_isDismRunning == value)
+            {
+                return;
+            }
+
+            _isDismRunning = value;
+
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsAnyMaintenanceRunning));
+            OnPropertyChanged(nameof(DismButtonText));
+            OnPropertyChanged(nameof(CanRunSfc));
+            OnPropertyChanged(nameof(CanRunDism));
+
+            RaiseMaintenanceCommandStates();
+        }
+    }
+
+    public bool IsAnyMaintenanceRunning =>
+        IsSfcRunning
+        || IsDismRunning;
+
     public bool CanRunSfc =>
-        !IsSfcRunning;
+        !IsAnyMaintenanceRunning;
+
+    public bool CanRunDism =>
+        !IsAnyMaintenanceRunning;
 
     public bool HasSfcResult =>
         SfcResult.Status != MaintenanceToolStatus.NotRun
         && SfcResult.Status != MaintenanceToolStatus.Running;
 
+    public bool HasDismResult =>
+        DismResult.Status != MaintenanceToolStatus.NotRun
+        && DismResult.Status != MaintenanceToolStatus.Running;
+
     public bool HasSfcTechnicalDetails =>
         HasSfcResult
-        && (!string.IsNullOrWhiteSpace(SfcResult.StandardOutput)
-            || !string.IsNullOrWhiteSpace(SfcResult.StandardError)
-            || SfcResult.ExitCode.HasValue);
+        && HasTechnicalDetails(SfcResult);
+
+    public bool HasDismTechnicalDetails =>
+        HasDismResult
+        && HasTechnicalDetails(DismResult);
 
     public string SfcButtonText =>
         IsSfcRunning
             ? "Systemdateiprüfung läuft …"
             : "Systemdateien prüfen";
 
+    public string DismButtonText =>
+        IsDismRunning
+            ? "Windows-Abbildreparatur läuft …"
+            : "Windows-Abbild reparieren";
+
     public string SfcStatusText =>
-        SfcResult.Status switch
+        GetStatusText(SfcResult.Status);
+
+    public string DismStatusText =>
+        GetStatusText(DismResult.Status);
+
+    public string SfcSummary =>
+        SfcResult.Summary;
+
+    public string DismSummary =>
+        DismResult.Summary;
+
+    public string SfcDetails =>
+        SfcResult.Details;
+
+    public string DismDetails =>
+        DismResult.Details;
+
+    public string SfcExitCodeText =>
+        GetExitCodeText(SfcResult);
+
+    public string DismExitCodeText =>
+        GetExitCodeText(DismResult);
+
+    public string SfcDurationText =>
+        GetDurationText(SfcResult);
+
+    public string DismDurationText =>
+        GetDurationText(DismResult);
+
+    public string SfcFinishedAtText =>
+        GetFinishedAtText(SfcResult);
+
+    public string DismFinishedAtText =>
+        GetFinishedAtText(DismResult);
+
+    public string SfcTechnicalDetails =>
+        BuildTechnicalDetails(
+            SfcResult);
+
+    public string DismTechnicalDetails =>
+        BuildTechnicalDetails(
+            DismResult);
+
+    public ICommand RunSfcCommand { get; }
+
+    public ICommand RunDismCommand { get; }
+
+    private async Task RunSfcAsync()
+    {
+        if (!CanRunSfc)
+        {
+            return;
+        }
+
+        IsSfcRunning = true;
+
+        SfcResult =
+            new MaintenanceToolResult
+            {
+                Status = MaintenanceToolStatus.Running,
+                Summary =
+                    "Die geschützten Windows-Systemdateien werden überprüft.",
+                Details =
+                    "Dieser Vorgang kann einige Minuten dauern. "
+                    + "Die Anwendung kann währenddessen weiter bedient werden.",
+                StartedAt = DateTimeOffset.Now
+            };
+
+        try
+        {
+            SfcResult =
+                await _systemFileChecker.RunAsync();
+        }
+        catch (Exception exception)
+        {
+            SfcResult =
+                CreateUnexpectedFailureResult(
+                    "Die Systemdateiprüfung konnte nicht abgeschlossen werden.",
+                    exception);
+        }
+        finally
+        {
+            IsSfcRunning = false;
+        }
+    }
+
+    private async Task RunDismAsync()
+    {
+        if (!CanRunDism)
+        {
+            return;
+        }
+
+        IsDismRunning = true;
+
+        DismResult =
+            new MaintenanceToolResult
+            {
+                Status = MaintenanceToolStatus.Running,
+                Summary =
+                    "Der Windows-Komponentenspeicher wird geprüft und repariert.",
+                Details =
+                    "DISM kann längere Zeit bei einem Fortschrittswert verweilen. "
+                    + "Die Anwendung kann währenddessen weiter bedient werden.",
+                StartedAt = DateTimeOffset.Now
+            };
+
+        try
+        {
+            DismResult =
+                await _windowsImageRepairService.RunAsync();
+        }
+        catch (Exception exception)
+        {
+            DismResult =
+                CreateUnexpectedFailureResult(
+                    "Die Windows-Abbildreparatur konnte nicht abgeschlossen werden.",
+                    exception);
+        }
+        finally
+        {
+            IsDismRunning = false;
+        }
+    }
+
+    private static MaintenanceToolResult CreateUnexpectedFailureResult(
+        string summary,
+        Exception exception)
+    {
+        return new MaintenanceToolResult
+        {
+            Status = MaintenanceToolStatus.Failed,
+            Summary = summary,
+            Details =
+                string.IsNullOrWhiteSpace(exception.Message)
+                    ? "Es sind keine weiteren Fehlerdetails verfügbar."
+                    : $"Technische Details: {exception.Message}",
+            FinishedAt = DateTimeOffset.Now
+        };
+    }
+
+    private static bool HasTechnicalDetails(
+        MaintenanceToolResult result)
+    {
+        return !string.IsNullOrWhiteSpace(result.StandardOutput)
+               || !string.IsNullOrWhiteSpace(result.StandardError)
+               || result.ExitCode.HasValue;
+    }
+
+    private static string GetStatusText(
+        MaintenanceToolStatus status)
+    {
+        return status switch
         {
             MaintenanceToolStatus.NotRun =>
                 "Noch nicht ausgeführt",
@@ -129,132 +358,86 @@ public class MaintenanceViewModel : BaseViewModel
             _ =>
                 "Unbekannter Status"
         };
-
-    public string SfcSummary =>
-        SfcResult.Summary;
-
-    public string SfcDetails =>
-        SfcResult.Details;
-
-    public string SfcExitCodeText =>
-        SfcResult.ExitCode.HasValue
-            ? SfcResult.ExitCode.Value.ToString()
-            : "Nicht verfügbar";
-
-    public string SfcDurationText
-    {
-        get
-        {
-            if (!SfcResult.StartedAt.HasValue
-                || !SfcResult.FinishedAt.HasValue)
-            {
-                return "Nicht verfügbar";
-            }
-
-            var duration =
-                SfcResult.Duration;
-
-            if (duration.TotalMinutes >= 1)
-            {
-                return $"{(int)duration.TotalMinutes} Min. {duration.Seconds} Sek.";
-            }
-
-            return $"{Math.Max(1, (int)Math.Ceiling(duration.TotalSeconds))} Sek.";
-        }
     }
 
-    public string SfcFinishedAtText =>
-        SfcResult.FinishedAt.HasValue
-            ? SfcResult.FinishedAt.Value
+    private static string GetExitCodeText(
+        MaintenanceToolResult result)
+    {
+        return result.ExitCode.HasValue
+            ? result.ExitCode.Value.ToString()
+            : "Nicht verfügbar";
+    }
+
+    private static string GetDurationText(
+        MaintenanceToolResult result)
+    {
+        if (!result.StartedAt.HasValue
+            || !result.FinishedAt.HasValue)
+        {
+            return "Nicht verfügbar";
+        }
+
+        var duration =
+            result.Duration;
+
+        if (duration.TotalMinutes >= 1)
+        {
+            return $"{(int)duration.TotalMinutes} Min. {duration.Seconds} Sek.";
+        }
+
+        return $"{Math.Max(1, (int)Math.Ceiling(duration.TotalSeconds))} Sek.";
+    }
+
+    private static string GetFinishedAtText(
+        MaintenanceToolResult result)
+    {
+        return result.FinishedAt.HasValue
+            ? result.FinishedAt.Value
                 .ToLocalTime()
                 .ToString("dd.MM.yyyy HH:mm")
             : "Noch nicht ausgeführt";
-
-    public string SfcTechnicalDetails =>
-        BuildTechnicalDetails();
-
-    public ICommand RunSfcCommand { get; }
-
-    private async Task RunSfcAsync()
-    {
-        if (IsSfcRunning)
-        {
-            return;
-        }
-
-        IsSfcRunning = true;
-
-        SfcResult =
-            new MaintenanceToolResult
-            {
-                Status = MaintenanceToolStatus.Running,
-                Summary =
-                    "Die geschützten Windows-Systemdateien werden überprüft.",
-                Details =
-                    "Dieser Vorgang kann einige Minuten dauern. "
-                    + "Die Anwendung kann währenddessen weiter bedient werden.",
-                StartedAt = DateTimeOffset.Now
-            };
-
-        try
-        {
-            SfcResult =
-                await _systemFileChecker.RunAsync();
-        }
-        catch (Exception exception)
-        {
-            SfcResult =
-                new MaintenanceToolResult
-                {
-                    Status = MaintenanceToolStatus.Failed,
-                    Summary =
-                        "Die Systemdateiprüfung konnte nicht abgeschlossen werden.",
-                    Details =
-                        string.IsNullOrWhiteSpace(exception.Message)
-                            ? "Es sind keine weiteren Fehlerdetails verfügbar."
-                            : $"Technische Details: {exception.Message}",
-                    FinishedAt = DateTimeOffset.Now
-                };
-        }
-        finally
-        {
-            IsSfcRunning = false;
-        }
     }
 
-    private string BuildTechnicalDetails()
+    private static string BuildTechnicalDetails(
+        MaintenanceToolResult result)
     {
         var builder =
             new StringBuilder();
 
         builder.AppendLine(
-            $"Exitcode: {SfcExitCodeText}");
+            $"Exitcode: {GetExitCodeText(result)}");
 
         builder.AppendLine(
-            $"Dauer: {SfcDurationText}");
+            $"Dauer: {GetDurationText(result)}");
 
         builder.AppendLine(
-            $"Abgeschlossen: {SfcFinishedAtText}");
+            $"Abgeschlossen: {GetFinishedAtText(result)}");
 
         if (!string.IsNullOrWhiteSpace(
-            SfcResult.StandardOutput))
+            result.StandardOutput))
         {
             builder.AppendLine();
             builder.AppendLine("Standardausgabe:");
-            builder.AppendLine(SfcResult.StandardOutput.Trim());
+            builder.AppendLine(result.StandardOutput.Trim());
         }
 
         if (!string.IsNullOrWhiteSpace(
-            SfcResult.StandardError))
+            result.StandardError))
         {
             builder.AppendLine();
             builder.AppendLine("Fehlerausgabe:");
-            builder.AppendLine(SfcResult.StandardError.Trim());
+            builder.AppendLine(result.StandardError.Trim());
         }
 
         return builder
             .ToString()
             .Trim();
+    }
+
+    private void RaiseMaintenanceCommandStates()
+    {
+        _runSfcCommand.RaiseCanExecuteChanged();
+        _runDismCommand.RaiseCanExecuteChanged();
     }
 
     private void NotifySfcResultPropertiesChanged()
@@ -268,5 +451,18 @@ public class MaintenanceViewModel : BaseViewModel
         OnPropertyChanged(nameof(SfcDurationText));
         OnPropertyChanged(nameof(SfcFinishedAtText));
         OnPropertyChanged(nameof(SfcTechnicalDetails));
+    }
+
+    private void NotifyDismResultPropertiesChanged()
+    {
+        OnPropertyChanged(nameof(HasDismResult));
+        OnPropertyChanged(nameof(HasDismTechnicalDetails));
+        OnPropertyChanged(nameof(DismStatusText));
+        OnPropertyChanged(nameof(DismSummary));
+        OnPropertyChanged(nameof(DismDetails));
+        OnPropertyChanged(nameof(DismExitCodeText));
+        OnPropertyChanged(nameof(DismDurationText));
+        OnPropertyChanged(nameof(DismFinishedAtText));
+        OnPropertyChanged(nameof(DismTechnicalDetails));
     }
 }
