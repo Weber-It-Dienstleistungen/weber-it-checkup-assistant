@@ -17,10 +17,16 @@ public class DialogService : IDialogService
         _serviceProvider = serviceProvider;
     }
 
-    public bool? ShowCustomerEditDialog(Customer customer, bool isNewCustomer)
+    public bool? ShowCustomerEditDialog(
+        Customer customer,
+        bool isNewCustomer)
     {
-        var viewModel = _serviceProvider.GetRequiredService<CustomerEditViewModel>();
-        viewModel.Initialize(customer, isNewCustomer);
+        var viewModel =
+            _serviceProvider.GetRequiredService<CustomerEditViewModel>();
+
+        viewModel.Initialize(
+            customer,
+            isNewCustomer);
 
         var dialog = new CustomerEditDialog
         {
@@ -37,16 +43,18 @@ public class DialogService : IDialogService
         return result;
     }
 
-    public bool Confirm(string title, string message)
+    public bool Confirm(
+        string title,
+        string message)
     {
-        var result = MessageBox.Show(
-            Application.Current.MainWindow,
-            message,
+        var dialog = new ConfirmationDialog(
             title,
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+            message)
+        {
+            Owner = Application.Current.MainWindow
+        };
 
-        return result == MessageBoxResult.Yes;
+        return dialog.ShowDialog() == true;
     }
 
     public void CloseDialog(bool? dialogResult)
