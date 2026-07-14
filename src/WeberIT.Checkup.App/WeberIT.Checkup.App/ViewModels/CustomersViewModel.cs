@@ -29,18 +29,23 @@ public class CustomersViewModel : BaseViewModel
         Customers = new ObservableCollection<Customer>(
             _customerService.GetCustomers());
 
-        CustomersView = CollectionViewSource.GetDefaultView(Customers);
+        CustomersView =
+            CollectionViewSource.GetDefaultView(Customers);
+
         CustomersView.Filter = FilterCustomer;
 
-        AddCustomerCommand = new RelayCommand(_ => AddCustomer());
+        AddCustomerCommand =
+            new RelayCommand(_ => AddCustomer());
 
-        EditCustomerCommand = new RelayCommand(
-            _ => EditCustomer(),
-            _ => SelectedCustomer is not null);
+        EditCustomerCommand =
+            new RelayCommand(
+                _ => EditCustomer(),
+                _ => SelectedCustomer is not null);
 
-        DeleteCustomerCommand = new RelayCommand(
-            _ => DeleteCustomer(),
-            _ => SelectedCustomer is not null);
+        DeleteCustomerCommand =
+            new RelayCommand(
+                _ => DeleteCustomer(),
+                _ => SelectedCustomer is not null);
     }
 
     public ObservableCollection<Customer> Customers { get; }
@@ -100,13 +105,15 @@ public class CustomersViewModel : BaseViewModel
             customer,
             true);
 
-        if (result == true)
+        if (result != true)
         {
-            Customers.Add(customer);
-            SelectedCustomer = customer;
-
-            CustomersView.Refresh();
+            return;
         }
+
+        Customers.Add(customer);
+        SelectedCustomer = customer;
+
+        CustomersView.Refresh();
     }
 
     private void EditCustomer()
@@ -120,11 +127,13 @@ public class CustomersViewModel : BaseViewModel
             SelectedCustomer,
             false);
 
-        if (result == true)
+        if (result != true)
         {
-            CustomersView.Refresh();
-            OnPropertyChanged(nameof(SelectedCustomer));
+            return;
         }
+
+        CustomersView.Refresh();
+        OnPropertyChanged(nameof(SelectedCustomer));
     }
 
     private void DeleteCustomer()
@@ -145,10 +154,20 @@ public class CustomersViewModel : BaseViewModel
             return;
         }
 
-        _customerService.DeleteCustomer(customer.Id);
+        try
+        {
+            _customerService.DeleteCustomer(customer.Id);
+        }
+        catch (Exception exception)
+        {
+            ShowDeleteError(exception);
+            return;
+        }
+
         Customers.Remove(customer);
 
-        SelectedCustomer = Customers.FirstOrDefault();
+        SelectedCustomer =
+            Customers.FirstOrDefault();
 
         CustomersView.Refresh();
     }
@@ -185,5 +204,21 @@ public class CustomersViewModel : BaseViewModel
                || customer.City.Contains(
                    searchText,
                    StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void ShowDeleteError(Exception exception)
+    {
+        var errorDetails =
+            string.IsNullOrWhiteSpace(exception.Message)
+                ? "Keine weiteren Fehlerdetails verfügbar."
+                : exception.Message;
+
+        _dialogService.ShowError(
+            "Kunde konnte nicht gelöscht werden",
+            "Der Kunde konnte nicht aus der Datenbank gelöscht werden. "
+            + "Der Eintrag bleibt in der Kundenliste erhalten."
+            + Environment.NewLine
+            + Environment.NewLine
+            + $"Technische Details: {errorDetails}");
     }
 }

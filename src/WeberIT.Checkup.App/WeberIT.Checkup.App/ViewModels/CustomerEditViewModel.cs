@@ -25,6 +25,19 @@ public class CustomerEditViewModel : ValidatableViewModel
     private string _postalCode = string.Empty;
     private string _city = string.Empty;
 
+    public CustomerEditViewModel(
+        ICustomerService customerService,
+        IDialogService dialogService)
+    {
+        _customerService = customerService;
+        _dialogService = dialogService;
+
+        _saveCommand =
+            new RelayCommand(
+                _ => Save(),
+                _ => CanSave());
+    }
+
     public ICommand SaveCommand => _saveCommand;
 
     public string Title
@@ -119,17 +132,9 @@ public class CustomerEditViewModel : ValidatableViewModel
         }
     }
 
-    public CustomerEditViewModel(
-        ICustomerService customerService,
-        IDialogService dialogService)
-    {
-        _customerService = customerService;
-        _dialogService = dialogService;
-
-        _saveCommand = new RelayCommand(_ => Save(), _ => CanSave());
-    }
-
-    public void Initialize(Customer customer, bool isNewCustomer)
+    public void Initialize(
+        Customer customer,
+        bool isNewCustomer)
     {
         _customer = customer;
         _isNewCustomer = isNewCustomer;
@@ -159,11 +164,15 @@ public class CustomerEditViewModel : ValidatableViewModel
     {
         ValidateProperty(
             nameof(FirstName),
-            ValidationRules.Required(FirstName, "Vorname"));
+            ValidationRules.Required(
+                FirstName,
+                "Vorname"));
 
         ValidateProperty(
             nameof(LastName),
-            ValidationRules.Required(LastName, "Nachname"));
+            ValidationRules.Required(
+                LastName,
+                "Nachname"));
 
         _saveCommand.RaiseCanExecuteChanged();
     }
@@ -182,24 +191,101 @@ public class CustomerEditViewModel : ValidatableViewModel
             return;
         }
 
-        _customer.CustomerNumber = CustomerNumber;
-        _customer.FirstName = FirstName;
-        _customer.LastName = LastName;
-        _customer.Email = Email;
-        _customer.Phone = Phone;
-        _customer.Street = Street;
-        _customer.PostalCode = PostalCode;
-        _customer.City = City;
+        var customerToSave =
+            CreateCustomerForPersistence(_customer);
 
-        if (_isNewCustomer)
+        try
         {
-            _customerService.CreateCustomer(_customer);
+            if (_isNewCustomer)
+            {
+                _customerService.CreateCustomer(customerToSave);
+            }
+            else
+            {
+                _customerService.UpdateCustomer(customerToSave);
+            }
         }
-        else
+        catch (Exception exception)
         {
-            _customerService.UpdateCustomer(_customer);
+            ShowPersistenceError(exception);
+            return;
         }
+
+        ApplyPersistedCustomer(
+            customerToSave,
+            _customer);
 
         _dialogService.CloseDialog(true);
+    }
+
+    private Customer CreateCustomerForPersistence(
+        Customer sourceCustomer)
+    {
+        return new Customer
+        {
+            Id = sourceCustomer.Id,
+            CustomerNumber = CustomerNumber,
+            FirstName = FirstName,
+            LastName = LastName,
+            Email = Email,
+            Phone = Phone,
+            Street = Street,
+            PostalCode = PostalCode,
+            City = City,
+            CreatedAt = sourceCustomer.CreatedAt,
+            UpdatedAt = sourceCustomer.UpdatedAt,
+            Devices = sourceCustomer.Devices
+        };
+    }
+
+    private static void ApplyPersistedCustomer(
+        Customer persistedCustomer,
+        Customer targetCustomer)
+    {
+        targetCustomer.CustomerNumber =
+            persistedCustomer.CustomerNumber;
+
+        targetCustomer.FirstName =
+            persistedCustomer.FirstName;
+
+        targetCustomer.LastName =
+            persistedCustomer.LastName;
+
+        targetCustomer.Email =
+            persistedCustomer.Email;
+
+        targetCustomer.Phone =
+            persistedCustomer.Phone;
+
+        targetCustomer.Street =
+            persistedCustomer.Street;
+
+        targetCustomer.PostalCode =
+            persistedCustomer.PostalCode;
+
+        targetCustomer.City =
+            persistedCustomer.City;
+
+        targetCustomer.CreatedAt =
+            persistedCustomer.CreatedAt;
+
+        targetCustomer.UpdatedAt =
+            persistedCustomer.UpdatedAt;
+    }
+
+    private void ShowPersistenceError(Exception exception)
+    {
+        var errorDetails =
+            string.IsNullOrWhiteSpace(exception.Message)
+                ? "Keine weiteren Fehlerdetails verfügbar."
+                : exception.Message;
+
+        _dialogService.ShowError(
+            "Kunde konnte nicht gespeichert werden",
+            "Die Kundendaten konnten nicht dauerhaft in der Datenbank gespeichert werden. "
+            + "Der Dialog bleibt geöffnet und die Eingaben können erneut gespeichert werden."
+            + Environment.NewLine
+            + Environment.NewLine
+            + $"Technische Details: {errorDetails}");
     }
 }
