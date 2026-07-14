@@ -95,6 +95,10 @@ public partial class App : Application
                 services.AddSingleton<
                     ICheckupAssessmentRule,
                     StorageAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    MemoryAssessmentRule>();
             })
             .Build();
     }
