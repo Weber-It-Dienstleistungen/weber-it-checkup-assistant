@@ -152,24 +152,9 @@ public class CustomerDevicesViewModel : BaseViewModel
             return;
         }
 
-        var scannedComputerName =
-            checkupSession.DeviceInformation.Name;
-
-        if (!string.IsNullOrWhiteSpace(scannedComputerName))
-        {
-            matchingDevice.DisplayName = scannedComputerName;
-        }
-
-        matchingDevice.CheckupSession = checkupSession;
-        matchingDevice.UpdatedAt = DateTime.Now;
-
-        _customerService.UpdateCustomerDevice(
-            SelectedCustomer.Id,
-            matchingDevice);
-
-        SelectedDevice = matchingDevice;
-
-        RefreshDeviceDisplay();
+        ApplyCheckupToDevice(
+            matchingDevice,
+            checkupSession);
     }
 
     private void AddNewDevice(CheckupSession checkupSession)
@@ -208,21 +193,80 @@ public class CustomerDevicesViewModel : BaseViewModel
             return;
         }
 
+        var selectedDevice = SelectedDevice;
         var checkupSession = CreateCheckupSession();
 
-        if (!string.IsNullOrWhiteSpace(
-                checkupSession.DeviceInformation.Name))
+        var matchingDevice =
+            _deviceIdentityService.FindMatchingDevice(
+                SelectedCustomer.Devices,
+                checkupSession.DeviceInformation);
+
+        if (matchingDevice is not null
+            && matchingDevice.Id != selectedDevice.Id)
         {
-            SelectedDevice.DisplayName =
-                checkupSession.DeviceInformation.Name;
+            var confirmed = _dialogService.Confirm(
+                "Anderes Gerät erkannt",
+                $"Der neue Scan gehört nicht zum ausgewählten Gerät "
+                + $"\"{selectedDevice.DisplayName}\", sondern zum bereits gespeicherten Gerät "
+                + $"\"{matchingDevice.DisplayName}\". "
+                + "Soll stattdessen dieses erkannte Gerät aktualisiert werden?");
+
+            if (!confirmed)
+            {
+                return;
+            }
+
+            ApplyCheckupToDevice(
+                matchingDevice,
+                checkupSession);
+
+            return;
         }
 
-        SelectedDevice.CheckupSession = checkupSession;
-        SelectedDevice.UpdatedAt = DateTime.Now;
+        if (matchingDevice is null)
+        {
+            var confirmed = _dialogService.Confirm(
+                "Gerät nicht eindeutig erkannt",
+                $"Der neue Scan konnte dem ausgewählten Gerät "
+                + $"\"{selectedDevice.DisplayName}\" nicht eindeutig zugeordnet werden. "
+                + "Soll der gespeicherte Systemcheck trotzdem durch die neuen Daten ersetzt werden?");
+
+            if (!confirmed)
+            {
+                return;
+            }
+        }
+
+        ApplyCheckupToDevice(
+            selectedDevice,
+            checkupSession);
+    }
+
+    private void ApplyCheckupToDevice(
+        CustomerDevice device,
+        CheckupSession checkupSession)
+    {
+        if (SelectedCustomer is null)
+        {
+            return;
+        }
+
+        var scannedComputerName =
+            checkupSession.DeviceInformation.Name;
+
+        if (!string.IsNullOrWhiteSpace(scannedComputerName))
+        {
+            device.DisplayName = scannedComputerName;
+        }
+
+        device.CheckupSession = checkupSession;
+        device.UpdatedAt = DateTime.Now;
 
         _customerService.UpdateCustomerDevice(
             SelectedCustomer.Id,
-            SelectedDevice);
+            device);
+
+        SelectedDevice = device;
 
         RefreshDeviceDisplay();
     }
