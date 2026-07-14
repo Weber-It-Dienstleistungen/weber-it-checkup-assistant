@@ -1,24 +1,30 @@
 ﻿<UserControl x:Class="WeberIT.Checkup.App.Views.Controls.CustomerDevicesView"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:sys="clr-namespace:System;assembly=System.Runtime"
              xmlns:checkup="clr-namespace:WeberIT.Checkup.App.Views.Controls.Checkup">
 
     <Border
-        Margin="0,24,0,0"
-        Padding="16"
-        BorderBrush="{StaticResource BorderBrush}"
-        BorderThickness="1"
-        CornerRadius="8">
+        Style="{StaticResource PanelCardStyle}"
+        Padding="24"
+        BorderBrush="{StaticResource AccentBrush}">
 
-        <StackPanel>
+        <Grid>
 
-            <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="20" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="20" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Kopfbereich -->
+
+            <Grid Grid.Row="0">
 
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="Auto" />
@@ -28,208 +34,451 @@
 
                 <StackPanel Grid.Column="0">
 
-                    <TextBlock
-                        Text="Geräte"
-                        Style="{StaticResource SectionTitleTextStyle}" />
+                    <StackPanel Orientation="Horizontal">
 
-                    <TextBlock
-                        Margin="0,4,0,0"
-                        Foreground="{StaticResource TextSecondaryBrush}"
-                        Text="{Binding DeviceCountText}" />
+                        <Border
+                            Width="36"
+                            Height="36"
+                            Margin="0,0,12,0"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            CornerRadius="8">
+
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="17"
+                                Foreground="{StaticResource AccentBrush}"
+                                Text="&#xE7F8;" />
+
+                        </Border>
+
+                        <StackPanel VerticalAlignment="Center">
+
+                            <TextBlock
+                                Text="Geräte und Systemchecks"
+                                Style="{StaticResource SectionTitleTextStyle}" />
+
+                            <TextBlock
+                                Margin="0,3,0,0"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="{Binding DeviceCountText}" />
+
+                        </StackPanel>
+
+                    </StackPanel>
 
                 </StackPanel>
 
                 <Button
-                    Grid.Column="3"
-                    Width="120"
+                    Grid.Column="1"
+                    Width="125"
+                    VerticalAlignment="Center"
                     Content="Neu scannen"
                     Command="{Binding RescanDeviceCommand}" />
 
                 <Button
-                    Grid.Column="5"
-                    Width="110"
+                    Grid.Column="3"
+                    Width="105"
+                    VerticalAlignment="Center"
                     Content="Löschen"
-                    Command="{Binding DeleteDeviceCommand}" />
+                    Command="{Binding DeleteDeviceCommand}"
+                    Foreground="{StaticResource DangerBrush}" />
 
                 <Button
-                    Grid.Column="7"
-                    Width="140"
+                    Grid.Column="5"
+                    Width="150"
+                    VerticalAlignment="Center"
                     Content="Gerät hinzufügen"
-                    Command="{Binding AddDeviceCommand}" />
+                    Command="{Binding AddDeviceCommand}"
+                    Style="{StaticResource AccentButtonStyle}" />
 
             </Grid>
 
-            <ListBox
-                Margin="0,16,0,0"
-                ItemsSource="{Binding Devices}"
-                SelectedItem="{Binding SelectedDevice}"
-                BorderThickness="0"
-                Background="Transparent">
+            <!-- Geräteliste -->
 
-                <ListBox.ItemContainerStyle>
+            <Grid Grid.Row="2">
 
-                    <Style TargetType="ListBoxItem">
+                <Border
+                    Padding="18"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="9">
 
-                        <Setter
-                            Property="HorizontalContentAlignment"
-                            Value="Stretch" />
-
-                        <Setter
-                            Property="Padding"
-                            Value="0" />
-
-                        <Setter
-                            Property="Margin"
-                            Value="0" />
-
-                    </Style>
-
-                </ListBox.ItemContainerStyle>
-
-                <ListBox.ItemTemplate>
-
-                    <DataTemplate>
+                    <StackPanel
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
 
                         <Border
-                            Padding="12"
-                            Margin="0,0,0,8"
-                            BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8">
+                            Width="48"
+                            Height="48"
+                            HorizontalAlignment="Center"
+                            Background="{StaticResource BackgroundBrush}"
+                            CornerRadius="24">
 
-                            <StackPanel>
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="20"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="&#xE7F8;" />
 
-                                <TextBlock
-                                    FontWeight="SemiBold"
-                                    Text="{Binding DisplayName}" />
+                        </Border>
 
-                                <StackPanel
-                                    Margin="0,4,0,0"
-                                    Orientation="Horizontal">
+                        <TextBlock
+                            Margin="0,12,0,0"
+                            HorizontalAlignment="Center"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Text="Noch kein Gerät gespeichert" />
 
-                                    <StackPanel.Style>
+                        <TextBlock
+                            Margin="0,5,0,0"
+                            HorizontalAlignment="Center"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Fügen Sie ein Gerät hinzu, um einen ersten Systemscan zu speichern."
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
 
-                                        <Style TargetType="StackPanel">
+                    </StackPanel>
 
-                                            <Setter
-                                                Property="Visibility"
-                                                Value="Visible" />
+                    <Border.Style>
 
-                                            <Style.Triggers>
+                        <Style TargetType="Border">
 
-                                                <MultiDataTrigger>
+                            <Setter Property="Visibility"
+                                    Value="Collapsed" />
 
-                                                    <MultiDataTrigger.Conditions>
+                            <Style.Triggers>
 
-                                                        <Condition
-                                                            Binding="{Binding CheckupSession.DeviceInformation.Manufacturer}"
-                                                            Value="{x:Static sys:String.Empty}" />
+                                <DataTrigger
+                                    Binding="{Binding SelectedCustomer.Devices.Count}"
+                                    Value="0">
 
-                                                        <Condition
-                                                            Binding="{Binding CheckupSession.DeviceInformation.Model}"
-                                                            Value="{x:Static sys:String.Empty}" />
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
 
-                                                    </MultiDataTrigger.Conditions>
+                                </DataTrigger>
 
-                                                    <Setter
-                                                        Property="Visibility"
-                                                        Value="Collapsed" />
+                            </Style.Triggers>
 
-                                                </MultiDataTrigger>
+                        </Style>
 
-                                            </Style.Triggers>
+                    </Border.Style>
 
-                                        </Style>
+                </Border>
 
-                                    </StackPanel.Style>
+                <ListBox
+                    ItemsSource="{Binding Devices}"
+                    SelectedItem="{Binding SelectedDevice, Mode=TwoWay}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled">
 
-                                    <TextBlock
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        Text="{Binding CheckupSession.DeviceInformation.Manufacturer}" />
+                    <ListBox.Style>
 
-                                    <TextBlock
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        Text=" · ">
+                        <Style
+                            TargetType="ListBox"
+                            BasedOn="{StaticResource {x:Type ListBox}}">
 
-                                        <TextBlock.Style>
+                            <Setter Property="Visibility"
+                                    Value="Visible" />
 
-                                            <Style TargetType="TextBlock">
+                            <Style.Triggers>
 
-                                                <Setter
-                                                    Property="Visibility"
-                                                    Value="Visible" />
+                                <DataTrigger
+                                    Binding="{Binding SelectedCustomer.Devices.Count}"
+                                    Value="0">
+
+                                    <Setter Property="Visibility"
+                                            Value="Collapsed" />
+
+                                </DataTrigger>
+
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </ListBox.Style>
+
+                    <ListBox.ItemsPanel>
+
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+
+                    </ListBox.ItemsPanel>
+
+                    <ListBox.ItemContainerStyle>
+
+                        <Style
+                            TargetType="ListBoxItem"
+                            BasedOn="{StaticResource {x:Type ListBoxItem}}">
+
+                            <Setter Property="Width"
+                                    Value="270" />
+
+                            <Setter Property="Margin"
+                                    Value="0,0,12,12" />
+
+                            <Setter Property="VerticalContentAlignment"
+                                    Value="Stretch" />
+
+                        </Style>
+
+                    </ListBox.ItemContainerStyle>
+
+                    <ListBox.ItemTemplate>
+
+                        <DataTemplate>
+
+                            <Border
+                                MinHeight="122"
+                                Padding="15"
+                                Background="{StaticResource SurfaceSecondaryBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="9">
+
+                                <Grid>
+
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <Grid Grid.Row="0">
+
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="36" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border
+                                            Grid.Column="0"
+                                            Width="28"
+                                            Height="28"
+                                            VerticalAlignment="Top"
+                                            Background="{StaticResource BackgroundBrush}"
+                                            CornerRadius="6">
+
+                                            <TextBlock
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                FontFamily="Segoe MDL2 Assets"
+                                                FontSize="13"
+                                                Foreground="{StaticResource AccentBrush}"
+                                                Text="&#xE7F8;" />
+
+                                        </Border>
+
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
+                                            Foreground="{StaticResource TextPrimaryBrush}"
+                                            Text="{Binding DisplayName}"
+                                            TextTrimming="CharacterEllipsis" />
+
+                                    </Grid>
+
+                                    <StackPanel
+                                        Grid.Row="1"
+                                        Margin="36,8,0,0"
+                                        Orientation="Horizontal">
+
+                                        <StackPanel.Style>
+
+                                            <Style TargetType="StackPanel">
+
+                                                <Setter Property="Visibility"
+                                                        Value="Visible" />
 
                                                 <Style.Triggers>
 
-                                                    <DataTrigger
-                                                        Binding="{Binding CheckupSession.DeviceInformation.Manufacturer}"
-                                                        Value="{x:Static sys:String.Empty}">
+                                                    <MultiDataTrigger>
 
-                                                        <Setter
-                                                            Property="Visibility"
-                                                            Value="Collapsed" />
+                                                        <MultiDataTrigger.Conditions>
 
-                                                    </DataTrigger>
+                                                            <Condition
+                                                                Binding="{Binding CheckupSession.DeviceInformation.Manufacturer}"
+                                                                Value="{x:Static sys:String.Empty}" />
 
-                                                    <DataTrigger
-                                                        Binding="{Binding CheckupSession.DeviceInformation.Model}"
-                                                        Value="{x:Static sys:String.Empty}">
+                                                            <Condition
+                                                                Binding="{Binding CheckupSession.DeviceInformation.Model}"
+                                                                Value="{x:Static sys:String.Empty}" />
 
-                                                        <Setter
-                                                            Property="Visibility"
-                                                            Value="Collapsed" />
+                                                        </MultiDataTrigger.Conditions>
 
-                                                    </DataTrigger>
+                                                        <Setter Property="Visibility"
+                                                                Value="Collapsed" />
+
+                                                    </MultiDataTrigger>
 
                                                 </Style.Triggers>
 
                                             </Style>
 
-                                        </TextBlock.Style>
+                                        </StackPanel.Style>
 
-                                    </TextBlock>
+                                        <TextBlock
+                                            FontSize="12"
+                                            Foreground="{StaticResource TextSecondaryBrush}"
+                                            Text="{Binding CheckupSession.DeviceInformation.Manufacturer}"
+                                            TextTrimming="CharacterEllipsis" />
 
-                                    <TextBlock
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        Text="{Binding CheckupSession.DeviceInformation.Model}" />
+                                        <TextBlock
+                                            FontSize="12"
+                                            Foreground="{StaticResource TextSecondaryBrush}"
+                                            Text=" · ">
 
-                                </StackPanel>
+                                            <TextBlock.Style>
 
-                                <TextBlock
-                                    Margin="0,4,0,0"
-                                    Foreground="{StaticResource TextSecondaryBrush}">
+                                                <Style TargetType="TextBlock">
 
-                                    <TextBlock.Text>
+                                                    <Setter Property="Visibility"
+                                                            Value="Visible" />
 
-                                        <MultiBinding StringFormat="{}Letzter Scan: {0:dd.MM.yyyy HH:mm}">
-                                            <Binding Path="CheckupSession.ScanDate" />
-                                        </MultiBinding>
+                                                    <Style.Triggers>
 
-                                    </TextBlock.Text>
+                                                        <DataTrigger
+                                                            Binding="{Binding CheckupSession.DeviceInformation.Manufacturer}"
+                                                            Value="{x:Static sys:String.Empty}">
 
-                                </TextBlock>
+                                                            <Setter Property="Visibility"
+                                                                    Value="Collapsed" />
 
-                            </StackPanel>
+                                                        </DataTrigger>
 
-                        </Border>
+                                                        <DataTrigger
+                                                            Binding="{Binding CheckupSession.DeviceInformation.Model}"
+                                                            Value="{x:Static sys:String.Empty}">
 
-                    </DataTemplate>
+                                                            <Setter Property="Visibility"
+                                                                    Value="Collapsed" />
 
-                </ListBox.ItemTemplate>
+                                                        </DataTrigger>
 
-            </ListBox>
+                                                    </Style.Triggers>
+
+                                                </Style>
+
+                                            </TextBlock.Style>
+
+                                        </TextBlock>
+
+                                        <TextBlock
+                                            FontSize="12"
+                                            Foreground="{StaticResource TextSecondaryBrush}"
+                                            Text="{Binding CheckupSession.DeviceInformation.Model}"
+                                            TextTrimming="CharacterEllipsis" />
+
+                                    </StackPanel>
+
+                                    <Border
+                                        Grid.Row="3"
+                                        Margin="36,12,0,0"
+                                        Padding="8,4"
+                                        HorizontalAlignment="Left"
+                                        Background="{StaticResource BackgroundBrush}"
+                                        CornerRadius="5">
+
+                                        <TextBlock
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}">
+
+                                            <TextBlock.Text>
+
+                                                <MultiBinding StringFormat="{}Scan: {0:dd.MM.yyyy HH:mm}">
+                                                    <Binding Path="CheckupSession.ScanDate" />
+                                                </MultiBinding>
+
+                                            </TextBlock.Text>
+
+                                        </TextBlock>
+
+                                    </Border>
+
+                                </Grid>
+
+                            </Border>
+
+                        </DataTemplate>
+
+                    </ListBox.ItemTemplate>
+
+                </ListBox>
+
+            </Grid>
+
+            <!-- Hinweis ohne Geräteauswahl -->
+
+            <Border
+                Grid.Row="4"
+                Padding="18"
+                Background="{StaticResource SurfaceSecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="9">
+
+                <Border.Style>
+
+                    <Style TargetType="Border">
+
+                        <Setter Property="Visibility"
+                                Value="Visible" />
+
+                        <Style.Triggers>
+
+                            <DataTrigger
+                                Binding="{Binding SelectedDevice}"
+                                Value="{x:Null}">
+
+                                <Setter Property="Visibility"
+                                        Value="Visible" />
+
+                            </DataTrigger>
+
+                            <DataTrigger
+                                Binding="{Binding SelectedDevice}">
+
+                                <Setter Property="Visibility"
+                                        Value="Collapsed" />
+
+                            </DataTrigger>
+
+                        </Style.Triggers>
+
+                    </Style>
+
+                </Border.Style>
+
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Foreground="{StaticResource TextSecondaryBrush}"
+                    Text="Wählen Sie ein Gerät aus, um den gespeicherten Systemcheck anzuzeigen."
+                    TextAlignment="Center"
+                    TextWrapping="Wrap" />
+
+            </Border>
+
+            <!-- Gerätedetails -->
 
             <StackPanel
-                Margin="0,24,0,0"
+                Grid.Row="4"
                 DataContext="{Binding SelectedDevice.CheckupSession}">
 
                 <StackPanel.Style>
 
                     <Style TargetType="StackPanel">
 
-                        <Setter
-                            Property="Visibility"
-                            Value="Visible" />
+                        <Setter Property="Visibility"
+                                Value="Visible" />
 
                         <Style.Triggers>
 
@@ -237,9 +486,8 @@
                                 Binding="{Binding DataContext.SelectedDevice, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 Value="{x:Null}">
 
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Collapsed" />
+                                <Setter Property="Visibility"
+                                        Value="Collapsed" />
 
                             </DataTrigger>
 
@@ -249,20 +497,33 @@
 
                 </StackPanel.Style>
 
-                <TextBlock
-                    Text="Gerätedaten"
-                    Style="{StaticResource SectionTitleTextStyle}" />
+                <Border
+                    Padding="18"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="9">
 
-                <TextBlock
-                    Margin="0,4,0,16"
-                    Foreground="{StaticResource TextSecondaryBrush}"
-                    Text="Vollständiger Stand des zuletzt gespeicherten Systemscans." />
+                    <StackPanel>
 
-                <checkup:CheckupDetailsView />
+                        <TextBlock
+                            Text="Gespeicherter Systemcheck"
+                            Style="{StaticResource SectionTitleTextStyle}" />
+
+                        <TextBlock
+                            Margin="0,4,0,18"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Vollständiger Stand des zuletzt gespeicherten Scans." />
+
+                        <checkup:CheckupDetailsView />
+
+                    </StackPanel>
+
+                </Border>
 
             </StackPanel>
 
-        </StackPanel>
+        </Grid>
 
     </Border>
 

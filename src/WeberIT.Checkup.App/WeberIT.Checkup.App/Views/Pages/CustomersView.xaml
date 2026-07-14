@@ -3,211 +3,550 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:WeberIT.Checkup.App.Views.Controls">
 
-    <Grid Margin="24">
+    <ScrollViewer
+        VerticalScrollBarVisibility="Auto"
+        HorizontalScrollBarVisibility="Disabled"
+        Background="{StaticResource BackgroundBrush}">
 
-        <Border Style="{StaticResource PanelCardStyle}">
+        <Grid Margin="40,32,40,40">
 
-            <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="24" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="16" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+            <Grid Grid.Row="0">
 
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*" />
-                    <ColumnDefinition Width="24" />
-                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Grid
-                    Grid.Row="0"
-                    Grid.Column="0">
-
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
 
                     <TextBlock
-                        Grid.Column="0"
-                        Text="Kunden"
-                        Style="{StaticResource SectionTitleTextStyle}" />
+                        Text="Kundenverwaltung"
+                        Style="{StaticResource PageTitleTextStyle}" />
 
-                    <Button
-                        Grid.Column="1"
-                        Width="130"
-                        Content="Neu"
-                        Command="{Binding AddCustomerCommand}" />
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Text="Kundendaten verwalten, zugeordnete Geräte prüfen und neue Systemchecks durchführen."
+                        Style="{StaticResource PageSubtitleTextStyle}" />
 
-                </Grid>
+                </StackPanel>
 
-                <StackPanel
-                    Grid.Row="2"
-                    Grid.Column="0">
+                <Button
+                    Grid.Column="1"
+                    Width="150"
+                    Height="40"
+                    VerticalAlignment="Center"
+                    Content="Neuer Kunde"
+                    Command="{Binding AddCustomerCommand}"
+                    Style="{StaticResource AccentButtonStyle}" />
 
-                    <TextBox
-                        Height="36"
-                        Margin="0,0,0,12"
-                        Padding="10,0"
-                        VerticalContentAlignment="Center"
-                        Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
 
-                    <ListBox
-                        ItemsSource="{Binding CustomersView}"
-                        SelectedItem="{Binding SelectedCustomer}"
-                        BorderThickness="0">
+            <Grid Grid.Row="2">
 
-                        <ListBox.ItemTemplate>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="340" />
+                    <ColumnDefinition Width="20" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-                            <DataTemplate>
+                <Border
+                    Grid.Column="0"
+                    Style="{StaticResource PanelCardStyle}"
+                    Padding="20">
 
-                                <Border
-                                    Padding="12"
-                                    Margin="0,0,0,8"
-                                    BorderBrush="{StaticResource BorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="8">
+                    <Grid>
 
-                                    <StackPanel>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="16" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="16" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0">
+
+                            <TextBlock
+                                Text="Kunden"
+                                Style="{StaticResource SectionTitleTextStyle}" />
+
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Wählen Sie einen Kunden aus der Liste aus." />
+
+                        </StackPanel>
+
+                        <Border
+                            Grid.Row="2"
+                            Height="42"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="42" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock
+                                    Grid.Column="0"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="16"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    Text="&#xE721;" />
+
+                                <TextBox
+                                    Grid.Column="1"
+                                    Padding="0"
+                                    VerticalContentAlignment="Center"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                            </Grid>
+
+                        </Border>
+
+                        <Grid Grid.Row="4">
+
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="Noch keine Kunden vorhanden."
+                                TextAlignment="Center"
+                                TextWrapping="Wrap">
+
+                                <TextBlock.Style>
+
+                                    <Style TargetType="TextBlock">
+
+                                        <Setter
+                                            Property="Visibility"
+                                            Value="Collapsed" />
+
+                                        <Style.Triggers>
+
+                                            <DataTrigger
+                                                Binding="{Binding Customers.Count}"
+                                                Value="0">
+
+                                                <Setter
+                                                    Property="Visibility"
+                                                    Value="Visible" />
+
+                                            </DataTrigger>
+
+                                        </Style.Triggers>
+
+                                    </Style>
+
+                                </TextBlock.Style>
+
+                            </TextBlock>
+
+                            <ListBox
+                                ItemsSource="{Binding CustomersView}"
+                                SelectedItem="{Binding SelectedCustomer, Mode=TwoWay}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                ScrollViewer.VerticalScrollBarVisibility="Auto">
+
+                                <ListBox.ItemContainerStyle>
+
+                                    <Style
+                                        TargetType="ListBoxItem"
+                                        BasedOn="{StaticResource {x:Type ListBoxItem}}">
+
+                                        <Setter
+                                            Property="Margin"
+                                            Value="0,0,0,10" />
+
+                                    </Style>
+
+                                </ListBox.ItemContainerStyle>
+
+                                <ListBox.ItemTemplate>
+
+                                    <DataTemplate>
+
+                                        <Border
+                                            Padding="14"
+                                            Background="{StaticResource SurfaceSecondaryBrush}"
+                                            BorderBrush="{StaticResource BorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="9">
+
+                                            <Grid>
+
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="44" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <Border
+                                                    Grid.Column="0"
+                                                    Width="34"
+                                                    Height="34"
+                                                    VerticalAlignment="Top"
+                                                    Background="{StaticResource BackgroundBrush}"
+                                                    CornerRadius="17">
+
+                                                    <TextBlock
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        FontFamily="Segoe MDL2 Assets"
+                                                        FontSize="15"
+                                                        Foreground="{StaticResource AccentBrush}"
+                                                        Text="&#xE77B;" />
+
+                                                </Border>
+
+                                                <StackPanel Grid.Column="1">
+
+                                                    <TextBlock
+                                                        FontSize="15"
+                                                        FontWeight="SemiBold"
+                                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                                        Text="{Binding DisplayName}"
+                                                        TextTrimming="CharacterEllipsis" />
+
+                                                    <TextBlock
+                                                        Margin="0,4,0,0"
+                                                        FontSize="12"
+                                                        Foreground="{StaticResource TextSecondaryBrush}">
+
+                                                        <TextBlock.Text>
+
+                                                            <MultiBinding StringFormat="{}{0} · {1}">
+                                                                <Binding Path="CustomerNumber" />
+                                                                <Binding Path="City" />
+                                                            </MultiBinding>
+
+                                                        </TextBlock.Text>
+
+                                                    </TextBlock>
+
+                                                    <TextBlock
+                                                        Margin="0,4,0,0"
+                                                        FontSize="11"
+                                                        Foreground="{StaticResource TextMutedBrush}">
+
+                                                        <TextBlock.Text>
+
+                                                            <MultiBinding StringFormat="{}{0} Geräte gespeichert">
+                                                                <Binding Path="Devices.Count" />
+                                                            </MultiBinding>
+
+                                                        </TextBlock.Text>
+
+                                                    </TextBlock>
+
+                                                </StackPanel>
+
+                                                <TextBlock
+                                                    Grid.Column="2"
+                                                    Margin="10,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    FontFamily="Segoe MDL2 Assets"
+                                                    FontSize="12"
+                                                    Foreground="{StaticResource TextMutedBrush}"
+                                                    Text="&#xE76C;" />
+
+                                            </Grid>
+
+                                        </Border>
+
+                                    </DataTemplate>
+
+                                </ListBox.ItemTemplate>
+
+                            </ListBox>
+
+                        </Grid>
+
+                    </Grid>
+
+                </Border>
+
+                <Grid Grid.Column="2">
+
+                    <Border>
+
+                        <Border.Style>
+
+                            <Style
+                                TargetType="Border"
+                                BasedOn="{StaticResource PanelCardStyle}">
+
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Collapsed" />
+
+                                <Style.Triggers>
+
+                                    <DataTrigger
+                                        Binding="{Binding SelectedCustomer}"
+                                        Value="{x:Null}">
+
+                                        <Setter
+                                            Property="Visibility"
+                                            Value="Visible" />
+
+                                    </DataTrigger>
+
+                                </Style.Triggers>
+
+                            </Style>
+
+                        </Border.Style>
+
+                        <StackPanel
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            MaxWidth="420">
+
+                            <Border
+                                Width="64"
+                                Height="64"
+                                HorizontalAlignment="Center"
+                                Background="{StaticResource SurfaceSecondaryBrush}"
+                                CornerRadius="32">
+
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="25"
+                                    Foreground="{StaticResource AccentBrush}"
+                                    Text="&#xE716;" />
+
+                            </Border>
+
+                            <TextBlock
+                                Margin="0,18,0,0"
+                                HorizontalAlignment="Center"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="Kein Kunde ausgewählt" />
+
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                HorizontalAlignment="Center"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Wählen Sie links einen Kunden aus oder legen Sie einen neuen Kunden an."
+                                TextAlignment="Center"
+                                TextWrapping="Wrap" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <StackPanel>
+
+                        <StackPanel.Style>
+
+                            <Style TargetType="StackPanel">
+
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Visible" />
+
+                                <Style.Triggers>
+
+                                    <DataTrigger
+                                        Binding="{Binding SelectedCustomer}"
+                                        Value="{x:Null}">
+
+                                        <Setter
+                                            Property="Visibility"
+                                            Value="Collapsed" />
+
+                                    </DataTrigger>
+
+                                </Style.Triggers>
+
+                            </Style>
+
+                        </StackPanel.Style>
+
+                        <Border
+                            Style="{StaticResource PanelCardStyle}"
+                            Padding="24">
+
+                            <Grid>
+
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="22" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0">
+
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
 
                                         <TextBlock
-                                            FontSize="15"
+                                            Text="Kundendetails"
+                                            Style="{StaticResource SectionTitleTextStyle}" />
+
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="17"
                                             FontWeight="SemiBold"
-                                            Text="{Binding DisplayName}" />
+                                            Foreground="{StaticResource TextPrimaryBrush}"
+                                            Text="{Binding SelectedCustomer.DisplayName}" />
+
+                                    </StackPanel>
+
+                                    <Button
+                                        Grid.Column="1"
+                                        Width="125"
+                                        VerticalAlignment="Center"
+                                        Content="Bearbeiten"
+                                        Command="{Binding EditCustomerCommand}" />
+
+                                    <Button
+                                        Grid.Column="3"
+                                        Width="110"
+                                        VerticalAlignment="Center"
+                                        Content="Löschen"
+                                        Command="{Binding DeleteCustomerCommand}"
+                                        Foreground="{StaticResource DangerBrush}" />
+
+                                </Grid>
+
+                                <Grid Grid.Row="2">
+
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+
+                                        <TextBlock
+                                            Text="Kundennummer"
+                                            Style="{StaticResource CardTitleTextStyle}" />
+
+                                        <TextBlock
+                                            Margin="0,5,0,18"
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding SelectedCustomer.CustomerNumber}" />
+
+                                        <TextBlock
+                                            Text="E-Mail"
+                                            Style="{StaticResource CardTitleTextStyle}" />
+
+                                        <TextBlock
+                                            Margin="0,5,0,18"
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding SelectedCustomer.Email}"
+                                            TextWrapping="Wrap" />
+
+                                        <TextBlock
+                                            Text="Telefon"
+                                            Style="{StaticResource CardTitleTextStyle}" />
+
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding SelectedCustomer.Phone}" />
+
+                                    </StackPanel>
+
+                                    <Border
+                                        Grid.Column="1"
+                                        Width="1"
+                                        HorizontalAlignment="Center"
+                                        Background="{StaticResource BorderBrush}" />
+
+                                    <StackPanel Grid.Column="2">
+
+                                        <TextBlock
+                                            Text="Adresse"
+                                            Style="{StaticResource CardTitleTextStyle}" />
+
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding SelectedCustomer.Street}"
+                                            TextWrapping="Wrap" />
 
                                         <TextBlock
                                             Margin="0,4,0,0"
-                                            Foreground="{StaticResource TextSecondaryBrush}">
+                                            FontSize="14"
+                                            FontWeight="SemiBold">
 
                                             <TextBlock.Text>
 
-                                                <MultiBinding StringFormat="{}{0} · {1}">
-                                                    <Binding Path="CustomerNumber" />
-                                                    <Binding Path="City" />
+                                                <MultiBinding StringFormat="{}{0} {1}">
+                                                    <Binding Path="SelectedCustomer.PostalCode" />
+                                                    <Binding Path="SelectedCustomer.City" />
                                                 </MultiBinding>
 
                                             </TextBlock.Text>
 
                                         </TextBlock>
 
+                                        <TextBlock
+                                            Margin="0,22,0,0"
+                                            Text="Kunde seit"
+                                            Style="{StaticResource CardTitleTextStyle}" />
+
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding SelectedCustomer.CreatedAt, StringFormat={}{0:dd.MM.yyyy}}" />
+
                                     </StackPanel>
 
-                                </Border>
-
-                            </DataTemplate>
-
-                        </ListBox.ItemTemplate>
-
-                    </ListBox>
-
-                </StackPanel>
-
-                <Border
-                    Grid.Row="2"
-                    Grid.Column="2"
-                    Padding="16"
-                    BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-
-                        <StackPanel>
-
-                            <Grid>
-
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="Kundendetails"
-                                    Style="{StaticResource SectionTitleTextStyle}" />
-
-                                <Button
-                                    Grid.Column="1"
-                                    Width="130"
-                                    Content="Bearbeiten"
-                                    Command="{Binding EditCustomerCommand}" />
-
-                                <Button
-                                    Grid.Column="3"
-                                    Width="110"
-                                    Content="Löschen"
-                                    Command="{Binding DeleteCustomerCommand}" />
+                                </Grid>
 
                             </Grid>
 
-                            <TextBlock
-                                Margin="0,16,0,0"
-                                FontSize="18"
-                                FontWeight="SemiBold"
-                                Text="{Binding SelectedCustomer.DisplayName}" />
+                        </Border>
 
-                            <TextBlock
-                                Margin="0,16,0,0"
-                                Text="Kundennummer" />
+                        <controls:CustomerDevicesView
+                            Margin="0,20,0,0"
+                            DataContext="{Binding CustomerDevices}" />
 
-                            <TextBlock
-                                FontWeight="SemiBold"
-                                Text="{Binding SelectedCustomer.CustomerNumber}" />
+                    </StackPanel>
 
-                            <TextBlock
-                                Margin="0,12,0,0"
-                                Text="E-Mail" />
-
-                            <TextBlock
-                                FontWeight="SemiBold"
-                                Text="{Binding SelectedCustomer.Email}" />
-
-                            <TextBlock
-                                Margin="0,12,0,0"
-                                Text="Telefon" />
-
-                            <TextBlock
-                                FontWeight="SemiBold"
-                                Text="{Binding SelectedCustomer.Phone}" />
-
-                            <TextBlock
-                                Margin="0,12,0,0"
-                                Text="Adresse" />
-
-                            <TextBlock
-                                FontWeight="SemiBold"
-                                Text="{Binding SelectedCustomer.Street}" />
-
-                            <TextBlock FontWeight="SemiBold">
-
-                                <TextBlock.Text>
-
-                                    <MultiBinding StringFormat="{}{0} {1}">
-                                        <Binding Path="SelectedCustomer.PostalCode" />
-                                        <Binding Path="SelectedCustomer.City" />
-                                    </MultiBinding>
-
-                                </TextBlock.Text>
-
-                            </TextBlock>
-
-                            <controls:CustomerDevicesView
-                                DataContext="{Binding CustomerDevices}" />
-
-                        </StackPanel>
-
-                    </ScrollViewer>
-
-                </Border>
+                </Grid>
 
             </Grid>
 
-        </Border>
+        </Grid>
 
-    </Grid>
+    </ScrollViewer>
 
 </UserControl>
