@@ -103,6 +103,10 @@ public partial class App : Application
                 services.AddSingleton<
                     ICheckupAssessmentRule,
                     TpmAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    OperatingSystemAssessmentRule>();
             })
             .Build();
     }
