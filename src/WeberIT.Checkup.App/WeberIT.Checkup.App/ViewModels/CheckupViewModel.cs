@@ -175,15 +175,24 @@ public class CheckupViewModel : BaseViewModel
 
     private void ReadSystem()
     {
-        var checkupSession = _checkupScanner.Scan();
+        try
+        {
+            var checkupSession = _checkupScanner.Scan();
 
-        checkupSession.Assessment =
-            _checkupAssessmentService.Assess(checkupSession);
+            checkupSession.Assessment =
+                _checkupAssessmentService.Assess(checkupSession);
 
-        _savedCustomerId = null;
-        _lastSaveUpdatedExistingDevice = false;
+            _savedCustomerId = null;
+            _lastSaveUpdatedExistingDevice = false;
 
-        CurrentCheckup = checkupSession;
+            CurrentCheckup = checkupSession;
+        }
+        catch (Exception exception)
+        {
+            _dialogService.ShowError(
+                "Systemscan fehlgeschlagen",
+                BuildScanErrorMessage(exception));
+        }
     }
 
     private void SaveCheckup()
@@ -285,5 +294,18 @@ public class CheckupViewModel : BaseViewModel
         OnPropertyChanged(nameof(PersistenceStatusText));
 
         _saveCheckupCommand.RaiseCanExecuteChanged();
+    }
+
+    private static string BuildScanErrorMessage(Exception exception)
+    {
+        var errorDetails = string.IsNullOrWhiteSpace(exception.Message)
+            ? "Keine weiteren Fehlerdetails verfügbar."
+            : exception.Message;
+
+        return "Die Systeminformationen konnten nicht vollständig ausgelesen oder bewertet werden. "
+               + "Die bisherigen Checkup-Daten bleiben unverändert."
+               + Environment.NewLine
+               + Environment.NewLine
+               + $"Technische Details: {errorDetails}";
     }
 }

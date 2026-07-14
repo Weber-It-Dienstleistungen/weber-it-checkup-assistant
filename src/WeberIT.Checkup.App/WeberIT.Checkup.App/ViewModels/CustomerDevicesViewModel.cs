@@ -114,7 +114,12 @@ public class CustomerDevicesViewModel : BaseViewModel
             return;
         }
 
-        var checkupSession = CreateCheckupSession();
+        var checkupSession = TryCreateCheckupSession();
+
+        if (checkupSession is null)
+        {
+            return;
+        }
 
         var matchingDevice =
             _deviceIdentityService.FindMatchingDevice(
@@ -194,7 +199,12 @@ public class CustomerDevicesViewModel : BaseViewModel
         }
 
         var selectedDevice = SelectedDevice;
-        var checkupSession = CreateCheckupSession();
+        var checkupSession = TryCreateCheckupSession();
+
+        if (checkupSession is null)
+        {
+            return;
+        }
 
         var matchingDevice =
             _deviceIdentityService.FindMatchingDevice(
@@ -299,14 +309,25 @@ public class CustomerDevicesViewModel : BaseViewModel
         RefreshDeviceDisplay();
     }
 
-    private CheckupSession CreateCheckupSession()
+    private CheckupSession? TryCreateCheckupSession()
     {
-        var checkupSession = _checkupScanner.Scan();
+        try
+        {
+            var checkupSession = _checkupScanner.Scan();
 
-        checkupSession.Assessment =
-            _checkupAssessmentService.Assess(checkupSession);
+            checkupSession.Assessment =
+                _checkupAssessmentService.Assess(checkupSession);
 
-        return checkupSession;
+            return checkupSession;
+        }
+        catch (Exception exception)
+        {
+            _dialogService.ShowError(
+                "Systemscan fehlgeschlagen",
+                BuildScanErrorMessage(exception));
+
+            return null;
+        }
     }
 
     private void RefreshDeviceDisplay()
@@ -314,5 +335,18 @@ public class CustomerDevicesViewModel : BaseViewModel
         OnPropertyChanged(nameof(Devices));
         OnPropertyChanged(nameof(DeviceCountText));
         OnPropertyChanged(nameof(SelectedDevice));
+    }
+
+    private static string BuildScanErrorMessage(Exception exception)
+    {
+        var errorDetails = string.IsNullOrWhiteSpace(exception.Message)
+            ? "Keine weiteren Fehlerdetails verfügbar."
+            : exception.Message;
+
+        return "Die Systeminformationen konnten nicht vollständig ausgelesen oder bewertet werden. "
+               + "Es wurde kein Gerät angelegt und kein vorhandener Systemcheck überschrieben."
+               + Environment.NewLine
+               + Environment.NewLine
+               + $"Technische Details: {errorDetails}";
     }
 }

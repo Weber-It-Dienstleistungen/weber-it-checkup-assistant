@@ -57,6 +57,20 @@ public class DialogService : IDialogService
         return dialog.ShowDialog() == true;
     }
 
+    public void ShowError(
+        string title,
+        string message)
+    {
+        var dialog = new MessageDialog(
+            title,
+            message)
+        {
+            Owner = Application.Current.MainWindow
+        };
+
+        dialog.ShowDialog();
+    }
+
     public void CloseDialog(bool? dialogResult)
     {
         if (_currentDialog is null)
