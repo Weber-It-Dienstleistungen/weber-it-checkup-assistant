@@ -44,13 +44,15 @@ public class CustomerService : ICustomerService
         _customerRepository.Delete(customerId);
     }
 
-    public void AddDeviceToCustomer(Guid customerId, CustomerDevice device)
+    public bool AddDeviceToCustomer(
+        Guid customerId,
+        CustomerDevice device)
     {
         var customer = _customerRepository.GetById(customerId);
 
         if (customer is null)
         {
-            return;
+            return false;
         }
 
         device.CreatedAt = DateTime.Now;
@@ -60,22 +62,28 @@ public class CustomerService : ICustomerService
         customer.UpdatedAt = DateTime.Now;
 
         _customerRepository.Update(customer);
+
+        return true;
     }
 
-    public void UpdateCustomerDevice(Guid customerId, CustomerDevice device)
+    public bool UpdateCustomerDevice(
+        Guid customerId,
+        CustomerDevice device)
     {
         var customer = _customerRepository.GetById(customerId);
 
         if (customer is null)
         {
-            return;
+            return false;
         }
 
-        var existingDevice = customer.Devices.FirstOrDefault(d => d.Id == device.Id);
+        var existingDevice =
+            customer.Devices.FirstOrDefault(
+                existingDevice => existingDevice.Id == device.Id);
 
         if (existingDevice is null)
         {
-            return;
+            return false;
         }
 
         existingDevice.DisplayName = device.DisplayName;
@@ -85,36 +93,48 @@ public class CustomerService : ICustomerService
         customer.UpdatedAt = DateTime.Now;
 
         _customerRepository.Update(customer);
+
+        return true;
     }
 
-    public void DeleteCustomerDevice(Guid customerId, Guid deviceId)
+    public bool DeleteCustomerDevice(
+        Guid customerId,
+        Guid deviceId)
     {
         var customer = _customerRepository.GetById(customerId);
 
         if (customer is null)
         {
-            return;
+            return false;
         }
 
-        var device = customer.Devices.FirstOrDefault(d => d.Id == deviceId);
+        var device =
+            customer.Devices.FirstOrDefault(
+                existingDevice => existingDevice.Id == deviceId);
 
-        if (device is not null)
+        if (device is null)
         {
-            customer.Devices.Remove(device);
-            customer.UpdatedAt = DateTime.Now;
-
-            _customerRepository.Update(customer);
+            return false;
         }
+
+        customer.Devices.Remove(device);
+        customer.UpdatedAt = DateTime.Now;
+
+        _customerRepository.Update(customer);
+
+        return true;
     }
 
     private string GenerateCustomerNumber()
     {
         var existingCustomerNumbers = _customerRepository
             .GetAll()
-            .Select(c => c.CustomerNumber)
-            .Where(n => n.StartsWith("K-"))
-            .Select(n => n.Replace("K-", string.Empty))
-            .Where(n => int.TryParse(n, out _))
+            .Select(customer => customer.CustomerNumber)
+            .Where(customerNumber => customerNumber.StartsWith("K-"))
+            .Select(customerNumber =>
+                customerNumber.Replace("K-", string.Empty))
+            .Where(customerNumber =>
+                int.TryParse(customerNumber, out _))
             .Select(int.Parse);
 
         var nextNumber = existingCustomerNumbers.Any()

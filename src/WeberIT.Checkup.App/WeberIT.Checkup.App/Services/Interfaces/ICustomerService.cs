@@ -14,9 +14,15 @@ public interface ICustomerService
 
     void DeleteCustomer(Guid customerId);
 
-    void AddDeviceToCustomer(Guid customerId, CustomerDevice device);
+    bool AddDeviceToCustomer(
+        Guid customerId,
+        CustomerDevice device);
 
-    void UpdateCustomerDevice(Guid customerId, CustomerDevice device);
+    bool UpdateCustomerDevice(
+        Guid customerId,
+        CustomerDevice device);
 
-    void DeleteCustomerDevice(Guid customerId, Guid deviceId);
+    bool DeleteCustomerDevice(
+        Guid customerId,
+        Guid deviceId);
 }

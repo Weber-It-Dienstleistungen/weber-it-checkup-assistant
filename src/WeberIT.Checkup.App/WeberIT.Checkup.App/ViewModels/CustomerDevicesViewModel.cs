@@ -181,9 +181,30 @@ public class CustomerDevicesViewModel : BaseViewModel
             CheckupSession = checkupSession
         };
 
-        _customerService.AddDeviceToCustomer(
-            SelectedCustomer.Id,
-            device);
+        try
+        {
+            var wasAdded =
+                _customerService.AddDeviceToCustomer(
+                    SelectedCustomer.Id,
+                    device);
+
+            if (!wasAdded)
+            {
+                ShowPersistenceError(
+                    "Gerät konnte nicht gespeichert werden",
+                    "Der ausgewählte Kunde ist in der Datenbank nicht mehr vorhanden.");
+
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            ShowPersistenceError(
+                "Gerät konnte nicht gespeichert werden",
+                exception.Message);
+
+            return;
+        }
 
         SelectedCustomer.Devices.Add(device);
         SelectedDevice = device;
@@ -261,6 +282,10 @@ public class CustomerDevicesViewModel : BaseViewModel
             return;
         }
 
+        var previousDisplayName = device.DisplayName;
+        var previousCheckupSession = device.CheckupSession;
+        var previousUpdatedAt = device.UpdatedAt;
+
         var scannedComputerName =
             checkupSession.DeviceInformation.Name;
 
@@ -272,9 +297,42 @@ public class CustomerDevicesViewModel : BaseViewModel
         device.CheckupSession = checkupSession;
         device.UpdatedAt = DateTime.Now;
 
-        _customerService.UpdateCustomerDevice(
-            SelectedCustomer.Id,
-            device);
+        try
+        {
+            var wasUpdated =
+                _customerService.UpdateCustomerDevice(
+                    SelectedCustomer.Id,
+                    device);
+
+            if (!wasUpdated)
+            {
+                RestoreDevice(
+                    device,
+                    previousDisplayName,
+                    previousCheckupSession,
+                    previousUpdatedAt);
+
+                ShowPersistenceError(
+                    "Gerät konnte nicht aktualisiert werden",
+                    "Das Gerät oder der zugehörige Kunde ist in der Datenbank nicht mehr vorhanden.");
+
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            RestoreDevice(
+                device,
+                previousDisplayName,
+                previousCheckupSession,
+                previousUpdatedAt);
+
+            ShowPersistenceError(
+                "Gerät konnte nicht aktualisiert werden",
+                exception.Message);
+
+            return;
+        }
 
         SelectedDevice = device;
 
@@ -299,9 +357,30 @@ public class CustomerDevicesViewModel : BaseViewModel
             return;
         }
 
-        _customerService.DeleteCustomerDevice(
-            SelectedCustomer.Id,
-            device.Id);
+        try
+        {
+            var wasDeleted =
+                _customerService.DeleteCustomerDevice(
+                    SelectedCustomer.Id,
+                    device.Id);
+
+            if (!wasDeleted)
+            {
+                ShowPersistenceError(
+                    "Gerät konnte nicht gelöscht werden",
+                    "Das Gerät oder der zugehörige Kunde ist in der Datenbank nicht mehr vorhanden.");
+
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            ShowPersistenceError(
+                "Gerät konnte nicht gelöscht werden",
+                exception.Message);
+
+            return;
+        }
 
         SelectedCustomer.Devices.Remove(device);
         SelectedDevice = null;
@@ -335,6 +414,34 @@ public class CustomerDevicesViewModel : BaseViewModel
         OnPropertyChanged(nameof(Devices));
         OnPropertyChanged(nameof(DeviceCountText));
         OnPropertyChanged(nameof(SelectedDevice));
+    }
+
+    private void ShowPersistenceError(
+        string title,
+        string errorDetails)
+    {
+        var details = string.IsNullOrWhiteSpace(errorDetails)
+            ? "Keine weiteren Fehlerdetails verfügbar."
+            : errorDetails;
+
+        _dialogService.ShowError(
+            title,
+            "Die Änderung konnte nicht dauerhaft in der Datenbank gespeichert werden. "
+            + "Die Geräteliste wurde nicht als erfolgreich aktualisiert."
+            + Environment.NewLine
+            + Environment.NewLine
+            + $"Technische Details: {details}");
+    }
+
+    private static void RestoreDevice(
+        CustomerDevice device,
+        string displayName,
+        CheckupSession checkupSession,
+        DateTime? updatedAt)
+    {
+        device.DisplayName = displayName;
+        device.CheckupSession = checkupSession;
+        device.UpdatedAt = updatedAt;
     }
 
     private static string BuildScanErrorMessage(Exception exception)

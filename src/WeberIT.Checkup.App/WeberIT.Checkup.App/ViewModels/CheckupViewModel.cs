@@ -233,6 +233,10 @@ public class CheckupViewModel : BaseViewModel
             return;
         }
 
+        var previousDisplayName = matchingDevice.DisplayName;
+        var previousCheckupSession = matchingDevice.CheckupSession;
+        var previousUpdatedAt = matchingDevice.UpdatedAt;
+
         var scannedComputerName =
             CurrentCheckup.DeviceInformation.Name;
 
@@ -244,9 +248,38 @@ public class CheckupViewModel : BaseViewModel
         matchingDevice.CheckupSession = CurrentCheckup;
         matchingDevice.UpdatedAt = DateTime.Now;
 
-        _customerService.UpdateCustomerDevice(
-            SelectedCustomer.Id,
-            matchingDevice);
+        try
+        {
+            var wasUpdated =
+                _customerService.UpdateCustomerDevice(
+                    SelectedCustomer.Id,
+                    matchingDevice);
+
+            if (!wasUpdated)
+            {
+                RestoreDevice(
+                    matchingDevice,
+                    previousDisplayName,
+                    previousCheckupSession,
+                    previousUpdatedAt);
+
+                ShowPersistenceError(
+                    "Das Gerät oder der zugehörige Kunde ist in der Datenbank nicht mehr vorhanden.");
+
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            RestoreDevice(
+                matchingDevice,
+                previousDisplayName,
+                previousCheckupSession,
+                previousUpdatedAt);
+
+            ShowPersistenceError(exception.Message);
+            return;
+        }
 
         CompleteSave(true);
     }
@@ -270,9 +303,26 @@ public class CheckupViewModel : BaseViewModel
             CheckupSession = CurrentCheckup
         };
 
-        _customerService.AddDeviceToCustomer(
-            SelectedCustomer.Id,
-            device);
+        try
+        {
+            var wasAdded =
+                _customerService.AddDeviceToCustomer(
+                    SelectedCustomer.Id,
+                    device);
+
+            if (!wasAdded)
+            {
+                ShowPersistenceError(
+                    "Der ausgewählte Kunde ist in der Datenbank nicht mehr vorhanden.");
+
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            ShowPersistenceError(exception.Message);
+            return;
+        }
 
         SelectedCustomer.Devices.Add(device);
 
@@ -294,6 +344,32 @@ public class CheckupViewModel : BaseViewModel
         OnPropertyChanged(nameof(PersistenceStatusText));
 
         _saveCheckupCommand.RaiseCanExecuteChanged();
+    }
+
+    private void ShowPersistenceError(string errorDetails)
+    {
+        var details = string.IsNullOrWhiteSpace(errorDetails)
+            ? "Keine weiteren Fehlerdetails verfügbar."
+            : errorDetails;
+
+        _dialogService.ShowError(
+            "Speichern fehlgeschlagen",
+            "Der Systemcheck konnte nicht dauerhaft gespeichert werden. "
+            + "Die angezeigten Scandaten bleiben erhalten und können erneut gespeichert werden."
+            + Environment.NewLine
+            + Environment.NewLine
+            + $"Technische Details: {details}");
+    }
+
+    private static void RestoreDevice(
+        CustomerDevice device,
+        string displayName,
+        CheckupSession checkupSession,
+        DateTime? updatedAt)
+    {
+        device.DisplayName = displayName;
+        device.CheckupSession = checkupSession;
+        device.UpdatedAt = updatedAt;
     }
 
     private static string BuildScanErrorMessage(Exception exception)
