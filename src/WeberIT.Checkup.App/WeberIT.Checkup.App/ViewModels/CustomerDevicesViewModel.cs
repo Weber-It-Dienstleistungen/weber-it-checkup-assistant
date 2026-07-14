@@ -9,6 +9,7 @@ public class CustomerDevicesViewModel : BaseViewModel
     private readonly ICustomerService _customerService;
     private readonly ICheckupScanner _checkupScanner;
     private readonly ICheckupAssessmentService _checkupAssessmentService;
+    private readonly IDeviceIdentityService _deviceIdentityService;
     private readonly IDialogService _dialogService;
 
     private Customer? _selectedCustomer;
@@ -18,11 +19,13 @@ public class CustomerDevicesViewModel : BaseViewModel
         ICustomerService customerService,
         ICheckupScanner checkupScanner,
         ICheckupAssessmentService checkupAssessmentService,
+        IDeviceIdentityService deviceIdentityService,
         IDialogService dialogService)
     {
         _customerService = customerService;
         _checkupScanner = checkupScanner;
         _checkupAssessmentService = checkupAssessmentService;
+        _deviceIdentityService = deviceIdentityService;
         _dialogService = dialogService;
 
         AddDeviceCommand = new RelayCommand(
@@ -113,6 +116,69 @@ public class CustomerDevicesViewModel : BaseViewModel
 
         var checkupSession = CreateCheckupSession();
 
+        var matchingDevice =
+            _deviceIdentityService.FindMatchingDevice(
+                SelectedCustomer.Devices,
+                checkupSession.DeviceInformation);
+
+        if (matchingDevice is not null)
+        {
+            UpdateMatchingDevice(
+                matchingDevice,
+                checkupSession);
+
+            return;
+        }
+
+        AddNewDevice(checkupSession);
+    }
+
+    private void UpdateMatchingDevice(
+        CustomerDevice matchingDevice,
+        CheckupSession checkupSession)
+    {
+        if (SelectedCustomer is null)
+        {
+            return;
+        }
+
+        var confirmed = _dialogService.Confirm(
+            "Gerät bereits vorhanden",
+            $"Das Gerät \"{matchingDevice.DisplayName}\" ist diesem Kunden bereits zugeordnet. "
+            + "Soll der vorhandene Systemcheck durch den neuen Scan ersetzt werden?");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        var scannedComputerName =
+            checkupSession.DeviceInformation.Name;
+
+        if (!string.IsNullOrWhiteSpace(scannedComputerName))
+        {
+            matchingDevice.DisplayName = scannedComputerName;
+        }
+
+        matchingDevice.CheckupSession = checkupSession;
+        matchingDevice.UpdatedAt = DateTime.Now;
+
+        _customerService.UpdateCustomerDevice(
+            SelectedCustomer.Id,
+            matchingDevice);
+
+        SelectedDevice = matchingDevice;
+
+        RefreshDeviceDisplay();
+    }
+
+    private void AddNewDevice(CheckupSession checkupSession)
+    {
+        if (SelectedCustomer is null)
+        {
+            return;
+        }
+
         var displayName =
             !string.IsNullOrWhiteSpace(
                 checkupSession.DeviceInformation.Name)
@@ -132,8 +198,7 @@ public class CustomerDevicesViewModel : BaseViewModel
         SelectedCustomer.Devices.Add(device);
         SelectedDevice = device;
 
-        OnPropertyChanged(nameof(Devices));
-        OnPropertyChanged(nameof(DeviceCountText));
+        RefreshDeviceDisplay();
     }
 
     private void RescanDevice()
@@ -159,8 +224,7 @@ public class CustomerDevicesViewModel : BaseViewModel
             SelectedCustomer.Id,
             SelectedDevice);
 
-        OnPropertyChanged(nameof(Devices));
-        OnPropertyChanged(nameof(SelectedDevice));
+        RefreshDeviceDisplay();
     }
 
     private void DeleteDevice()
@@ -188,8 +252,7 @@ public class CustomerDevicesViewModel : BaseViewModel
         SelectedCustomer.Devices.Remove(device);
         SelectedDevice = null;
 
-        OnPropertyChanged(nameof(Devices));
-        OnPropertyChanged(nameof(DeviceCountText));
+        RefreshDeviceDisplay();
     }
 
     private CheckupSession CreateCheckupSession()
@@ -200,5 +263,12 @@ public class CustomerDevicesViewModel : BaseViewModel
             _checkupAssessmentService.Assess(checkupSession);
 
         return checkupSession;
+    }
+
+    private void RefreshDeviceDisplay()
+    {
+        OnPropertyChanged(nameof(Devices));
+        OnPropertyChanged(nameof(DeviceCountText));
+        OnPropertyChanged(nameof(SelectedDevice));
     }
 }

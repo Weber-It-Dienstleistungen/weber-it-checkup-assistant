@@ -13,6 +13,7 @@ public class DeviceInformationScanner : IDeviceInformationScanner
         "Default string",
         "System Product Name",
         "System Manufacturer",
+        "System Serial Number",
         "Not Applicable",
         "N/A",
         "Unknown",
@@ -34,7 +35,8 @@ public class DeviceInformationScanner : IDeviceInformationScanner
     {
         var deviceInformation = new DeviceInformation
         {
-            Name = _windowsInformationProvider.GetComputerName(),
+            Name = NormalizeHardwareValue(
+                _windowsInformationProvider.GetComputerName()),
 
             Manufacturer = NormalizeHardwareValue(
                 _hardwareInformationProvider.GetManufacturer()),
@@ -42,9 +44,14 @@ public class DeviceInformationScanner : IDeviceInformationScanner
             Model = NormalizeHardwareValue(
                 _hardwareInformationProvider.GetModel()),
 
-            SerialNumber = _hardwareInformationProvider.GetSerialNumber(),
-            DeviceType = _hardwareInformationProvider.GetDeviceType(),
-            BiosVersion = _hardwareInformationProvider.GetBiosVersion()
+            SerialNumber = NormalizeHardwareValue(
+                _hardwareInformationProvider.GetSerialNumber()),
+
+            DeviceType = NormalizeHardwareValue(
+                _hardwareInformationProvider.GetDeviceType()),
+
+            BiosVersion = NormalizeHardwareValue(
+                _hardwareInformationProvider.GetBiosVersion())
         };
 
         return new ScanResult<DeviceInformation>

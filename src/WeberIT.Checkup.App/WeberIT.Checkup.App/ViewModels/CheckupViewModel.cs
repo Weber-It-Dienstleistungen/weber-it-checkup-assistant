@@ -10,21 +10,28 @@ public class CheckupViewModel : BaseViewModel
     private readonly ICheckupScanner _checkupScanner;
     private readonly ICheckupAssessmentService _checkupAssessmentService;
     private readonly ICustomerService _customerService;
+    private readonly IDeviceIdentityService _deviceIdentityService;
+    private readonly IDialogService _dialogService;
 
     private readonly RelayCommand _saveCheckupCommand;
 
     private Customer? _selectedCustomer;
     private CheckupSession _currentCheckup = new();
     private Guid? _savedCustomerId;
+    private bool _lastSaveUpdatedExistingDevice;
 
     public CheckupViewModel(
         ICheckupScanner checkupScanner,
         ICheckupAssessmentService checkupAssessmentService,
-        ICustomerService customerService)
+        ICustomerService customerService,
+        IDeviceIdentityService deviceIdentityService,
+        IDialogService dialogService)
     {
         _checkupScanner = checkupScanner;
         _checkupAssessmentService = checkupAssessmentService;
         _customerService = customerService;
+        _deviceIdentityService = deviceIdentityService;
+        _dialogService = dialogService;
 
         ReadSystemCommand =
             new RelayCommand(_ => ReadSystem());
@@ -148,7 +155,9 @@ public class CheckupViewModel : BaseViewModel
 
             if (IsCurrentCheckupSaved)
             {
-                return $"Dauerhaft bei {SelectedCustomer.DisplayName} gespeichert.";
+                return _lastSaveUpdatedExistingDevice
+                    ? $"Das vorhandene Gerät bei {SelectedCustomer.DisplayName} wurde aktualisiert."
+                    : $"Dauerhaft bei {SelectedCustomer.DisplayName} gespeichert.";
             }
 
             return $"Der Scan wurde noch nicht bei {SelectedCustomer.DisplayName} gespeichert.";
@@ -172,12 +181,70 @@ public class CheckupViewModel : BaseViewModel
             _checkupAssessmentService.Assess(checkupSession);
 
         _savedCustomerId = null;
+        _lastSaveUpdatedExistingDevice = false;
+
         CurrentCheckup = checkupSession;
     }
 
     private void SaveCheckup()
     {
         if (!CanSaveCheckup || SelectedCustomer is null)
+        {
+            return;
+        }
+
+        var matchingDevice =
+            _deviceIdentityService.FindMatchingDevice(
+                SelectedCustomer.Devices,
+                CurrentCheckup.DeviceInformation);
+
+        if (matchingDevice is not null)
+        {
+            UpdateExistingDevice(matchingDevice);
+            return;
+        }
+
+        AddNewDevice();
+    }
+
+    private void UpdateExistingDevice(CustomerDevice matchingDevice)
+    {
+        if (SelectedCustomer is null)
+        {
+            return;
+        }
+
+        var confirmed = _dialogService.Confirm(
+            "Gerät bereits vorhanden",
+            $"Das Gerät \"{matchingDevice.DisplayName}\" ist diesem Kunden bereits zugeordnet. "
+            + "Soll der vorhandene Systemcheck durch den neuen Scan ersetzt werden?");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        var scannedComputerName =
+            CurrentCheckup.DeviceInformation.Name;
+
+        if (!string.IsNullOrWhiteSpace(scannedComputerName))
+        {
+            matchingDevice.DisplayName = scannedComputerName;
+        }
+
+        matchingDevice.CheckupSession = CurrentCheckup;
+        matchingDevice.UpdatedAt = DateTime.Now;
+
+        _customerService.UpdateCustomerDevice(
+            SelectedCustomer.Id,
+            matchingDevice);
+
+        CompleteSave(true);
+    }
+
+    private void AddNewDevice()
+    {
+        if (SelectedCustomer is null)
         {
             return;
         }
@@ -200,7 +267,18 @@ public class CheckupViewModel : BaseViewModel
 
         SelectedCustomer.Devices.Add(device);
 
+        CompleteSave(false);
+    }
+
+    private void CompleteSave(bool updatedExistingDevice)
+    {
+        if (SelectedCustomer is null)
+        {
+            return;
+        }
+
         _savedCustomerId = SelectedCustomer.Id;
+        _lastSaveUpdatedExistingDevice = updatedExistingDevice;
 
         OnPropertyChanged(nameof(IsCurrentCheckupSaved));
         OnPropertyChanged(nameof(CanSaveCheckup));
