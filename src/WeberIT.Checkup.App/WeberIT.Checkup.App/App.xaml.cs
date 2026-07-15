@@ -10,6 +10,7 @@ using WeberIT.Checkup.App.Services.Hardware;
 using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.Services.Maintenance;
 using WeberIT.Checkup.App.Services.Scanners;
+using WeberIT.Checkup.App.Services.Security;
 using WeberIT.Checkup.App.Services.Storage;
 using WeberIT.Checkup.App.Services.Windows;
 using WeberIT.Checkup.App.ViewModels;
@@ -42,9 +43,17 @@ public partial class App : Application
                 services.AddSingleton<MaintenanceViewModel>();
                 services.AddSingleton<MaintenanceView>();
 
-                services.AddSingleton<INavigationService, NavigationService>();
-                services.AddSingleton<IDialogService, DialogService>();
-                services.AddSingleton<IDeviceIdentityService, DeviceIdentityService>();
+                services.AddSingleton<
+                    INavigationService,
+                    NavigationService>();
+
+                services.AddSingleton<
+                    IDialogService,
+                    DialogService>();
+
+                services.AddSingleton<
+                    IDeviceIdentityService,
+                    DeviceIdentityService>();
 
                 services.AddSingleton<CustomerDevicesViewModel>();
                 services.AddSingleton<CustomersViewModel>();
@@ -85,6 +94,10 @@ public partial class App : Application
                     StorageInformationProvider>();
 
                 services.AddSingleton<
+                    ISecurityInformationProvider,
+                    SecurityInformationProvider>();
+
+                services.AddSingleton<
                     IDeviceInformationScanner,
                     DeviceInformationScanner>();
 
@@ -99,6 +112,10 @@ public partial class App : Application
                 services.AddSingleton<
                     IStorageInformationScanner,
                     StorageInformationScanner>();
+
+                services.AddSingleton<
+                    ISecurityInformationScanner,
+                    SecurityInformationScanner>();
 
                 services.AddSingleton<
                     ICheckupScanner,
@@ -123,11 +140,36 @@ public partial class App : Application
                 services.AddSingleton<
                     ICheckupAssessmentRule,
                     OperatingSystemAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    AntivirusAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    FirewallAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    UserAccountControlAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    SecurityCenterAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    DriveEncryptionAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    SecureBootAssessmentRule>();
             })
             .Build();
     }
 
-    protected override async void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(
+        StartupEventArgs e)
     {
         var databasePaths =
             _host.Services.GetRequiredService<DatabasePaths>();
@@ -174,7 +216,8 @@ public partial class App : Application
         base.OnStartup(e);
     }
 
-    protected override async void OnExit(ExitEventArgs e)
+    protected override async void OnExit(
+        ExitEventArgs e)
     {
         await _host.StopAsync();
         _host.Dispose();
