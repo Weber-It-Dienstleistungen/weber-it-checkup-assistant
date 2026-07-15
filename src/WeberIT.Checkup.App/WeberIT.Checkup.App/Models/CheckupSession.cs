@@ -19,6 +19,9 @@ public class CheckupSession
     public SecurityInformation SecurityInformation { get; set; } =
         new();
 
+    public WindowsUpdateInformation WindowsUpdateInformation { get; set; } =
+        new();
+
     public CheckupAssessment Assessment { get; set; } =
         new();
 }
