@@ -15,6 +15,10 @@ public class WindowsUpdateAssessmentRule :
         var findings =
             new List<CheckupFinding>();
 
+        AddSearchScopeFinding(
+            updateInformation,
+            findings);
+
         AddServiceFinding(
             updateInformation,
             findings);
@@ -28,6 +32,96 @@ public class WindowsUpdateAssessmentRule :
             findings);
 
         return findings;
+    }
+
+    private static void AddSearchScopeFinding(
+        WindowsUpdateInformation updateInformation,
+        List<CheckupFinding> findings)
+    {
+        if (updateInformation.IsUpdateSearchPerformed
+            && updateInformation.IsUpdateSearchSuccessful)
+        {
+            findings.Add(
+                new CheckupFinding
+                {
+                    Title =
+                        "Windows-Updatesuche durchgeführt",
+
+                    Description =
+                        updateInformation.UpdateSearchDate.HasValue
+                            ? "Eine Windows-Updatesuche wurde "
+                              + "erfolgreich durchgeführt. "
+                              + "Suchzeitpunkt: "
+                              + updateInformation
+                                  .UpdateSearchDate
+                                  .Value
+                                  .ToString(
+                                      "dd.MM.yyyy HH:mm")
+                              + " Uhr."
+                            : "Eine Windows-Updatesuche wurde "
+                              + "erfolgreich durchgeführt.",
+
+                    Category =
+                        FindingCategory.OperatingSystem,
+
+                    Severity =
+                        FindingSeverity.Information
+                });
+
+            return;
+        }
+
+        if (updateInformation.IsUpdateSearchPerformed)
+        {
+            findings.Add(
+                new CheckupFinding
+                {
+                    Title =
+                        "Windows-Update-Status nicht ermittelbar",
+
+                    Description =
+                        "Die angeforderte Windows-Updatesuche "
+                        + "konnte nicht erfolgreich abgeschlossen "
+                        + "werden. Deshalb ist keine zuverlässige "
+                        + "Aussage über aktuell ausstehende Updates "
+                        + "möglich. "
+                        + updateInformation.UpdateSearchDetails,
+
+                    Category =
+                        FindingCategory.OperatingSystem,
+
+                    Severity =
+                        FindingSeverity.Information
+                });
+
+            return;
+        }
+
+        findings.Add(
+            new CheckupFinding
+            {
+                Title =
+                    "Lokaler Updatebestand möglicherweise nicht aktuell",
+
+                Description =
+                    "Der Checkup hat den lokal gespeicherten "
+                    + "Windows-Updateverlauf, den Dienstzustand "
+                    + "und vorhandene Neustartindikatoren "
+                    + "ausgewertet. Es wurde bewusst keine "
+                    + "Online-Updatesuche ausgelöst. Deshalb "
+                    + "können auf den Microsoft- beziehungsweise "
+                    + "konfigurierten Updateservern bereits "
+                    + "neuere Updates verfügbar sein. Für eine "
+                    + "verbindliche Prüfung sollte Windows Update "
+                    + "bewusst geöffnet und dort nach Updates "
+                    + "gesucht werden.",
+
+                Category =
+                    FindingCategory.OperatingSystem,
+
+                Severity =
+                    FindingSeverity.Recommendation
+            });
     }
 
     private static void AddServiceFinding(
