@@ -103,6 +103,10 @@ public partial class App : Application
                     WindowsUpdateInformationProvider>();
 
                 services.AddSingleton<
+                    IProgramUpdateInformationProvider,
+                    ProgramUpdateInformationProvider>();
+
+                services.AddSingleton<
                     IDeviceInformationScanner,
                     DeviceInformationScanner>();
 
@@ -125,6 +129,10 @@ public partial class App : Application
                 services.AddSingleton<
                     IWindowsUpdateInformationScanner,
                     WindowsUpdateInformationScanner>();
+
+                services.AddSingleton<
+                    IProgramUpdateInformationScanner,
+                    ProgramUpdateInformationScanner>();
 
                 services.AddSingleton<
                     ICheckupScanner,
@@ -177,6 +185,10 @@ public partial class App : Application
                 services.AddSingleton<
                     ICheckupAssessmentRule,
                     WindowsUpdateAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    ProgramUpdateAssessmentRule>();
             })
             .Build();
     }
