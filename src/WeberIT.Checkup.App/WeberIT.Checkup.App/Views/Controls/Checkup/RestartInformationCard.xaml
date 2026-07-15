@@ -1,0 +1,442 @@
+﻿<UserControl
+    x:Class="WeberIT.Checkup.App.Views.Controls.Checkup.RestartInformationCard"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="clr-namespace:WeberIT.Checkup.App.Models">
+
+    <Border Style="{StaticResource PanelCardStyle}">
+
+        <StackPanel>
+
+            <Grid>
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+
+                    <TextBlock
+                        Text="Windows-Neustartstatus"
+                        Style="{StaticResource SectionTitleTextStyle}" />
+
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Text="Zentrale Auswertung bekannter lokaler Windows-Neustartindikatoren."
+                        TextWrapping="Wrap" />
+
+                </StackPanel>
+
+                <Border
+                    Grid.Column="1"
+                    Margin="20,0,0,0"
+                    Padding="12,7"
+                    VerticalAlignment="Top"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderThickness="1"
+                    CornerRadius="7">
+
+                    <Border.Style>
+
+                        <Style TargetType="Border">
+
+                            <Setter
+                                Property="BorderBrush"
+                                Value="{StaticResource BorderBrush}" />
+
+                            <Style.Triggers>
+
+                                <DataTrigger
+                                    Binding="{Binding IsRestartRequired}"
+                                    Value="True">
+
+                                    <Setter
+                                        Property="BorderBrush"
+                                        Value="{StaticResource WarningBrush}" />
+
+                                </DataTrigger>
+
+                                <MultiDataTrigger>
+
+                                    <MultiDataTrigger.Conditions>
+
+                                        <Condition
+                                            Binding="{Binding IsAnalysisConclusive}"
+                                            Value="True" />
+
+                                        <Condition
+                                            Binding="{Binding IsRestartRequired}"
+                                            Value="False" />
+
+                                    </MultiDataTrigger.Conditions>
+
+                                    <Setter
+                                        Property="BorderBrush"
+                                        Value="{StaticResource SuccessBrush}" />
+
+                                </MultiDataTrigger>
+
+                                <DataTrigger
+                                    Binding="{Binding HasAdvisoryRestartHint}"
+                                    Value="True">
+
+                                    <Setter
+                                        Property="BorderBrush"
+                                        Value="{StaticResource InformationBrush}" />
+
+                                </DataTrigger>
+
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </Border.Style>
+
+                    <TextBlock
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextPrimaryBrush}">
+
+                        <TextBlock.Style>
+
+                            <Style TargetType="TextBlock">
+
+                                <Setter
+                                    Property="Text"
+                                    Value="Nicht vollständig auswertbar" />
+
+                                <Style.Triggers>
+
+                                    <DataTrigger
+                                        Binding="{Binding IsAnalysisPerformed}"
+                                        Value="False">
+
+                                        <Setter
+                                            Property="Text"
+                                            Value="Noch nicht analysiert" />
+
+                                    </DataTrigger>
+
+                                    <DataTrigger
+                                        Binding="{Binding IsRestartRequired}"
+                                        Value="True">
+
+                                        <Setter
+                                            Property="Text"
+                                            Value="Neustart erforderlich" />
+
+                                    </DataTrigger>
+
+                                    <MultiDataTrigger>
+
+                                        <MultiDataTrigger.Conditions>
+
+                                            <Condition
+                                                Binding="{Binding IsAnalysisConclusive}"
+                                                Value="True" />
+
+                                            <Condition
+                                                Binding="{Binding IsRestartRequired}"
+                                                Value="False" />
+
+                                        </MultiDataTrigger.Conditions>
+
+                                        <Setter
+                                            Property="Text"
+                                            Value="Kein Neustart erkannt" />
+
+                                    </MultiDataTrigger>
+
+                                    <DataTrigger
+                                        Binding="{Binding HasAdvisoryRestartHint}"
+                                        Value="True">
+
+                                        <Setter
+                                            Property="Text"
+                                            Value="Möglicher Neustartbedarf" />
+
+                                    </DataTrigger>
+
+                                </Style.Triggers>
+
+                            </Style>
+
+                        </TextBlock.Style>
+
+                    </TextBlock>
+
+                </Border>
+
+            </Grid>
+
+            <Grid Margin="0,20,0,0">
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="160" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    Grid.Column="0"
+                    FontWeight="SemiBold"
+                    Text="Analysezeitpunkt:" />
+
+                <TextBlock
+                    Grid.Column="1"
+                    Text="{Binding AnalysisDate, StringFormat={}{0:dd.MM.yyyy HH:mm}}" />
+
+            </Grid>
+
+            <Border
+                Margin="0,18,0,0"
+                Padding="12"
+                Background="{StaticResource SurfaceSecondaryBrush}"
+                BorderBrush="{StaticResource InformationBrush}"
+                BorderThickness="1"
+                CornerRadius="7">
+
+                <Border.Style>
+
+                    <Style TargetType="Border">
+
+                        <Setter
+                            Property="Visibility"
+                            Value="Collapsed" />
+
+                        <Style.Triggers>
+
+                            <DataTrigger
+                                Binding="{Binding HasAdvisoryRestartHint}"
+                                Value="True">
+
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Visible" />
+
+                            </DataTrigger>
+
+                        </Style.Triggers>
+
+                    </Style>
+
+                </Border.Style>
+
+                <TextBlock
+                    Foreground="{StaticResource TextSecondaryBrush}"
+                    Text="Windows hat Dateioperationen für einen kommenden Systemstart vorgemerkt. Dieser Hinweis allein beweist keinen zwingend erforderlichen Neustart."
+                    TextWrapping="Wrap" />
+
+            </Border>
+
+            <Border
+                Margin="0,18,0,0"
+                Padding="12"
+                Background="{StaticResource SurfaceSecondaryBrush}"
+                BorderBrush="{StaticResource WarningBrush}"
+                BorderThickness="1"
+                CornerRadius="7">
+
+                <Border.Style>
+
+                    <Style TargetType="Border">
+
+                        <Setter
+                            Property="Visibility"
+                            Value="Collapsed" />
+
+                        <Style.Triggers>
+
+                            <DataTrigger
+                                Binding="{Binding HasFailedSources}"
+                                Value="True">
+
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Visible" />
+
+                            </DataTrigger>
+
+                        </Style.Triggers>
+
+                    </Style>
+
+                </Border.Style>
+
+                <TextBlock
+                    Foreground="{StaticResource TextSecondaryBrush}"
+                    Text="Mindestens eine Neustartquelle konnte nicht zuverlässig ausgewertet werden. Deshalb ist die Gesamtaussage möglicherweise unvollständig."
+                    TextWrapping="Wrap" />
+
+            </Border>
+
+            <TextBlock
+                Margin="0,22,0,10"
+                FontSize="16"
+                FontWeight="SemiBold"
+                Foreground="{StaticResource TextPrimaryBrush}"
+                Text="Geprüfte Quellen" />
+
+            <ItemsControl ItemsSource="{Binding Sources}">
+
+                <ItemsControl.ItemTemplate>
+
+                    <DataTemplate>
+
+                        <Border
+                            Margin="0,0,0,10"
+                            Padding="14"
+                            Background="{StaticResource BackgroundBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="220" />
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock
+                                    Grid.Column="0"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Text="{Binding DisplayName}"
+                                    TextWrapping="Wrap" />
+
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Margin="20,0,0,0"
+                                    FontSize="12"
+                                    FontWeight="SemiBold">
+
+                                    <TextBlock.Style>
+
+                                        <Style TargetType="TextBlock">
+
+                                            <Setter
+                                                Property="Text"
+                                                Value="Nicht auswertbar" />
+
+                                            <Setter
+                                                Property="Foreground"
+                                                Value="{StaticResource TextMutedBrush}" />
+
+                                            <Style.Triggers>
+
+                                                <MultiDataTrigger>
+
+                                                    <MultiDataTrigger.Conditions>
+
+                                                        <Condition
+                                                            Binding="{Binding IsCheckSuccessful}"
+                                                            Value="True" />
+
+                                                        <Condition
+                                                            Binding="{Binding IsRestartRequired}"
+                                                            Value="False" />
+
+                                                    </MultiDataTrigger.Conditions>
+
+                                                    <Setter
+                                                        Property="Text"
+                                                        Value="Kein Bedarf erkannt" />
+
+                                                    <Setter
+                                                        Property="Foreground"
+                                                        Value="{StaticResource SuccessBrush}" />
+
+                                                </MultiDataTrigger>
+
+                                                <MultiDataTrigger>
+
+                                                    <MultiDataTrigger.Conditions>
+
+                                                        <Condition
+                                                            Binding="{Binding IsCheckSuccessful}"
+                                                            Value="True" />
+
+                                                        <Condition
+                                                            Binding="{Binding IsRestartRequired}"
+                                                            Value="True" />
+
+                                                    </MultiDataTrigger.Conditions>
+
+                                                    <Setter
+                                                        Property="Text"
+                                                        Value="Neustart erforderlich" />
+
+                                                    <Setter
+                                                        Property="Foreground"
+                                                        Value="{StaticResource WarningBrush}" />
+
+                                                </MultiDataTrigger>
+
+                                                <MultiDataTrigger>
+
+                                                    <MultiDataTrigger.Conditions>
+
+                                                        <Condition
+                                                            Binding="{Binding SourceType}"
+                                                            Value="{x:Static models:RestartSourceType.PendingFileRenameOperations}" />
+
+                                                        <Condition
+                                                            Binding="{Binding IsCheckSuccessful}"
+                                                            Value="True" />
+
+                                                        <Condition
+                                                            Binding="{Binding IsRestartRequired}"
+                                                            Value="True" />
+
+                                                    </MultiDataTrigger.Conditions>
+
+                                                    <Setter
+                                                        Property="Text"
+                                                        Value="Hinweis erkannt" />
+
+                                                    <Setter
+                                                        Property="Foreground"
+                                                        Value="{StaticResource InformationBrush}" />
+
+                                                </MultiDataTrigger>
+
+                                            </Style.Triggers>
+
+                                        </Style>
+
+                                    </TextBlock.Style>
+
+                                </TextBlock>
+
+                                <TextBlock
+                                    Grid.Column="2"
+                                    Margin="20,0,0,0"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Text="{Binding Details}"
+                                    TextWrapping="Wrap" />
+
+                            </Grid>
+
+                        </Border>
+
+                    </DataTemplate>
+
+                </ItemsControl.ItemTemplate>
+
+            </ItemsControl>
+
+            <TextBlock
+                Margin="0,8,0,0"
+                FontSize="11"
+                Foreground="{StaticResource TextMutedBrush}"
+                Text="Ausgewertet werden bekannte lokale Windows-Indikatoren. Ein fehlender Indikator ist kein allgemeingültiger Beweis, dass unter allen Umständen kein Neustart erforderlich ist."
+                TextWrapping="Wrap" />
+
+        </StackPanel>
+
+    </Border>
+
+</UserControl>

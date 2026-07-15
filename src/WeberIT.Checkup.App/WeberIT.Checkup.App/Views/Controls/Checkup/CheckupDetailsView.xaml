@@ -1,12 +1,15 @@
-﻿<UserControl x:Class="WeberIT.Checkup.App.Views.Controls.Checkup.CheckupDetailsView"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:checkup="clr-namespace:WeberIT.Checkup.App.Views.Controls.Checkup"
-             xmlns:converters="clr-namespace:WeberIT.Checkup.App.Infrastructure.Converters">
+﻿<UserControl
+    x:Class="WeberIT.Checkup.App.Views.Controls.Checkup.CheckupDetailsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:checkup="clr-namespace:WeberIT.Checkup.App.Views.Controls.Checkup"
+    xmlns:converters="clr-namespace:WeberIT.Checkup.App.Infrastructure.Converters">
 
     <UserControl.Resources>
+
         <converters:FindingSeverityToSymbolConverter
             x:Key="FindingSeverityToSymbolConverter" />
+
     </UserControl.Resources>
 
     <StackPanel>
@@ -524,6 +527,10 @@
             </StackPanel>
 
         </Grid>
+
+        <checkup:RestartInformationCard
+            Margin="0,24,0,0"
+            DataContext="{Binding RestartInformation}" />
 
     </StackPanel>
 
