@@ -25,6 +25,9 @@ public class CheckupSession
     public ProgramUpdateInformation ProgramUpdateInformation { get; set; } =
         new();
 
+    public RestartInformation RestartInformation { get; set; } =
+        new();
+
     public CheckupAssessment Assessment { get; set; } =
         new();
 }

@@ -26,6 +26,9 @@ public class CheckupScanner : ICheckupScanner
     private readonly IProgramUpdateInformationScanner
         _programUpdateInformationScanner;
 
+    private readonly IRestartInformationScanner
+        _restartInformationScanner;
+
     public CheckupScanner(
         IDeviceInformationScanner deviceInformationScanner,
         IHardwareInformationScanner hardwareInformationScanner,
@@ -33,7 +36,8 @@ public class CheckupScanner : ICheckupScanner
         IStorageInformationScanner storageInformationScanner,
         ISecurityInformationScanner securityInformationScanner,
         IWindowsUpdateInformationScanner windowsUpdateInformationScanner,
-        IProgramUpdateInformationScanner programUpdateInformationScanner)
+        IProgramUpdateInformationScanner programUpdateInformationScanner,
+        IRestartInformationScanner restartInformationScanner)
     {
         _deviceInformationScanner =
             deviceInformationScanner;
@@ -55,6 +59,9 @@ public class CheckupScanner : ICheckupScanner
 
         _programUpdateInformationScanner =
             programUpdateInformationScanner;
+
+        _restartInformationScanner =
+            restartInformationScanner;
     }
 
     public CheckupSession Scan()
@@ -79,6 +86,9 @@ public class CheckupScanner : ICheckupScanner
 
         var programUpdateInformationResult =
             _programUpdateInformationScanner.Scan();
+
+        var restartInformationResult =
+            _restartInformationScanner.Scan();
 
         return new CheckupSession
         {
@@ -110,7 +120,11 @@ public class CheckupScanner : ICheckupScanner
 
             ProgramUpdateInformation =
                 programUpdateInformationResult.Data
-                ?? new ProgramUpdateInformation()
+                ?? new ProgramUpdateInformation(),
+
+            RestartInformation =
+                restartInformationResult.Data
+                ?? new RestartInformation()
         };
     }
 }

@@ -107,6 +107,10 @@ public partial class App : Application
                     ProgramUpdateInformationProvider>();
 
                 services.AddSingleton<
+                    IRestartInformationProvider,
+                    RestartInformationProvider>();
+
+                services.AddSingleton<
                     IDeviceInformationScanner,
                     DeviceInformationScanner>();
 
@@ -133,6 +137,10 @@ public partial class App : Application
                 services.AddSingleton<
                     IProgramUpdateInformationScanner,
                     ProgramUpdateInformationScanner>();
+
+                services.AddSingleton<
+                    IRestartInformationScanner,
+                    RestartInformationScanner>();
 
                 services.AddSingleton<
                     ICheckupScanner,
