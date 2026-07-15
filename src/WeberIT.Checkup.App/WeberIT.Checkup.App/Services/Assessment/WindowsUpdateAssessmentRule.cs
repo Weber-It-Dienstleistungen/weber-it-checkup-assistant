@@ -23,10 +23,6 @@ public class WindowsUpdateAssessmentRule :
             updateInformation,
             findings);
 
-        AddRestartFinding(
-            updateInformation,
-            findings);
-
         AddHistoryFinding(
             updateInformation,
             findings);
@@ -224,86 +220,6 @@ public class WindowsUpdateAssessmentRule :
                     });
                 break;
         }
-    }
-
-    private static void AddRestartFinding(
-        WindowsUpdateInformation updateInformation,
-        List<CheckupFinding> findings)
-    {
-        if (updateInformation.IsRestartRequired == true)
-        {
-            var reasons =
-                updateInformation.RestartReasons.Count > 0
-                    ? string.Join(
-                        ", ",
-                        updateInformation.RestartReasons)
-                    : "Windows-Komponenten";
-
-            findings.Add(
-                new CheckupFinding
-                {
-                    Title =
-                        "Windows-Neustart erforderlich",
-
-                    Description =
-                        "Windows meldet einen ausstehenden "
-                        + "Neustart. Vor weiteren Wartungs- "
-                        + "oder Reparaturmaßnahmen sollte "
-                        + "der Computer kontrolliert neu "
-                        + "gestartet werden. Technische "
-                        + $"Quelle: {reasons}.",
-
-                    Category =
-                        FindingCategory.OperatingSystem,
-
-                    Severity =
-                        FindingSeverity.Warning
-                });
-
-            return;
-        }
-
-        if (updateInformation.IsRestartRequired == false)
-        {
-            findings.Add(
-                new CheckupFinding
-                {
-                    Title =
-                        "Kein ausstehender Windows-Neustart erkannt",
-
-                    Description =
-                        "Die geprüften lokalen Windows- "
-                        + "und Komponentenwartungsindikatoren "
-                        + "melden derzeit keinen erforderlichen "
-                        + "Neustart.",
-
-                    Category =
-                        FindingCategory.OperatingSystem,
-
-                    Severity =
-                        FindingSeverity.Information
-                });
-
-            return;
-        }
-
-        findings.Add(
-            new CheckupFinding
-            {
-                Title =
-                    "Windows-Neustartbedarf nicht auswertbar",
-
-                Description =
-                    "Die lokalen Windows-Indikatoren für "
-                    + "einen erforderlichen Neustart konnten "
-                    + "nicht zuverlässig ausgewertet werden.",
-
-                Category =
-                    FindingCategory.OperatingSystem,
-
-                Severity =
-                    FindingSeverity.Information
-            });
     }
 
     private static void AddHistoryFinding(

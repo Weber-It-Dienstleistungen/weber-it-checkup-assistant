@@ -175,11 +175,11 @@ public class RestartInformationProvider :
                 Details =
                     restartRequired
                         ? "Windows hat Dateioperationen "
-                          + "für den nächsten Systemstart "
-                          + "vorgemerkt. Das kann auf einen "
-                          + "noch ausstehenden Neustart "
-                          + "hinweisen."
-                        : "Es wurden keine für den nächsten "
+                          + "für einen kommenden Systemstart "
+                          + "vorgemerkt. Dieser Hinweis allein "
+                          + "beweist keinen zwingend "
+                          + "erforderlichen Neustart."
+                        : "Es wurden keine für einen kommenden "
                           + "Systemstart vorgemerkten "
                           + "Dateioperationen erkannt."
             };
@@ -374,19 +374,42 @@ public class RestartInformationProvider :
     private static void ApplyOverallResult(
         RestartInformation information)
     {
-        var restartRequired =
-            information.Sources.Any(
+        var authoritativeSources =
+            information.Sources
+                .Where(IsAuthoritativeSource)
+                .ToList();
+
+        var confirmedRestartRequired =
+            authoritativeSources.Any(
                 source =>
                     source.IsCheckSuccessful
                     && source.IsRestartRequired == true);
 
-        if (restartRequired)
+        if (confirmedRestartRequired)
         {
             information.IsAnalysisConclusive =
                 true;
 
             information.IsRestartRequired =
                 true;
+
+            return;
+        }
+
+        var advisoryRestartHint =
+            information.Sources.Any(
+                source =>
+                    !IsAuthoritativeSource(source)
+                    && source.IsCheckSuccessful
+                    && source.IsRestartRequired == true);
+
+        if (advisoryRestartHint)
+        {
+            information.IsAnalysisConclusive =
+                false;
+
+            information.IsRestartRequired =
+                null;
 
             return;
         }
@@ -414,5 +437,14 @@ public class RestartInformationProvider :
 
         information.IsRestartRequired =
             null;
+    }
+
+    private static bool IsAuthoritativeSource(
+        RestartSourceResult source)
+    {
+        return source.SourceType
+            is RestartSourceType.WindowsUpdate
+            or RestartSourceType.ComponentBasedServicing
+            or RestartSourceType.PendingComputerRename;
     }
 }

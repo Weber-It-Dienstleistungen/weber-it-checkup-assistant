@@ -1,6 +1,5 @@
 ﻿using System.Management;
 using System.Runtime.InteropServices;
-using Microsoft.Win32;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
@@ -33,7 +32,6 @@ public class WindowsUpdateInformationProvider :
             };
 
         ReadWindowsUpdateService(information);
-        ReadRestartRequirement(information);
         ReadUpdateHistory(information);
 
         return information;
@@ -181,86 +179,6 @@ public class WindowsUpdateInformationProvider :
                 + "konnte nicht eindeutig bestimmt werden. "
                 + $"Starttyp: {startMode}."
         };
-    }
-
-    private static void ReadRestartRequirement(
-        WindowsUpdateInformation information)
-    {
-        var restartReasons =
-            new List<string>();
-
-        var indicatorsCouldBeRead = false;
-
-        if (TryRegistryKeyExists(
-                RegistryHive.LocalMachine,
-                RegistryView.Registry64,
-                @"SOFTWARE\Microsoft\Windows"
-                + @"\CurrentVersion\Component Based Servicing"
-                + @"\RebootPending",
-                out var componentServicingRestart))
-        {
-            indicatorsCouldBeRead = true;
-
-            if (componentServicingRestart)
-            {
-                restartReasons.Add(
-                    "Component Based Servicing");
-            }
-        }
-
-        if (TryRegistryKeyExists(
-                RegistryHive.LocalMachine,
-                RegistryView.Registry64,
-                @"SOFTWARE\Microsoft\Windows"
-                + @"\CurrentVersion\WindowsUpdate"
-                + @"\Auto Update\RebootRequired",
-                out var windowsUpdateRestart))
-        {
-            indicatorsCouldBeRead = true;
-
-            if (windowsUpdateRestart)
-            {
-                restartReasons.Add(
-                    "Windows Update");
-            }
-        }
-
-        information.RestartReasons =
-            restartReasons;
-
-        information.IsRestartRequired =
-            indicatorsCouldBeRead
-                ? restartReasons.Count > 0
-                : null;
-    }
-
-    private static bool TryRegistryKeyExists(
-        RegistryHive registryHive,
-        RegistryView registryView,
-        string subKeyName,
-        out bool keyExists)
-    {
-        keyExists = false;
-
-        try
-        {
-            using var baseKey =
-                RegistryKey.OpenBaseKey(
-                    registryHive,
-                    registryView);
-
-            using var key =
-                baseKey.OpenSubKey(subKeyName);
-
-            keyExists =
-                key is not null;
-
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     private static void ReadUpdateHistory(

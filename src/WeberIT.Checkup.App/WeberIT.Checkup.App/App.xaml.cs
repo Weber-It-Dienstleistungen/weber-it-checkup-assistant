@@ -196,6 +196,10 @@ public partial class App : Application
 
                 services.AddSingleton<
                     ICheckupAssessmentRule,
+                    RestartAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
                     ProgramUpdateAssessmentRule>();
             })
             .Build();
