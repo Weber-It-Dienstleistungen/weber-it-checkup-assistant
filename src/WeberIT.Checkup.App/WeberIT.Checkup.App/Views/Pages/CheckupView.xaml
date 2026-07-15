@@ -395,6 +395,10 @@
                     <checkup:CheckupDetailsView
                         DataContext="{Binding CurrentCheckup}" />
 
+                    <checkup:ProgramUpdatesCard
+                        Margin="0,24,0,0"
+                        DataContext="{Binding CurrentCheckup.ProgramUpdateInformation}" />
+
                 </StackPanel>
 
             </Grid>

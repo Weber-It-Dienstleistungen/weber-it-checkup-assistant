@@ -148,8 +148,9 @@
 
                         <Style TargetType="Border">
 
-                            <Setter Property="Visibility"
-                                    Value="Collapsed" />
+                            <Setter
+                                Property="Visibility"
+                                Value="Collapsed" />
 
                             <Style.Triggers>
 
@@ -157,8 +158,9 @@
                                     Binding="{Binding SelectedCustomer.Devices.Count}"
                                     Value="0">
 
-                                    <Setter Property="Visibility"
-                                            Value="Visible" />
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Visible" />
 
                                 </DataTrigger>
 
@@ -183,8 +185,9 @@
                             TargetType="ListBox"
                             BasedOn="{StaticResource {x:Type ListBox}}">
 
-                            <Setter Property="Visibility"
-                                    Value="Visible" />
+                            <Setter
+                                Property="Visibility"
+                                Value="Visible" />
 
                             <Style.Triggers>
 
@@ -192,8 +195,9 @@
                                     Binding="{Binding SelectedCustomer.Devices.Count}"
                                     Value="0">
 
-                                    <Setter Property="Visibility"
-                                            Value="Collapsed" />
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Collapsed" />
 
                                 </DataTrigger>
 
@@ -217,14 +221,17 @@
                             TargetType="ListBoxItem"
                             BasedOn="{StaticResource {x:Type ListBoxItem}}">
 
-                            <Setter Property="Width"
-                                    Value="270" />
+                            <Setter
+                                Property="Width"
+                                Value="270" />
 
-                            <Setter Property="Margin"
-                                    Value="0,0,12,12" />
+                            <Setter
+                                Property="Margin"
+                                Value="0,0,12,12" />
 
-                            <Setter Property="VerticalContentAlignment"
-                                    Value="Stretch" />
+                            <Setter
+                                Property="VerticalContentAlignment"
+                                Value="Stretch" />
 
                         </Style>
 
@@ -296,8 +303,9 @@
 
                                             <Style TargetType="StackPanel">
 
-                                                <Setter Property="Visibility"
-                                                        Value="Visible" />
+                                                <Setter
+                                                    Property="Visibility"
+                                                    Value="Visible" />
 
                                                 <Style.Triggers>
 
@@ -315,8 +323,9 @@
 
                                                         </MultiDataTrigger.Conditions>
 
-                                                        <Setter Property="Visibility"
-                                                                Value="Collapsed" />
+                                                        <Setter
+                                                            Property="Visibility"
+                                                            Value="Collapsed" />
 
                                                     </MultiDataTrigger>
 
@@ -341,8 +350,9 @@
 
                                                 <Style TargetType="TextBlock">
 
-                                                    <Setter Property="Visibility"
-                                                            Value="Visible" />
+                                                    <Setter
+                                                        Property="Visibility"
+                                                        Value="Visible" />
 
                                                     <Style.Triggers>
 
@@ -350,8 +360,9 @@
                                                             Binding="{Binding CheckupSession.DeviceInformation.Manufacturer}"
                                                             Value="{x:Static sys:String.Empty}">
 
-                                                            <Setter Property="Visibility"
-                                                                    Value="Collapsed" />
+                                                            <Setter
+                                                                Property="Visibility"
+                                                                Value="Collapsed" />
 
                                                         </DataTrigger>
 
@@ -359,8 +370,9 @@
                                                             Binding="{Binding CheckupSession.DeviceInformation.Model}"
                                                             Value="{x:Static sys:String.Empty}">
 
-                                                            <Setter Property="Visibility"
-                                                                    Value="Collapsed" />
+                                                            <Setter
+                                                                Property="Visibility"
+                                                                Value="Collapsed" />
 
                                                         </DataTrigger>
 
@@ -430,8 +442,9 @@
 
                     <Style TargetType="Border">
 
-                        <Setter Property="Visibility"
-                                Value="Visible" />
+                        <Setter
+                            Property="Visibility"
+                            Value="Visible" />
 
                         <Style.Triggers>
 
@@ -439,16 +452,17 @@
                                 Binding="{Binding SelectedDevice}"
                                 Value="{x:Null}">
 
-                                <Setter Property="Visibility"
-                                        Value="Visible" />
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Visible" />
 
                             </DataTrigger>
 
-                            <DataTrigger
-                                Binding="{Binding SelectedDevice}">
+                            <DataTrigger Binding="{Binding SelectedDevice}">
 
-                                <Setter Property="Visibility"
-                                        Value="Collapsed" />
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Collapsed" />
 
                             </DataTrigger>
 
@@ -477,8 +491,9 @@
 
                     <Style TargetType="StackPanel">
 
-                        <Setter Property="Visibility"
-                                Value="Visible" />
+                        <Setter
+                            Property="Visibility"
+                            Value="Visible" />
 
                         <Style.Triggers>
 
@@ -486,8 +501,9 @@
                                 Binding="{Binding DataContext.SelectedDevice, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 Value="{x:Null}">
 
-                                <Setter Property="Visibility"
-                                        Value="Collapsed" />
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Collapsed" />
 
                             </DataTrigger>
 
@@ -520,6 +536,10 @@
                     </StackPanel>
 
                 </Border>
+
+                <checkup:ProgramUpdatesCard
+                    Margin="0,20,0,0"
+                    DataContext="{Binding ProgramUpdateInformation}" />
 
             </StackPanel>
 
