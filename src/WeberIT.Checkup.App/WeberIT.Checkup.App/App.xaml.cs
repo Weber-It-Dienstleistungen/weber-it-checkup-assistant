@@ -129,12 +129,42 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
-        await _host.StartAsync();
+        var databasePaths =
+            _host.Services.GetRequiredService<DatabasePaths>();
 
         var databaseInitializer =
             _host.Services.GetRequiredService<DatabaseInitializer>();
 
-        databaseInitializer.Initialize();
+        try
+        {
+            databaseInitializer.Initialize();
+        }
+        catch (Exception exception)
+        {
+            var dialogService =
+                _host.Services.GetRequiredService<IDialogService>();
+
+            dialogService.ShowError(
+                "Datenbank nicht verfügbar",
+                $"""
+                 Die portable Datenbank konnte nicht geöffnet oder angelegt werden.
+
+                 Datenbankpfad:
+                 {databasePaths.DatabaseFilePath}
+
+                 Prüfe bitte, ob der Programmordner und der verwendete Datenträger beschreibbar sind. Stelle außerdem sicher, dass der USB-Stick nicht schreibgeschützt oder entfernt wurde.
+
+                 Technische Ursache:
+                 {exception.Message}
+
+                 Die Anwendung wird beendet, damit keine Daten an einem falschen Speicherort angelegt werden.
+                 """);
+
+            Shutdown(-1);
+            return;
+        }
+
+        await _host.StartAsync();
 
         var mainWindow =
             _host.Services.GetRequiredService<MainWindow>();

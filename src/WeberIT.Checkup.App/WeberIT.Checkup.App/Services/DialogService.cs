@@ -30,9 +30,10 @@ public class DialogService : IDialogService
 
         var dialog = new CustomerEditDialog
         {
-            DataContext = viewModel,
-            Owner = Application.Current.MainWindow
+            DataContext = viewModel
         };
+
+        AssignOwnerIfAvailable(dialog);
 
         _currentDialog = dialog;
 
@@ -49,10 +50,9 @@ public class DialogService : IDialogService
     {
         var dialog = new ConfirmationDialog(
             title,
-            message)
-        {
-            Owner = Application.Current.MainWindow
-        };
+            message);
+
+        AssignOwnerIfAvailable(dialog);
 
         return dialog.ShowDialog() == true;
     }
@@ -63,10 +63,9 @@ public class DialogService : IDialogService
     {
         var dialog = new MessageDialog(
             title,
-            message)
-        {
-            Owner = Application.Current.MainWindow
-        };
+            message);
+
+        AssignOwnerIfAvailable(dialog);
 
         dialog.ShowDialog();
     }
@@ -80,5 +79,18 @@ public class DialogService : IDialogService
 
         _currentDialog.DialogResult = dialogResult;
         _currentDialog.Close();
+    }
+
+    private static void AssignOwnerIfAvailable(Window dialog)
+    {
+        var owner = Application.Current.MainWindow;
+
+        if (owner is null ||
+            ReferenceEquals(owner, dialog))
+        {
+            return;
+        }
+
+        dialog.Owner = owner;
     }
 }
