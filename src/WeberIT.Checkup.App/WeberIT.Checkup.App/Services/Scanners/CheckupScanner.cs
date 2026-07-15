@@ -20,12 +20,16 @@ public class CheckupScanner : ICheckupScanner
     private readonly ISecurityInformationScanner
         _securityInformationScanner;
 
+    private readonly IWindowsUpdateInformationScanner
+        _windowsUpdateInformationScanner;
+
     public CheckupScanner(
         IDeviceInformationScanner deviceInformationScanner,
         IHardwareInformationScanner hardwareInformationScanner,
         IOperatingSystemInformationScanner operatingSystemInformationScanner,
         IStorageInformationScanner storageInformationScanner,
-        ISecurityInformationScanner securityInformationScanner)
+        ISecurityInformationScanner securityInformationScanner,
+        IWindowsUpdateInformationScanner windowsUpdateInformationScanner)
     {
         _deviceInformationScanner =
             deviceInformationScanner;
@@ -41,6 +45,9 @@ public class CheckupScanner : ICheckupScanner
 
         _securityInformationScanner =
             securityInformationScanner;
+
+        _windowsUpdateInformationScanner =
+            windowsUpdateInformationScanner;
     }
 
     public CheckupSession Scan()
@@ -59,6 +66,9 @@ public class CheckupScanner : ICheckupScanner
 
         var securityInformationResult =
             _securityInformationScanner.Scan();
+
+        var windowsUpdateInformationResult =
+            _windowsUpdateInformationScanner.Scan();
 
         return new CheckupSession
         {
@@ -82,7 +92,11 @@ public class CheckupScanner : ICheckupScanner
 
             SecurityInformation =
                 securityInformationResult.Data
-                ?? new SecurityInformation()
+                ?? new SecurityInformation(),
+
+            WindowsUpdateInformation =
+                windowsUpdateInformationResult.Data
+                ?? new WindowsUpdateInformation()
         };
     }
 }

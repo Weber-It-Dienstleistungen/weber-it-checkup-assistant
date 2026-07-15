@@ -12,6 +12,7 @@ using WeberIT.Checkup.App.Services.Maintenance;
 using WeberIT.Checkup.App.Services.Scanners;
 using WeberIT.Checkup.App.Services.Security;
 using WeberIT.Checkup.App.Services.Storage;
+using WeberIT.Checkup.App.Services.Updates;
 using WeberIT.Checkup.App.Services.Windows;
 using WeberIT.Checkup.App.ViewModels;
 using WeberIT.Checkup.App.Views.Pages;
@@ -98,6 +99,10 @@ public partial class App : Application
                     SecurityInformationProvider>();
 
                 services.AddSingleton<
+                    IWindowsUpdateInformationProvider,
+                    WindowsUpdateInformationProvider>();
+
+                services.AddSingleton<
                     IDeviceInformationScanner,
                     DeviceInformationScanner>();
 
@@ -116,6 +121,10 @@ public partial class App : Application
                 services.AddSingleton<
                     ISecurityInformationScanner,
                     SecurityInformationScanner>();
+
+                services.AddSingleton<
+                    IWindowsUpdateInformationScanner,
+                    WindowsUpdateInformationScanner>();
 
                 services.AddSingleton<
                     ICheckupScanner,
@@ -164,6 +173,10 @@ public partial class App : Application
                 services.AddSingleton<
                     ICheckupAssessmentRule,
                     SecureBootAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    WindowsUpdateAssessmentRule>();
             })
             .Build();
     }
