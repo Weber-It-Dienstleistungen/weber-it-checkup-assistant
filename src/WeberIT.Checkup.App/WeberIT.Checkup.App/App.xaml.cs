@@ -6,6 +6,7 @@ using WeberIT.Checkup.App.Repositories;
 using WeberIT.Checkup.App.Repositories.Interfaces;
 using WeberIT.Checkup.App.Services;
 using WeberIT.Checkup.App.Services.Assessment;
+using WeberIT.Checkup.App.Services.Cleanup;
 using WeberIT.Checkup.App.Services.Hardware;
 using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.Services.Maintenance;
@@ -95,6 +96,10 @@ public partial class App : Application
                     StorageInformationProvider>();
 
                 services.AddSingleton<
+                    ICleanupPotentialProvider,
+                    CleanupPotentialProvider>();
+
+                services.AddSingleton<
                     ISecurityInformationProvider,
                     SecurityInformationProvider>();
 
@@ -125,6 +130,10 @@ public partial class App : Application
                 services.AddSingleton<
                     IStorageInformationScanner,
                     StorageInformationScanner>();
+
+                services.AddSingleton<
+                    ICleanupPotentialScanner,
+                    CleanupPotentialScanner>();
 
                 services.AddSingleton<
                     ISecurityInformationScanner,

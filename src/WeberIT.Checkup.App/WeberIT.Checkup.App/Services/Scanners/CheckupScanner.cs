@@ -17,6 +17,9 @@ public class CheckupScanner : ICheckupScanner
     private readonly IStorageInformationScanner
         _storageInformationScanner;
 
+    private readonly ICleanupPotentialScanner
+        _cleanupPotentialScanner;
+
     private readonly ISecurityInformationScanner
         _securityInformationScanner;
 
@@ -34,6 +37,7 @@ public class CheckupScanner : ICheckupScanner
         IHardwareInformationScanner hardwareInformationScanner,
         IOperatingSystemInformationScanner operatingSystemInformationScanner,
         IStorageInformationScanner storageInformationScanner,
+        ICleanupPotentialScanner cleanupPotentialScanner,
         ISecurityInformationScanner securityInformationScanner,
         IWindowsUpdateInformationScanner windowsUpdateInformationScanner,
         IProgramUpdateInformationScanner programUpdateInformationScanner,
@@ -50,6 +54,9 @@ public class CheckupScanner : ICheckupScanner
 
         _storageInformationScanner =
             storageInformationScanner;
+
+        _cleanupPotentialScanner =
+            cleanupPotentialScanner;
 
         _securityInformationScanner =
             securityInformationScanner;
@@ -78,6 +85,14 @@ public class CheckupScanner : ICheckupScanner
         var storageInformationResult =
             _storageInformationScanner.Scan();
 
+        var storageInformation =
+            storageInformationResult.Data
+            ?? new StorageInformation();
+
+        var cleanupPotentialResult =
+            _cleanupPotentialScanner.Scan(
+                storageInformation);
+
         var securityInformationResult =
             _securityInformationScanner.Scan();
 
@@ -92,7 +107,8 @@ public class CheckupScanner : ICheckupScanner
 
         return new CheckupSession
         {
-            ScanDate = DateTime.Now,
+            ScanDate =
+                DateTime.Now,
 
             DeviceInformation =
                 deviceInformationResult.Data
@@ -107,8 +123,11 @@ public class CheckupScanner : ICheckupScanner
                 ?? new OperatingSystemInformation(),
 
             StorageInformation =
-                storageInformationResult.Data
-                ?? new StorageInformation(),
+                storageInformation,
+
+            CleanupPotentialInformation =
+                cleanupPotentialResult.Data
+                ?? new CleanupPotentialInformation(),
 
             SecurityInformation =
                 securityInformationResult.Data

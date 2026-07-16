@@ -501,6 +501,10 @@
             Margin="0,24,0,0"
             DataContext="{Binding RestartInformation}" />
 
+        <checkup:CleanupPotentialCard
+            Margin="0,24,0,0"
+            DataContext="{Binding CleanupPotentialInformation}" />
+
     </StackPanel>
 
 </UserControl>
