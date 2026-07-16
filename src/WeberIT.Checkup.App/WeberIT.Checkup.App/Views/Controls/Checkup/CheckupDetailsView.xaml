@@ -505,6 +505,10 @@
             Margin="0,24,0,0"
             DataContext="{Binding CleanupPotentialInformation}" />
 
+        <checkup:StartupInformationCard
+            Margin="0,24,0,0"
+            DataContext="{Binding StartupInformation}" />
+
     </StackPanel>
 
 </UserControl>

@@ -20,6 +20,9 @@ public class CheckupScanner : ICheckupScanner
     private readonly ICleanupPotentialScanner
         _cleanupPotentialScanner;
 
+    private readonly IStartupInformationScanner
+        _startupInformationScanner;
+
     private readonly ISecurityInformationScanner
         _securityInformationScanner;
 
@@ -38,6 +41,7 @@ public class CheckupScanner : ICheckupScanner
         IOperatingSystemInformationScanner operatingSystemInformationScanner,
         IStorageInformationScanner storageInformationScanner,
         ICleanupPotentialScanner cleanupPotentialScanner,
+        IStartupInformationScanner startupInformationScanner,
         ISecurityInformationScanner securityInformationScanner,
         IWindowsUpdateInformationScanner windowsUpdateInformationScanner,
         IProgramUpdateInformationScanner programUpdateInformationScanner,
@@ -57,6 +61,9 @@ public class CheckupScanner : ICheckupScanner
 
         _cleanupPotentialScanner =
             cleanupPotentialScanner;
+
+        _startupInformationScanner =
+            startupInformationScanner;
 
         _securityInformationScanner =
             securityInformationScanner;
@@ -93,6 +100,9 @@ public class CheckupScanner : ICheckupScanner
             _cleanupPotentialScanner.Scan(
                 storageInformation);
 
+        var startupInformationResult =
+            _startupInformationScanner.Scan();
+
         var securityInformationResult =
             _securityInformationScanner.Scan();
 
@@ -128,6 +138,10 @@ public class CheckupScanner : ICheckupScanner
             CleanupPotentialInformation =
                 cleanupPotentialResult.Data
                 ?? new CleanupPotentialInformation(),
+
+            StartupInformation =
+                startupInformationResult.Data
+                ?? new StartupInformation(),
 
             SecurityInformation =
                 securityInformationResult.Data

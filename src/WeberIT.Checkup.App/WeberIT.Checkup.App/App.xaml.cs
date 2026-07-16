@@ -12,6 +12,7 @@ using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.Services.Maintenance;
 using WeberIT.Checkup.App.Services.Scanners;
 using WeberIT.Checkup.App.Services.Security;
+using WeberIT.Checkup.App.Services.Startup;
 using WeberIT.Checkup.App.Services.Storage;
 using WeberIT.Checkup.App.Services.Updates;
 using WeberIT.Checkup.App.Services.Windows;
@@ -99,6 +100,15 @@ public partial class App : Application
                     ICleanupPotentialProvider,
                     CleanupPotentialProvider>();
 
+                services.AddSingleton<StartupCommandAnalyzer>();
+                services.AddSingleton<ShellLinkTargetReader>();
+                services.AddSingleton<StartupRegistrySourceReader>();
+                services.AddSingleton<StartupFolderSourceReader>();
+
+                services.AddSingleton<
+                    IStartupInformationProvider,
+                    StartupInformationProvider>();
+
                 services.AddSingleton<
                     ISecurityInformationProvider,
                     SecurityInformationProvider>();
@@ -136,6 +146,10 @@ public partial class App : Application
                     CleanupPotentialScanner>();
 
                 services.AddSingleton<
+                    IStartupInformationScanner,
+                    StartupInformationScanner>();
+
+                services.AddSingleton<
                     ISecurityInformationScanner,
                     SecurityInformationScanner>();
 
@@ -166,6 +180,10 @@ public partial class App : Application
                 services.AddSingleton<
                     ICheckupAssessmentRule,
                     CleanupPotentialAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    StartupAssessmentRule>();
 
                 services.AddSingleton<
                     ICheckupAssessmentRule,

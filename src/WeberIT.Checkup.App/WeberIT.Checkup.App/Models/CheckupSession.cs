@@ -25,6 +25,12 @@ public class CheckupSession
         set;
     } = new();
 
+    public StartupInformation StartupInformation
+    {
+        get;
+        set;
+    } = new();
+
     public SecurityInformation SecurityInformation { get; set; } =
         new();
 
