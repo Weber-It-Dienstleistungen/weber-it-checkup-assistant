@@ -19,6 +19,4 @@ public class HardwareInformation
     public string TpmStatus { get; set; } = string.Empty;
 
     public string TpmVersion { get; set; } = string.Empty;
-
-    public List<DriveInformation> Drives { get; set; } = new();
 }

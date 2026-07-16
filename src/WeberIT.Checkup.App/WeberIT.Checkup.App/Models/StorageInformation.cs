@@ -2,7 +2,18 @@
 
 public class StorageInformation
 {
-    public List<DriveInformation> PhysicalDrives { get; set; } = new();
+    public bool IsAnalysisSuccessful { get; set; } =
+        true;
 
-    public List<VolumeInformation> Volumes { get; set; } = new();
+    public string AnalysisMessage { get; set; } =
+        string.Empty;
+
+    public List<PhysicalDriveInformation> PhysicalDrives
+    {
+        get;
+        set;
+    } = new();
+
+    public List<VolumeInformation> Volumes { get; set; } =
+        new();
 }

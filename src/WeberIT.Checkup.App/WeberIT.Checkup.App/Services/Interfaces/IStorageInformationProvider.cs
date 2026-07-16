@@ -4,7 +4,7 @@ namespace WeberIT.Checkup.App.Services.Interfaces;
 
 public interface IStorageInformationProvider
 {
-    List<DriveInformation> GetPhysicalDrives();
+    List<PhysicalDriveInformation> GetPhysicalDrives();
 
     List<VolumeInformation> GetVolumes();
 }
