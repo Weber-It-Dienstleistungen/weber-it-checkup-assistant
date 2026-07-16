@@ -219,6 +219,12 @@
                             Style="{StaticResource SectionTitleTextStyle}" />
 
                         <TextBlock
+                            Margin="0,6,0,0"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Physische Datenträger und zugehörige Windows-Volumes des gescannten Systems."
+                            TextWrapping="Wrap" />
+
+                        <TextBlock
                             Margin="0,20,0,0"
                             FontSize="16"
                             FontWeight="SemiBold"
@@ -233,48 +239,7 @@
 
                                 <DataTemplate>
 
-                                    <Border
-                                        Margin="0,0,0,10"
-                                        Padding="14"
-                                        Background="{StaticResource BackgroundBrush}"
-                                        BorderBrush="{StaticResource BorderBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="8">
-
-                                        <Grid>
-
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="2*" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-
-                                            <TextBlock
-                                                Grid.Column="0"
-                                                FontWeight="SemiBold"
-                                                Text="{Binding Model}"
-                                                TextWrapping="Wrap" />
-
-                                            <TextBlock
-                                                Grid.Column="1"
-                                                Margin="16,0,0,0"
-                                                Text="{Binding Capacity}" />
-
-                                            <TextBlock
-                                                Grid.Column="2"
-                                                Margin="16,0,0,0"
-                                                Text="{Binding DriveType}" />
-
-                                            <TextBlock
-                                                Grid.Column="3"
-                                                Margin="16,0,0,0"
-                                                Text="{Binding Manufacturer}"
-                                                TextWrapping="Wrap" />
-
-                                        </Grid>
-
-                                    </Border>
+                                    <checkup:PhysicalDriveInformationCard />
 
                                 </DataTemplate>
 
@@ -324,22 +289,26 @@
                                             <TextBlock
                                                 Grid.Column="1"
                                                 Margin="16,0,0,0"
-                                                Text="{Binding DriveType}" />
+                                                Text="{Binding DriveType}"
+                                                TextWrapping="Wrap" />
 
                                             <TextBlock
                                                 Grid.Column="2"
                                                 Margin="16,0,0,0"
-                                                Text="{Binding FileSystem}" />
+                                                Text="{Binding FileSystem}"
+                                                TextWrapping="Wrap" />
 
                                             <TextBlock
                                                 Grid.Column="3"
                                                 Margin="16,0,0,0"
-                                                Text="{Binding TotalSize}" />
+                                                Text="{Binding TotalSize}"
+                                                TextWrapping="Wrap" />
 
                                             <TextBlock
                                                 Grid.Column="4"
                                                 Margin="16,0,0,0"
-                                                Text="{Binding FreeSpace}" />
+                                                Text="{Binding FreeSpace}"
+                                                TextWrapping="Wrap" />
 
                                             <TextBlock
                                                 Grid.Column="5"

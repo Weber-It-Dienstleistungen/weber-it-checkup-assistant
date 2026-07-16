@@ -34,6 +34,148 @@ public class PhysicalDriveInformation :
     public bool IsVirtual { get; set; }
 
     [JsonIgnore]
+    public bool IsPortableApplicationDrive =>
+        IsApplicationDrive
+        && BusType == StorageBusType.Usb;
+
+    [JsonIgnore]
     public bool IsExcludedFromAssessment =>
-        IsApplicationDrive || IsVirtual;
+        IsPortableApplicationDrive
+        || IsVirtual;
+
+    [JsonIgnore]
+    public string DiskNumberText =>
+        DiskNumber.HasValue
+            ? $"Datenträger {DiskNumber.Value}"
+            : "Datenträgernummer unbekannt";
+
+    [JsonIgnore]
+    public string MediaTypeText =>
+        MediaType switch
+        {
+            StorageMediaType.Hdd =>
+                "HDD",
+
+            StorageMediaType.Ssd =>
+                "SSD",
+
+            StorageMediaType.Unspecified =>
+                "Nicht spezifiziert",
+
+            _ =>
+                "Unbekannt"
+        };
+
+    [JsonIgnore]
+    public string BusTypeText =>
+        BusType switch
+        {
+            StorageBusType.Scsi =>
+                "SCSI",
+
+            StorageBusType.Atapi =>
+                "ATAPI",
+
+            StorageBusType.Ata =>
+                "ATA",
+
+            StorageBusType.FireWire =>
+                "FireWire",
+
+            StorageBusType.Ssa =>
+                "SSA",
+
+            StorageBusType.FibreChannel =>
+                "Fibre Channel",
+
+            StorageBusType.Usb =>
+                "USB",
+
+            StorageBusType.Raid =>
+                "RAID",
+
+            StorageBusType.Iscsi =>
+                "iSCSI",
+
+            StorageBusType.Sas =>
+                "SAS",
+
+            StorageBusType.Sata =>
+                "SATA",
+
+            StorageBusType.Sd =>
+                "SD",
+
+            StorageBusType.Mmc =>
+                "MMC",
+
+            StorageBusType.Virtual =>
+                "Virtuell",
+
+            StorageBusType.FileBackedVirtual =>
+                "Dateibasiert virtuell",
+
+            StorageBusType.StorageSpaces =>
+                "Storage Spaces",
+
+            StorageBusType.Nvme =>
+                "NVMe",
+
+            _ =>
+                "Unbekannt"
+        };
+
+    [JsonIgnore]
+    public string HealthStatusText =>
+        HealthStatus switch
+        {
+            StorageHealthStatus.Healthy =>
+                "Keine Warnung erkannt",
+
+            StorageHealthStatus.Warning =>
+                "Warnung erkannt",
+
+            StorageHealthStatus.Critical =>
+                "Kritischer Zustand",
+
+            StorageHealthStatus.NotSupported =>
+                "Nicht unterstützt",
+
+            _ =>
+                "Nicht auswertbar"
+        };
+
+    [JsonIgnore]
+    public string RoleText
+    {
+        get
+        {
+            var roles =
+                new List<string>();
+
+            if (IsSystemDrive)
+            {
+                roles.Add("Systemdatenträger");
+            }
+
+            if (IsPortableApplicationDrive)
+            {
+                roles.Add(
+                    "Portabler Programmdatenträger");
+            }
+            else if (IsApplicationDrive)
+            {
+                roles.Add("Programmdatenträger");
+            }
+
+            if (IsVirtual)
+            {
+                roles.Add("Virtueller Datenträger");
+            }
+
+            return roles.Count > 0
+                ? string.Join(", ", roles)
+                : "Zusätzlicher Datenträger";
+        }
+    }
 }
