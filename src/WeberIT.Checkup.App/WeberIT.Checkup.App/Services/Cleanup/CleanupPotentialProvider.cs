@@ -11,6 +11,39 @@ public class CleanupPotentialProvider :
     private static readonly TimeSpan AnalysisTimeLimit =
         TimeSpan.FromSeconds(10);
 
+    private readonly SafeCleanupCategoryProvider
+        _safeCategoryProvider;
+
+    private readonly RecycleBinCleanupCategoryProvider
+        _recycleBinCategoryProvider;
+
+    private readonly WindowsCleanupCategoryProvider
+        _windowsCategoryProvider;
+
+    private readonly BrowserCleanupCategoryProvider
+        _browserCategoryProvider;
+
+    public CleanupPotentialProvider()
+    {
+        var directoryMeasurer =
+            new CleanupDirectoryMeasurer();
+
+        _safeCategoryProvider =
+            new SafeCleanupCategoryProvider(
+                directoryMeasurer);
+
+        _recycleBinCategoryProvider =
+            new RecycleBinCleanupCategoryProvider();
+
+        _windowsCategoryProvider =
+            new WindowsCleanupCategoryProvider(
+                directoryMeasurer);
+
+        _browserCategoryProvider =
+            new BrowserCleanupCategoryProvider(
+                directoryMeasurer);
+    }
+
     public CleanupPotentialInformation Analyze(
         StorageInformation storageInformation)
     {
@@ -67,25 +100,25 @@ public class CleanupPotentialProvider :
                 DateTime.UtcNow
                     .Add(AnalysisTimeLimit);
 
-            AddUserTemporaryFiles(
-                information,
-                systemVolumeRoot,
-                deadline);
+            information.Categories.AddRange(
+                _safeCategoryProvider.Analyze(
+                    systemVolumeRoot,
+                    deadline));
 
-            AddWindowsTemporaryFiles(
-                information,
-                systemVolumeRoot,
-                deadline);
+            information.Categories.Add(
+                _recycleBinCategoryProvider.Analyze(
+                    systemVolumeRoot,
+                    deadline));
 
-            AddDirectXShaderCache(
-                information,
-                systemVolumeRoot,
-                deadline);
+            information.Categories.Add(
+                _browserCategoryProvider.Analyze(
+                    systemVolumeRoot,
+                    deadline));
 
-            AddThumbnailCache(
-                information,
-                systemVolumeRoot,
-                deadline);
+            information.Categories.AddRange(
+                _windowsCategoryProvider.Analyze(
+                    systemVolumeRoot,
+                    deadline));
 
             information.AnalysisStatus =
                 DetermineOverallStatus(
@@ -167,493 +200,6 @@ public class CleanupPotentialProvider :
         }
     }
 
-    private static void AddUserTemporaryFiles(
-        CleanupPotentialInformation information,
-        string systemVolumeRoot,
-        DateTime deadline)
-    {
-        var path =
-            Path.GetTempPath();
-
-        information.Categories.Add(
-            MeasureDirectory(
-                CleanupCategoryType.UserTemporaryFiles,
-                CleanupCategoryClassification.SafePotential,
-                "Temporäre Dateien des aktuell "
-                + "angemeldeten Benutzers",
-                path,
-                systemVolumeRoot,
-                deadline,
-                SearchOption.AllDirectories));
-    }
-
-    private static void AddWindowsTemporaryFiles(
-        CleanupPotentialInformation information,
-        string systemVolumeRoot,
-        DateTime deadline)
-    {
-        var windowsDirectory =
-            Environment.GetFolderPath(
-                Environment.SpecialFolder.Windows);
-
-        var path =
-            string.IsNullOrWhiteSpace(
-                windowsDirectory)
-                ? string.Empty
-                : Path.Combine(
-                    windowsDirectory,
-                    "Temp");
-
-        information.Categories.Add(
-            MeasureDirectory(
-                CleanupCategoryType.WindowsTemporaryFiles,
-                CleanupCategoryClassification.SafePotential,
-                "Temporäre Dateien von Windows",
-                path,
-                systemVolumeRoot,
-                deadline,
-                SearchOption.AllDirectories));
-    }
-
-    private static void AddDirectXShaderCache(
-        CleanupPotentialInformation information,
-        string systemVolumeRoot,
-        DateTime deadline)
-    {
-        var localApplicationData =
-            Environment.GetFolderPath(
-                Environment.SpecialFolder.LocalApplicationData);
-
-        var path =
-            string.IsNullOrWhiteSpace(
-                localApplicationData)
-                ? string.Empty
-                : Path.Combine(
-                    localApplicationData,
-                    "D3DSCache");
-
-        information.Categories.Add(
-            MeasureDirectory(
-                CleanupCategoryType.DirectXShaderCache,
-                CleanupCategoryClassification.SafePotential,
-                "DirectX-Shadercache",
-                path,
-                systemVolumeRoot,
-                deadline,
-                SearchOption.AllDirectories));
-    }
-
-    private static void AddThumbnailCache(
-        CleanupPotentialInformation information,
-        string systemVolumeRoot,
-        DateTime deadline)
-    {
-        var localApplicationData =
-            Environment.GetFolderPath(
-                Environment.SpecialFolder.LocalApplicationData);
-
-        var path =
-            string.IsNullOrWhiteSpace(
-                localApplicationData)
-                ? string.Empty
-                : Path.Combine(
-                    localApplicationData,
-                    "Microsoft",
-                    "Windows",
-                    "Explorer");
-
-        information.Categories.Add(
-            MeasureDirectory(
-                CleanupCategoryType.ThumbnailCache,
-                CleanupCategoryClassification.SafePotential,
-                "Windows-Vorschaubildcache",
-                path,
-                systemVolumeRoot,
-                deadline,
-                SearchOption.TopDirectoryOnly,
-                "thumbcache_*.db"));
-    }
-
-    private static CleanupCategoryResult MeasureDirectory(
-        CleanupCategoryType category,
-        CleanupCategoryClassification classification,
-        string description,
-        string path,
-        string allowedVolumeRoot,
-        DateTime deadline,
-        SearchOption searchOption,
-        string filePattern = "*")
-    {
-        var result =
-            new CleanupCategoryResult
-            {
-                Category =
-                    category,
-
-                Classification =
-                    classification,
-
-                Description =
-                    description
-            };
-
-        if (DateTime.UtcNow >= deadline)
-        {
-            result.MeasurementStatus =
-                CleanupMeasurementStatus.TimedOut;
-
-            result.Description +=
-                ". Die Kategorie wurde wegen des "
-                + "erreichten Zeitlimits nicht untersucht.";
-
-            return result;
-        }
-
-        if (!IsAllowedLocalPath(
-                path,
-                allowedVolumeRoot))
-        {
-            result.MeasurementStatus =
-                CleanupMeasurementStatus.Excluded;
-
-            result.Description +=
-                ". Der Speicherort liegt nicht sicher "
-                + "auf dem untersuchten Systemvolume.";
-
-            return result;
-        }
-
-        if (!Directory.Exists(path))
-        {
-            result.MeasurementStatus =
-                CleanupMeasurementStatus.Measured;
-
-            result.SizeBytes =
-                0;
-
-            result.FileCount =
-                0;
-
-            result.Description +=
-                ". Der Cache- beziehungsweise "
-                + "Temporärordner ist nicht vorhanden.";
-
-            return result;
-        }
-
-        var measurement =
-            MeasureFiles(
-                path,
-                searchOption,
-                filePattern,
-                deadline);
-
-        result.SizeBytes =
-            measurement.SizeBytes;
-
-        result.FileCount =
-            measurement.FileCount;
-
-        if (measurement.WasTimedOut)
-        {
-            result.MeasurementStatus =
-                CleanupMeasurementStatus.TimedOut;
-
-            result.Description +=
-                ". Die bis zum Zeitlimit ermittelten "
-                + "Werte sind unvollständig.";
-
-            return result;
-        }
-
-        if (measurement.HadAccessErrors)
-        {
-            result.MeasurementStatus =
-                CleanupMeasurementStatus.PartiallyMeasured;
-
-            result.Description +=
-                ". Nicht alle Bereiche konnten aufgrund "
-                + "von Zugriffs- oder Dateifehlern "
-                + "ausgewertet werden.";
-
-            return result;
-        }
-
-        result.MeasurementStatus =
-            CleanupMeasurementStatus.Measured;
-
-        return result;
-    }
-
-    private static DirectoryMeasurement MeasureFiles(
-        string rootPath,
-        SearchOption searchOption,
-        string filePattern,
-        DateTime deadline)
-    {
-        var measurement =
-            new DirectoryMeasurement();
-
-        var pendingDirectories =
-            new Stack<string>();
-
-        pendingDirectories.Push(
-            rootPath);
-
-        while (pendingDirectories.Count > 0)
-        {
-            if (DateTime.UtcNow >= deadline)
-            {
-                measurement.WasTimedOut =
-                    true;
-
-                break;
-            }
-
-            var currentDirectory =
-                pendingDirectories.Pop();
-
-            if (IsReparsePoint(
-                    currentDirectory,
-                    measurement))
-            {
-                continue;
-            }
-
-            MeasureFilesInDirectory(
-                currentDirectory,
-                filePattern,
-                deadline,
-                measurement);
-
-            if (measurement.WasTimedOut
-                || searchOption
-                    == SearchOption.TopDirectoryOnly)
-            {
-                continue;
-            }
-
-            AddChildDirectories(
-                currentDirectory,
-                pendingDirectories,
-                deadline,
-                measurement);
-        }
-
-        return measurement;
-    }
-
-    private static void MeasureFilesInDirectory(
-        string directory,
-        string filePattern,
-        DateTime deadline,
-        DirectoryMeasurement measurement)
-    {
-        IEnumerable<string> files;
-
-        try
-        {
-            files =
-                Directory.EnumerateFiles(
-                    directory,
-                    filePattern,
-                    SearchOption.TopDirectoryOnly);
-        }
-        catch
-        {
-            measurement.HadAccessErrors =
-                true;
-
-            return;
-        }
-
-        try
-        {
-            foreach (var file in files)
-            {
-                if (DateTime.UtcNow >= deadline)
-                {
-                    measurement.WasTimedOut =
-                        true;
-
-                    return;
-                }
-
-                try
-                {
-                    var fileInfo =
-                        new FileInfo(file);
-
-                    if ((fileInfo.Attributes
-                         & FileAttributes.ReparsePoint)
-                        != 0)
-                    {
-                        continue;
-                    }
-
-                    AddFileLength(
-                        measurement,
-                        fileInfo.Length);
-
-                    measurement.FileCount++;
-                }
-                catch
-                {
-                    measurement.HadAccessErrors =
-                        true;
-                }
-            }
-        }
-        catch
-        {
-            measurement.HadAccessErrors =
-                true;
-        }
-    }
-
-    private static void AddChildDirectories(
-        string directory,
-        Stack<string> pendingDirectories,
-        DateTime deadline,
-        DirectoryMeasurement measurement)
-    {
-        IEnumerable<string> directories;
-
-        try
-        {
-            directories =
-                Directory.EnumerateDirectories(
-                    directory,
-                    "*",
-                    SearchOption.TopDirectoryOnly);
-        }
-        catch
-        {
-            measurement.HadAccessErrors =
-                true;
-
-            return;
-        }
-
-        try
-        {
-            foreach (var childDirectory in directories)
-            {
-                if (DateTime.UtcNow >= deadline)
-                {
-                    measurement.WasTimedOut =
-                        true;
-
-                    return;
-                }
-
-                if (IsReparsePoint(
-                        childDirectory,
-                        measurement))
-                {
-                    continue;
-                }
-
-                pendingDirectories.Push(
-                    childDirectory);
-            }
-        }
-        catch
-        {
-            measurement.HadAccessErrors =
-                true;
-        }
-    }
-
-    private static bool IsReparsePoint(
-        string path,
-        DirectoryMeasurement measurement)
-    {
-        try
-        {
-            var attributes =
-                File.GetAttributes(path);
-
-            return (attributes
-                    & FileAttributes.ReparsePoint)
-                   != 0;
-        }
-        catch
-        {
-            measurement.HadAccessErrors =
-                true;
-
-            return true;
-        }
-    }
-
-    private static void AddFileLength(
-        DirectoryMeasurement measurement,
-        long fileLength)
-    {
-        if (fileLength <= 0)
-        {
-            return;
-        }
-
-        var unsignedFileLength =
-            (ulong)fileLength;
-
-        if (ulong.MaxValue
-            - measurement.SizeBytes
-            < unsignedFileLength)
-        {
-            measurement.SizeBytes =
-                ulong.MaxValue;
-
-            measurement.HadAccessErrors =
-                true;
-
-            return;
-        }
-
-        measurement.SizeBytes +=
-            unsignedFileLength;
-    }
-
-    private static bool IsAllowedLocalPath(
-        string path,
-        string allowedVolumeRoot)
-    {
-        if (string.IsNullOrWhiteSpace(path)
-            || string.IsNullOrWhiteSpace(
-                allowedVolumeRoot)
-            || IsNetworkPath(path))
-        {
-            return false;
-        }
-
-        try
-        {
-            var fullPath =
-                Path.GetFullPath(path);
-
-            var pathRoot =
-                Path.GetPathRoot(fullPath);
-
-            if (string.IsNullOrWhiteSpace(
-                    pathRoot))
-            {
-                return false;
-            }
-
-            return string.Equals(
-                NormalizeRootPath(pathRoot),
-                NormalizeRootPath(
-                    allowedVolumeRoot),
-                StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     private static bool IsNetworkPath(
         string path)
     {
@@ -705,7 +251,8 @@ public class CleanupPotentialProvider :
         if (categories.All(
                 category =>
                     category.MeasurementStatus
-                        == CleanupMeasurementStatus.Measured))
+                        is CleanupMeasurementStatus.Measured
+                        or CleanupMeasurementStatus.InformationOnly))
         {
             return CleanupMeasurementStatus.Measured;
         }
@@ -722,7 +269,8 @@ public class CleanupPotentialProvider :
                 category =>
                     category.MeasurementStatus
                         is CleanupMeasurementStatus.Measured
-                        or CleanupMeasurementStatus.PartiallyMeasured))
+                        or CleanupMeasurementStatus.PartiallyMeasured
+                        or CleanupMeasurementStatus.InformationOnly))
         {
             return CleanupMeasurementStatus.PartiallyMeasured;
         }
@@ -737,9 +285,9 @@ public class CleanupPotentialProvider :
         return status switch
         {
             CleanupMeasurementStatus.Measured =>
-                "Die ausgewählten temporären Dateien "
-                + "und Cachebereiche wurden vollständig "
-                + "und rein lesend ausgewertet.",
+                "Die vorgesehenen Größenmessungen und "
+                + "Informationsprüfungen wurden vollständig "
+                + "und rein lesend ausgeführt.",
 
             CleanupMeasurementStatus.PartiallyMeasured =>
                 "Die Bereinigungsanalyse wurde abgeschlossen. "
@@ -762,16 +310,5 @@ public class CleanupPotentialProvider :
                 "Die vorgesehenen Kategorien konnten "
                 + "nicht zuverlässig ausgewertet werden."
         };
-    }
-
-    private sealed class DirectoryMeasurement
-    {
-        public ulong SizeBytes { get; set; }
-
-        public long FileCount { get; set; }
-
-        public bool HadAccessErrors { get; set; }
-
-        public bool WasTimedOut { get; set; }
     }
 }

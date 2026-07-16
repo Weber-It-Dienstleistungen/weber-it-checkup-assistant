@@ -29,14 +29,19 @@ public class CleanupCategoryResult
     public bool HasMeasuredSize =>
         SizeBytes.HasValue
         && MeasurementStatus
-            is CleanupMeasurementStatus.Measured
-            or CleanupMeasurementStatus.PartiallyMeasured
-            or CleanupMeasurementStatus.TimedOut;
+            == CleanupMeasurementStatus.Measured;
 
     [JsonIgnore]
     public bool IsFullyMeasured =>
         MeasurementStatus
             == CleanupMeasurementStatus.Measured;
+
+    [JsonIgnore]
+    public bool HasIncompleteMeasurement =>
+        SizeBytes.HasValue
+        && MeasurementStatus
+            is CleanupMeasurementStatus.PartiallyMeasured
+            or CleanupMeasurementStatus.TimedOut;
 
     [JsonIgnore]
     public string CategoryText =>
@@ -112,6 +117,9 @@ public class CleanupCategoryResult
             CleanupMeasurementStatus.PartiallyMeasured =>
                 "Teilweise gemessen",
 
+            CleanupMeasurementStatus.InformationOnly =>
+                "Nur Vorhandensein geprüft",
+
             CleanupMeasurementStatus.NotEvaluable =>
                 "Nicht auswertbar",
 
@@ -126,24 +134,55 @@ public class CleanupCategoryResult
         };
 
     [JsonIgnore]
-    public string SizeText =>
-        SizeBytes.HasValue
-            ? FormatBytes(SizeBytes.Value)
-            : "Nicht verfügbar";
+    public string SizeText
+    {
+        get
+        {
+            if (MeasurementStatus
+                == CleanupMeasurementStatus.InformationOnly)
+            {
+                return "Größe bewusst nicht ermittelt";
+            }
+
+            if (!SizeBytes.HasValue)
+            {
+                return "Nicht verfügbar";
+            }
+
+            var formattedSize =
+                FormatBytes(
+                    SizeBytes.Value);
+
+            return HasIncompleteMeasurement
+                ? $"Mindestens {formattedSize} erfasst"
+                : formattedSize;
+        }
+    }
 
     [JsonIgnore]
     public string FileCountText
     {
         get
         {
+            if (MeasurementStatus
+                == CleanupMeasurementStatus.InformationOnly)
+            {
+                return "Keine Dateiliste erfasst";
+            }
+
             if (!FileCount.HasValue)
             {
                 return "Dateianzahl nicht verfügbar";
             }
 
-            return FileCount.Value == 1
-                ? "1 Datei erfasst"
-                : $"{FileCount.Value:N0} Dateien erfasst";
+            var formattedCount =
+                FileCount.Value == 1
+                    ? "1 Datei"
+                    : $"{FileCount.Value:N0} Dateien";
+
+            return HasIncompleteMeasurement
+                ? $"Mindestens {formattedCount} erfasst"
+                : $"{formattedCount} erfasst";
         }
     }
 

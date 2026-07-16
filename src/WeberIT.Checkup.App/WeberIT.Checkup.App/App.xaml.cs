@@ -165,6 +165,10 @@ public partial class App : Application
 
                 services.AddSingleton<
                     ICheckupAssessmentRule,
+                    CleanupPotentialAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
                     MemoryAssessmentRule>();
 
                 services.AddSingleton<
