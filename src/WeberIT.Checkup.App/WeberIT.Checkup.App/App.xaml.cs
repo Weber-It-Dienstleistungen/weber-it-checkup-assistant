@@ -7,6 +7,7 @@ using WeberIT.Checkup.App.Repositories.Interfaces;
 using WeberIT.Checkup.App.Services;
 using WeberIT.Checkup.App.Services.Assessment;
 using WeberIT.Checkup.App.Services.Cleanup;
+using WeberIT.Checkup.App.Services.Devices;
 using WeberIT.Checkup.App.Services.Hardware;
 using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.Services.Maintenance;
@@ -110,6 +111,10 @@ public partial class App : Application
                     StartupInformationProvider>();
 
                 services.AddSingleton<
+                    IDeviceDriverInformationProvider,
+                    DeviceDriverInformationProvider>();
+
+                services.AddSingleton<
                     ISecurityInformationProvider,
                     SecurityInformationProvider>();
 
@@ -150,6 +155,10 @@ public partial class App : Application
                     StartupInformationScanner>();
 
                 services.AddSingleton<
+                    IDeviceDriverInformationScanner,
+                    DeviceDriverInformationScanner>();
+
+                services.AddSingleton<
                     ISecurityInformationScanner,
                     SecurityInformationScanner>();
 
@@ -184,6 +193,10 @@ public partial class App : Application
                 services.AddSingleton<
                     ICheckupAssessmentRule,
                     StartupAssessmentRule>();
+
+                services.AddSingleton<
+                    ICheckupAssessmentRule,
+                    DeviceDriverAssessmentRule>();
 
                 services.AddSingleton<
                     ICheckupAssessmentRule,

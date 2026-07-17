@@ -509,6 +509,10 @@
             Margin="0,24,0,0"
             DataContext="{Binding StartupInformation}" />
 
+        <checkup:DeviceDriverInformationCard
+            Margin="0,24,0,0"
+            DataContext="{Binding DeviceDriverInformation}" />
+
     </StackPanel>
 
 </UserControl>

@@ -31,6 +31,12 @@ public class CheckupSession
         set;
     } = new();
 
+    public DeviceDriverInformation DeviceDriverInformation
+    {
+        get;
+        set;
+    } = new();
+
     public SecurityInformation SecurityInformation { get; set; } =
         new();
 

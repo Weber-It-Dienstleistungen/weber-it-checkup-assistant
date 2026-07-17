@@ -23,6 +23,9 @@ public class CheckupScanner : ICheckupScanner
     private readonly IStartupInformationScanner
         _startupInformationScanner;
 
+    private readonly IDeviceDriverInformationScanner
+        _deviceDriverInformationScanner;
+
     private readonly ISecurityInformationScanner
         _securityInformationScanner;
 
@@ -42,6 +45,7 @@ public class CheckupScanner : ICheckupScanner
         IStorageInformationScanner storageInformationScanner,
         ICleanupPotentialScanner cleanupPotentialScanner,
         IStartupInformationScanner startupInformationScanner,
+        IDeviceDriverInformationScanner deviceDriverInformationScanner,
         ISecurityInformationScanner securityInformationScanner,
         IWindowsUpdateInformationScanner windowsUpdateInformationScanner,
         IProgramUpdateInformationScanner programUpdateInformationScanner,
@@ -64,6 +68,9 @@ public class CheckupScanner : ICheckupScanner
 
         _startupInformationScanner =
             startupInformationScanner;
+
+        _deviceDriverInformationScanner =
+            deviceDriverInformationScanner;
 
         _securityInformationScanner =
             securityInformationScanner;
@@ -102,6 +109,9 @@ public class CheckupScanner : ICheckupScanner
 
         var startupInformationResult =
             _startupInformationScanner.Scan();
+
+        var deviceDriverInformationResult =
+            _deviceDriverInformationScanner.Scan();
 
         var securityInformationResult =
             _securityInformationScanner.Scan();
@@ -142,6 +152,10 @@ public class CheckupScanner : ICheckupScanner
             StartupInformation =
                 startupInformationResult.Data
                 ?? new StartupInformation(),
+
+            DeviceDriverInformation =
+                deviceDriverInformationResult.Data
+                ?? new DeviceDriverInformation(),
 
             SecurityInformation =
                 securityInformationResult.Data
