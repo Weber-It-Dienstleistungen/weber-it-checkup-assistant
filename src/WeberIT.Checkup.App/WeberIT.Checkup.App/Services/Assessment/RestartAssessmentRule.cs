@@ -56,6 +56,9 @@ public class RestartAssessmentRule :
 
             return new CheckupFinding
             {
+                Code =
+                    "system.restart.required",
+
                 Title =
                     "Windows-Neustart erforderlich",
 
@@ -72,7 +75,13 @@ public class RestartAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Warning
+                    FindingSeverity.Warning,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.restart.pending"
             };
         }
 
@@ -94,6 +103,9 @@ public class RestartAssessmentRule :
         {
             return new CheckupFinding
             {
+                Code =
+                    "system.restart.advisory",
+
                 Title =
                     "Möglicher Neustartbedarf erkannt",
 
@@ -117,7 +129,13 @@ public class RestartAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Recommendation
+                    FindingSeverity.Recommendation,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.restart.pending"
             };
         }
 
@@ -126,6 +144,9 @@ public class RestartAssessmentRule :
         {
             return new CheckupFinding
             {
+                Code =
+                    "system.restart.none-required",
+
                 Title =
                     "Kein ausstehender Windows-Neustart erkannt",
 
@@ -141,7 +162,13 @@ public class RestartAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Information
+                    FindingSeverity.Information,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.restart.pending"
             };
         }
 
@@ -168,6 +195,9 @@ public class RestartAssessmentRule :
 
         return new CheckupFinding
         {
+            Code =
+                "system.restart.not-fully-evaluable",
+
             Title =
                 "Windows-Neustartbedarf nicht vollständig auswertbar",
 
@@ -183,7 +213,13 @@ public class RestartAssessmentRule :
                 FindingCategory.OperatingSystem,
 
             Severity =
-                FindingSeverity.Information
+                FindingSeverity.Information,
+
+            AssessmentTarget =
+                FindingAssessmentTarget.InformationOnly,
+
+            CauseGroup =
+                "system.restart.data-quality"
         };
     }
 
@@ -201,6 +237,9 @@ public class RestartAssessmentRule :
 
             return new CheckupFinding
             {
+                Code =
+                    "system.restart.legacy-required",
+
                 Title =
                     "Windows-Neustart erforderlich",
 
@@ -216,7 +255,13 @@ public class RestartAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Warning
+                    FindingSeverity.Warning,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.restart.pending"
             };
         }
 
@@ -224,6 +269,9 @@ public class RestartAssessmentRule :
         {
             return new CheckupFinding
             {
+                Code =
+                    "system.restart.legacy-none-required",
+
                 Title =
                     "Kein ausstehender Windows-Neustart erkannt",
 
@@ -237,12 +285,21 @@ public class RestartAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Information
+                    FindingSeverity.Information,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.restart.pending"
             };
         }
 
         return new CheckupFinding
         {
+            Code =
+                "system.restart.legacy-not-evaluable",
+
             Title =
                 "Windows-Neustartbedarf nicht auswertbar",
 
@@ -257,7 +314,13 @@ public class RestartAssessmentRule :
                 FindingCategory.OperatingSystem,
 
             Severity =
-                FindingSeverity.Information
+                FindingSeverity.Information,
+
+            AssessmentTarget =
+                FindingAssessmentTarget.InformationOnly,
+
+            CauseGroup =
+                "system.restart.data-quality"
         };
     }
 

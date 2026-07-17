@@ -28,6 +28,9 @@ public class DriveEncryptionAssessmentRule :
             {
                 new()
                 {
+                    Code =
+                        "system.security.drive-encryption-not-supported",
+
                     Title =
                         "Laufwerksverschlüsselung nicht verfügbar",
 
@@ -43,7 +46,13 @@ public class DriveEncryptionAssessmentRule :
                         FindingCategory.Security,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.security.drive-encryption-data-quality"
                 }
             };
         }
@@ -55,6 +64,9 @@ public class DriveEncryptionAssessmentRule :
             {
                 new()
                 {
+                    Code =
+                        "system.security.drive-encryption-not-evaluable",
+
                     Title =
                         "Laufwerksverschlüsselung nicht auswertbar",
 
@@ -69,7 +81,13 @@ public class DriveEncryptionAssessmentRule :
                         FindingCategory.Security,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.security.drive-encryption-data-quality"
                 }
             };
         }
@@ -85,6 +103,9 @@ public class DriveEncryptionAssessmentRule :
                 {
                     new()
                     {
+                        Code =
+                            "system.security.drive-encryption-running",
+
                         Title =
                             "Laufwerksverschlüsselung läuft",
 
@@ -99,7 +120,13 @@ public class DriveEncryptionAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.security.drive-encryption-protection"
                     }
                 };
             }
@@ -108,6 +135,9 @@ public class DriveEncryptionAssessmentRule :
             {
                 new()
                 {
+                    Code =
+                        "system.security.drive-encryption-enabled",
+
                     Title =
                         "Systemlaufwerk geschützt",
 
@@ -122,7 +152,13 @@ public class DriveEncryptionAssessmentRule :
                         FindingCategory.Security,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.security.drive-encryption-protection"
                 }
             };
         }
@@ -138,6 +174,9 @@ public class DriveEncryptionAssessmentRule :
             {
                 new()
                 {
+                    Code =
+                        "system.security.drive-encryption-incomplete",
+
                     Title =
                         "Laufwerksverschlüsselung nicht vollständig geschützt",
 
@@ -154,7 +193,13 @@ public class DriveEncryptionAssessmentRule :
                         FindingCategory.Security,
 
                     Severity =
-                        FindingSeverity.Warning
+                        FindingSeverity.Warning,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.security.drive-encryption-protection"
                 }
             };
         }
@@ -171,6 +216,11 @@ public class DriveEncryptionAssessmentRule :
         {
             new()
             {
+                Code =
+                    isMobileDevice
+                        ? "system.security.mobile-drive-not-encrypted"
+                        : "system.security.stationary-drive-not-encrypted",
+
                 Title =
                     "Systemlaufwerk nicht verschlüsselt",
 
@@ -200,7 +250,13 @@ public class DriveEncryptionAssessmentRule :
                 Severity =
                     isMobileDevice
                         ? FindingSeverity.Recommendation
-                        : FindingSeverity.Information
+                        : FindingSeverity.Information,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.security.drive-encryption-protection"
             }
         };
     }

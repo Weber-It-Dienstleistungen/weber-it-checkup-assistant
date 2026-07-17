@@ -86,6 +86,9 @@ public class DeviceDriverAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.devices.analysis-incomplete",
+
                 Title =
                     "Geräte- und Treiberanalyse unvollständig",
 
@@ -96,7 +99,13 @@ public class DeviceDriverAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Information
+                    FindingSeverity.Information,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.InformationOnly,
+
+                CauseGroup =
+                    "system.devices.data-quality"
             });
     }
 
@@ -132,6 +141,9 @@ public class DeviceDriverAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.devices.missing-driver",
+
                 Title =
                     missingDriverEntries.Count == 1
                         ? "Fehlenden Gerätetreiber prüfen"
@@ -144,7 +156,13 @@ public class DeviceDriverAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Warning
+                    FindingSeverity.Warning,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.devices.driver-assignment"
             });
     }
 
@@ -183,6 +201,9 @@ public class DeviceDriverAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.devices.windows-problem",
+
                 Title =
                     problemEntries.Count == 1
                         ? "Windows-Geräteproblem prüfen"
@@ -195,7 +216,13 @@ public class DeviceDriverAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Warning
+                    FindingSeverity.Warning,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.devices.operational-state"
             });
     }
 
@@ -230,6 +257,9 @@ public class DeviceDriverAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.devices.restart-advisory",
+
                 Title =
                     "Gerätebezogenen Neustarthinweis prüfen",
 
@@ -240,7 +270,13 @@ public class DeviceDriverAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Recommendation
+                    FindingSeverity.Recommendation,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.restart.pending"
             });
     }
 
@@ -277,6 +313,9 @@ public class DeviceDriverAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.devices.unsigned-driver",
+
                 Title =
                     unsignedDriverEntries.Count == 1
                         ? "Nicht signierten Gerätetreiber prüfen"
@@ -289,7 +328,13 @@ public class DeviceDriverAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Recommendation
+                    FindingSeverity.Recommendation,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.devices.driver-signature"
             });
     }
 

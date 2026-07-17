@@ -24,6 +24,9 @@ public class FirewallAssessmentRule :
             {
                 new()
                 {
+                    Code =
+                        "system.security.firewall-not-evaluable",
+
                     Title =
                         "Firewallstatus nicht ermittelbar",
 
@@ -36,7 +39,13 @@ public class FirewallAssessmentRule :
                         FindingCategory.Security,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.security.firewall-data-quality"
                 }
             };
         }
@@ -82,6 +91,9 @@ public class FirewallAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "system.security.active-firewall-disabled",
+
                     Title =
                         "Aktives Firewallprofil deaktiviert",
 
@@ -97,7 +109,13 @@ public class FirewallAssessmentRule :
                         FindingCategory.Security,
 
                     Severity =
-                        FindingSeverity.Critical
+                        FindingSeverity.Critical,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.security.firewall-configuration"
                 });
         }
         else
@@ -118,6 +136,9 @@ public class FirewallAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "system.security.active-firewall-enabled",
+
                     Title =
                         "Aktive Firewallprofile eingeschaltet",
 
@@ -130,7 +151,13 @@ public class FirewallAssessmentRule :
                         FindingCategory.Security,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.security.firewall-configuration"
                 });
         }
 
@@ -146,6 +173,9 @@ public class FirewallAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "system.security.inactive-firewall-disabled",
+
                     Title =
                         "Inaktives Firewallprofil deaktiviert",
 
@@ -161,7 +191,13 @@ public class FirewallAssessmentRule :
                         FindingCategory.Security,
 
                     Severity =
-                        FindingSeverity.Warning
+                        FindingSeverity.Warning,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.security.firewall-configuration"
                 });
         }
 
@@ -177,6 +213,9 @@ public class FirewallAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "system.security.firewall-partially-not-evaluable",
+
                     Title =
                         "Firewallprofile teilweise nicht auswertbar",
 
@@ -189,7 +228,13 @@ public class FirewallAssessmentRule :
                         FindingCategory.Security,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.security.firewall-data-quality"
                 });
         }
 

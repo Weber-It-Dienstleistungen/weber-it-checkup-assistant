@@ -3,7 +3,8 @@ using WeberIT.Checkup.App.Services.Interfaces;
 
 namespace WeberIT.Checkup.App.Services.Assessment;
 
-public class OperatingSystemAssessmentRule : ICheckupAssessmentRule
+public class OperatingSystemAssessmentRule :
+    ICheckupAssessmentRule
 {
     public IEnumerable<CheckupFinding> Evaluate(
         CheckupSession checkupSession)
@@ -23,11 +24,26 @@ public class OperatingSystemAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
-                    Title = "Betriebssystem nicht auswertbar",
+                    Code =
+                        "system.operating-system.not-evaluable",
+
+                    Title =
+                        "Betriebssystem nicht auswertbar",
+
                     Description =
                         "Das installierte Betriebssystem konnte nicht zuverlässig bestimmt werden.",
-                    Category = FindingCategory.OperatingSystem,
-                    Severity = FindingSeverity.Information
+
+                    Category =
+                        FindingCategory.OperatingSystem,
+
+                    Severity =
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.operating-system.data-quality"
                 }
             };
         }
@@ -40,13 +56,28 @@ public class OperatingSystemAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
-                    Title = "Windows 11 erkannt",
+                    Code =
+                        "system.operating-system.windows-11",
+
+                    Title =
+                        "Windows 11 erkannt",
+
                     Description =
                         $"Auf dem Gerät ist {BuildVersionDescription(operatingSystemName, operatingSystemVersion)} installiert. "
                         + "Der konkrete Wartungsstatus der installierten Windows-Version "
                         + "sollte weiterhin über Windows Update geprüft werden.",
-                    Category = FindingCategory.OperatingSystem,
-                    Severity = FindingSeverity.Information
+
+                    Category =
+                        FindingCategory.OperatingSystem,
+
+                    Severity =
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.operating-system.support"
                 }
             };
         }
@@ -59,14 +90,29 @@ public class OperatingSystemAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
-                    Title = "Windows 10 prüfen",
+                    Code =
+                        "system.operating-system.windows-10-support",
+
+                    Title =
+                        "Windows 10 prüfen",
+
                     Description =
                         $"Auf dem Gerät ist {BuildVersionDescription(operatingSystemName, operatingSystemVersion)} installiert. "
                         + "Der reguläre Support für Windows 10 endete am 14.10.2025. "
                         + "Es sollte geprüft werden, ob das Gerät durch ESU oder eine länger unterstützte "
                         + "LTSC-Ausgabe abgesichert ist oder auf Windows 11 umgestellt werden kann.",
-                    Category = FindingCategory.OperatingSystem,
-                    Severity = FindingSeverity.Warning
+
+                    Category =
+                        FindingCategory.OperatingSystem,
+
+                    Severity =
+                        FindingSeverity.Warning,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.operating-system.support"
                 }
             };
         }
@@ -77,13 +123,28 @@ public class OperatingSystemAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
-                    Title = "Veraltetes Windows erkannt",
+                    Code =
+                        "system.operating-system.legacy-unsupported",
+
+                    Title =
+                        "Veraltetes Windows erkannt",
+
                     Description =
                         $"Auf dem Gerät ist {BuildVersionDescription(operatingSystemName, operatingSystemVersion)} installiert. "
                         + "Diese Windows-Generation wird regulär nicht mehr mit Sicherheitsupdates versorgt "
                         + "und sollte zeitnah ersetzt werden.",
-                    Category = FindingCategory.OperatingSystem,
-                    Severity = FindingSeverity.Critical
+
+                    Category =
+                        FindingCategory.OperatingSystem,
+
+                    Severity =
+                        FindingSeverity.Critical,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.operating-system.support"
                 }
             };
         }
@@ -92,13 +153,28 @@ public class OperatingSystemAssessmentRule : ICheckupAssessmentRule
         {
             new()
             {
-                Title = "Windows-Supportstatus prüfen",
+                Code =
+                    "system.operating-system.support-not-evaluable",
+
+                Title =
+                    "Windows-Supportstatus prüfen",
+
                 Description =
                     $"Auf dem Gerät wurde {BuildVersionDescription(operatingSystemName, operatingSystemVersion)} erkannt. "
                     + "Der Supportstatus dieser Ausgabe konnte nicht automatisch eingeordnet werden "
                     + "und sollte manuell geprüft werden.",
-                Category = FindingCategory.OperatingSystem,
-                Severity = FindingSeverity.Information
+
+                Category =
+                    FindingCategory.OperatingSystem,
+
+                Severity =
+                    FindingSeverity.Information,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.InformationOnly,
+
+                CauseGroup =
+                    "system.operating-system.data-quality"
             }
         };
     }

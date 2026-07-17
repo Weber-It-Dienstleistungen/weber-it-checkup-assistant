@@ -21,6 +21,9 @@ public class UserAccountControlAssessmentRule :
                 {
                     new()
                     {
+                        Code =
+                            "system.security.uac-enabled",
+
                         Title =
                             "Benutzerkontensteuerung aktiv",
 
@@ -35,7 +38,13 @@ public class UserAccountControlAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.security.uac-configuration"
                     }
                 },
 
@@ -44,6 +53,9 @@ public class UserAccountControlAssessmentRule :
                 {
                     new()
                     {
+                        Code =
+                            "system.security.uac-disabled",
+
                         Title =
                             "Benutzerkontensteuerung deaktiviert",
 
@@ -59,7 +71,13 @@ public class UserAccountControlAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Warning
+                            FindingSeverity.Warning,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.security.uac-configuration"
                     }
                 },
 
@@ -68,6 +86,9 @@ public class UserAccountControlAssessmentRule :
                 {
                     new()
                     {
+                        Code =
+                            "system.security.uac-not-evaluable",
+
                         Title =
                             "Benutzerkontensteuerung nicht auswertbar",
 
@@ -81,7 +102,13 @@ public class UserAccountControlAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.InformationOnly,
+
+                        CauseGroup =
+                            "system.security.uac-data-quality"
                     }
                 }
         };

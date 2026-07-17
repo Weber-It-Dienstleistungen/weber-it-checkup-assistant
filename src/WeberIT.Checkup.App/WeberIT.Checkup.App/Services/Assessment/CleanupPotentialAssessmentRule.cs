@@ -55,6 +55,9 @@ public class CleanupPotentialAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.cleanup.analysis-incomplete",
+
                 Title =
                     "Bereinigungsanalyse unvollständig",
 
@@ -68,7 +71,13 @@ public class CleanupPotentialAssessmentRule :
                     FindingCategory.Storage,
 
                 Severity =
-                    FindingSeverity.Information
+                    FindingSeverity.Information,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.InformationOnly,
+
+                CauseGroup =
+                    "system.cleanup.data-quality"
             });
     }
 
@@ -102,6 +111,9 @@ public class CleanupPotentialAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "system.cleanup.potential-with-low-system-space",
+
                     Title =
                         "Bereinigungspotenzial bei knappem Systemlaufwerk",
 
@@ -117,7 +129,13 @@ public class CleanupPotentialAssessmentRule :
                         FindingCategory.Storage,
 
                     Severity =
-                        FindingSeverity.Warning
+                        FindingSeverity.Warning,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.storage.system-volume-capacity"
                 });
 
             return;
@@ -132,6 +150,9 @@ public class CleanupPotentialAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.cleanup.large-safe-potential",
+
                 Title =
                     "Größeres Bereinigungspotenzial erkannt",
 
@@ -146,7 +167,13 @@ public class CleanupPotentialAssessmentRule :
                     FindingCategory.Storage,
 
                 Severity =
-                    FindingSeverity.Recommendation
+                    FindingSeverity.Recommendation,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.cleanup.safe-potential"
             });
     }
 
@@ -167,6 +194,9 @@ public class CleanupPotentialAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.cleanup.manual-review-potential",
+
                 Title =
                     "Größere Speicherbereiche manuell prüfen",
 
@@ -182,7 +212,13 @@ public class CleanupPotentialAssessmentRule :
                     FindingCategory.Storage,
 
                 Severity =
-                    FindingSeverity.Information
+                    FindingSeverity.Information,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.InformationOnly,
+
+                CauseGroup =
+                    "system.cleanup.manual-review"
             });
     }
 

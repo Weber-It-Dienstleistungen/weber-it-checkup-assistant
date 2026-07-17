@@ -21,6 +21,9 @@ public class SecurityCenterAssessmentRule :
                 {
                     new()
                     {
+                        Code =
+                            "system.security.security-center-enabled",
+
                         Title =
                             "Windows-Sicherheitscenter aktiv",
 
@@ -33,7 +36,13 @@ public class SecurityCenterAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.security.security-center-service"
                     }
                 },
 
@@ -42,6 +51,9 @@ public class SecurityCenterAssessmentRule :
                 {
                     new()
                     {
+                        Code =
+                            "system.security.security-center-disabled",
+
                         Title =
                             "Windows-Sicherheitscenter nicht aktiv",
 
@@ -57,7 +69,13 @@ public class SecurityCenterAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Warning
+                            FindingSeverity.Warning,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.security.security-center-service"
                     }
                 },
 
@@ -66,6 +84,9 @@ public class SecurityCenterAssessmentRule :
                 {
                     new()
                     {
+                        Code =
+                            "system.security.security-center-not-evaluable",
+
                         Title =
                             "Windows-Sicherheitscenter nicht auswertbar",
 
@@ -79,7 +100,13 @@ public class SecurityCenterAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.InformationOnly,
+
+                        CauseGroup =
+                            "system.security.security-center-data-quality"
                     }
                 }
         };

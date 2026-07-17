@@ -51,6 +51,9 @@ public class StorageAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "storage.analysis-incomplete",
+
                 Title =
                     "Datenträgeranalyse unvollständig",
 
@@ -65,7 +68,13 @@ public class StorageAssessmentRule :
                     FindingCategory.Storage,
 
                 Severity =
-                    FindingSeverity.Warning
+                    FindingSeverity.Warning,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.InformationOnly,
+
+                CauseGroup =
+                    "storage.data-quality"
             });
     }
 
@@ -82,6 +91,9 @@ public class StorageAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "hardware.storage.no-physical-drives",
+
                     Title =
                         "Keine Laufwerksinformationen gefunden",
 
@@ -93,7 +105,13 @@ public class StorageAssessmentRule :
                         FindingCategory.Storage,
 
                     Severity =
-                        FindingSeverity.Warning
+                        FindingSeverity.Warning,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "hardware.storage.data-quality"
                 });
 
             return new List<PhysicalDriveInformation>();
@@ -111,6 +129,9 @@ public class StorageAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "storage.portable-application-drive-excluded",
+
                     Title =
                         "Portabler Programmdatenträger erkannt",
 
@@ -129,7 +150,13 @@ public class StorageAssessmentRule :
                         FindingCategory.Storage,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "storage.portable-application-drive"
                 });
         }
 
@@ -145,6 +172,9 @@ public class StorageAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "hardware.storage.no-customer-drive-evaluable",
+
                     Title =
                         "Kein Kundendatenträger bewertbar",
 
@@ -158,7 +188,13 @@ public class StorageAssessmentRule :
                         FindingCategory.Storage,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "hardware.storage.data-quality"
                 });
         }
 
@@ -177,6 +213,9 @@ public class StorageAssessmentRule :
                     findings.Add(
                         new CheckupFinding
                         {
+                            Code =
+                                "hardware.storage.health-critical",
+
                             Title =
                                 "Kritischer Datenträgerzustand erkannt",
 
@@ -189,7 +228,13 @@ public class StorageAssessmentRule :
                                 FindingCategory.Storage,
 
                             Severity =
-                                FindingSeverity.Critical
+                                FindingSeverity.Critical,
+
+                            AssessmentTarget =
+                                FindingAssessmentTarget.HardwareCondition,
+
+                            CauseGroup =
+                                "hardware.storage.physical-health"
                         });
                     break;
 
@@ -197,6 +242,9 @@ public class StorageAssessmentRule :
                     findings.Add(
                         new CheckupFinding
                         {
+                            Code =
+                                "hardware.storage.health-warning",
+
                             Title =
                                 "Datenträgerwarnung erkannt",
 
@@ -209,7 +257,13 @@ public class StorageAssessmentRule :
                                 FindingCategory.Storage,
 
                             Severity =
-                                FindingSeverity.Warning
+                                FindingSeverity.Warning,
+
+                            AssessmentTarget =
+                                FindingAssessmentTarget.HardwareCondition,
+
+                            CauseGroup =
+                                "hardware.storage.physical-health"
                         });
                     break;
 
@@ -217,6 +271,9 @@ public class StorageAssessmentRule :
                     findings.Add(
                         new CheckupFinding
                         {
+                            Code =
+                                "hardware.storage.health-not-evaluable",
+
                             Title =
                                 "Datenträgerzustand nicht auswertbar",
 
@@ -234,7 +291,13 @@ public class StorageAssessmentRule :
                                 FindingCategory.Storage,
 
                             Severity =
-                                FindingSeverity.Information
+                                FindingSeverity.Information,
+
+                            AssessmentTarget =
+                                FindingAssessmentTarget.InformationOnly,
+
+                            CauseGroup =
+                                "hardware.storage.health-data-quality"
                         });
                     break;
 
@@ -242,6 +305,9 @@ public class StorageAssessmentRule :
                     findings.Add(
                         new CheckupFinding
                         {
+                            Code =
+                                "hardware.storage.health-not-supported",
+
                             Title =
                                 "Keine Gesundheitsdaten verfügbar",
 
@@ -259,7 +325,13 @@ public class StorageAssessmentRule :
                                 FindingCategory.Storage,
 
                             Severity =
-                                FindingSeverity.Information
+                                FindingSeverity.Information,
+
+                            AssessmentTarget =
+                                FindingAssessmentTarget.InformationOnly,
+
+                            CauseGroup =
+                                "hardware.storage.health-data-quality"
                         });
                     break;
             }
@@ -299,6 +371,9 @@ public class StorageAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "hardware.storage.relevant-hdd",
+
                     Title =
                         "HDD als relevanter Datenträger erkannt",
 
@@ -313,7 +388,13 @@ public class StorageAssessmentRule :
                         FindingCategory.Storage,
 
                     Severity =
-                        FindingSeverity.Recommendation
+                        FindingSeverity.Recommendation,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.HardwareCondition,
+
+                    CauseGroup =
+                        "hardware.storage.drive-technology"
                 });
 
             return;
@@ -327,6 +408,9 @@ public class StorageAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "hardware.storage.nvme-ssd",
+
                     Title =
                         "NVMe-SSD erkannt",
 
@@ -340,7 +424,13 @@ public class StorageAssessmentRule :
                         FindingCategory.Storage,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.HardwareCondition,
+
+                    CauseGroup =
+                        "hardware.storage.drive-technology"
                 });
 
             return;
@@ -357,6 +447,9 @@ public class StorageAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "hardware.storage.ssd",
+
                     Title =
                         "SSD erkannt",
 
@@ -370,7 +463,13 @@ public class StorageAssessmentRule :
                         FindingCategory.Storage,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.HardwareCondition,
+
+                    CauseGroup =
+                        "hardware.storage.drive-technology"
                 });
 
             return;
@@ -379,6 +478,9 @@ public class StorageAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "hardware.storage.drive-type-not-evaluable",
+
                 Title =
                     "Laufwerkstyp nicht eindeutig erkannt",
 
@@ -391,7 +493,13 @@ public class StorageAssessmentRule :
                     FindingCategory.Storage,
 
                 Severity =
-                    FindingSeverity.Information
+                    FindingSeverity.Information,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.InformationOnly,
+
+                CauseGroup =
+                    "hardware.storage.drive-technology-data-quality"
             });
     }
 
@@ -422,6 +530,9 @@ public class StorageAssessmentRule :
                 findings.Add(
                     new CheckupFinding
                     {
+                        Code =
+                            "system.storage.system-volume-critically-low",
+
                         Title =
                             "Systemlaufwerk hat sehr wenig freien Speicher",
 
@@ -436,7 +547,13 @@ public class StorageAssessmentRule :
                             FindingCategory.Storage,
 
                         Severity =
-                            FindingSeverity.Warning
+                            FindingSeverity.Warning,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.storage.system-volume-capacity"
                     });
 
                 continue;
@@ -447,6 +564,11 @@ public class StorageAssessmentRule :
                 findings.Add(
                     new CheckupFinding
                     {
+                        Code =
+                            volume.IsSystemVolume
+                                ? "system.storage.system-volume-low"
+                                : "system.storage.volume-low",
+
                         Title =
                             "Volume fast voll",
 
@@ -459,7 +581,15 @@ public class StorageAssessmentRule :
                             FindingCategory.Storage,
 
                         Severity =
-                            FindingSeverity.Recommendation
+                            FindingSeverity.Recommendation,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            volume.IsSystemVolume
+                                ? "system.storage.system-volume-capacity"
+                                : "system.storage.additional-volume-capacity"
                     });
             }
         }

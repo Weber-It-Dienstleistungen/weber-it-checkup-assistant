@@ -23,6 +23,12 @@ public class AntivirusAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        securityInformation.AntivirusStatus
+                        == SecurityState.Disabled
+                            ? "system.security.antivirus-missing-disabled"
+                            : "system.security.antivirus-not-registered",
+
                     Title =
                         "Kein Virenschutzprodukt registriert",
 
@@ -37,11 +43,16 @@ public class AntivirusAssessmentRule :
                         FindingCategory.Security,
 
                     Severity =
-                        securityInformation
-                            .AntivirusStatus
+                        securityInformation.AntivirusStatus
                         == SecurityState.Disabled
                             ? FindingSeverity.Critical
-                            : FindingSeverity.Warning
+                            : FindingSeverity.Warning,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.security.antivirus-protection"
                 });
 
             return findings;
@@ -59,19 +70,28 @@ public class AntivirusAssessmentRule :
                 findings.Add(
                     new CheckupFinding
                     {
+                        Code =
+                            "system.security.antivirus-enabled",
+
                         Title =
                             "Virenschutz aktiv",
 
                         Description =
-                            $"Windows meldet einen ordnungsgemäßen "
-                            + $"Virenschutzstatus. Registriert: "
+                            "Windows meldet einen ordnungsgemäßen "
+                            + "Virenschutzstatus. Registriert: "
                             + $"{productNames}.",
 
                         Category =
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.security.antivirus-protection"
                     });
                 break;
 
@@ -79,12 +99,15 @@ public class AntivirusAssessmentRule :
                 findings.Add(
                     new CheckupFinding
                     {
+                        Code =
+                            "system.security.antivirus-disabled",
+
                         Title =
                             "Virenschutz prüfen",
 
                         Description =
-                            $"Windows meldet beim Virenschutz "
-                            + $"Handlungsbedarf. Registriert: "
+                            "Windows meldet beim Virenschutz "
+                            + "Handlungsbedarf. Registriert: "
                             + $"{productNames}. Der Status sollte "
                             + "direkt in der Windows-Sicherheit "
                             + "beziehungsweise im genannten "
@@ -94,7 +117,13 @@ public class AntivirusAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Critical
+                            FindingSeverity.Critical,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.security.antivirus-protection"
                     });
                 break;
 
@@ -102,11 +131,14 @@ public class AntivirusAssessmentRule :
                 findings.Add(
                     new CheckupFinding
                     {
+                        Code =
+                            "system.security.antivirus-not-evaluable",
+
                         Title =
                             "Virenschutzstatus nicht eindeutig",
 
                         Description =
-                            $"Als Virenschutz registriert: "
+                            "Als Virenschutz registriert: "
                             + $"{productNames}. Der aktuelle "
                             + "Schutzstatus konnte von Windows "
                             + "jedoch nicht eindeutig bestätigt "
@@ -117,7 +149,13 @@ public class AntivirusAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.InformationOnly,
+
+                        CauseGroup =
+                            "system.security.antivirus-data-quality"
                     });
                 break;
         }
@@ -127,11 +165,14 @@ public class AntivirusAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "system.security.multiple-antivirus-products",
+
                     Title =
                         "Mehrere Virenschutzprodukte registriert",
 
                     Description =
-                        $"Windows führt mehrere Produkte: "
+                        "Windows führt mehrere Produkte: "
                         + $"{productNames}. Das ist nicht "
                         + "automatisch fehlerhaft, weil Microsoft "
                         + "Defender bei einem Drittanbieterprodukt "
@@ -144,7 +185,13 @@ public class AntivirusAssessmentRule :
                         FindingCategory.Security,
 
                     Severity =
-                        FindingSeverity.Recommendation
+                        FindingSeverity.Recommendation,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.security.antivirus-registration"
                 });
         }
 

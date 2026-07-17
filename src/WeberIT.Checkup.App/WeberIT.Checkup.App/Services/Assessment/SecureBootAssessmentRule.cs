@@ -21,6 +21,9 @@ public class SecureBootAssessmentRule :
                 {
                     new()
                     {
+                        Code =
+                            "system.security.secure-boot-enabled",
+
                         Title =
                             "Secure Boot aktiv",
 
@@ -34,7 +37,13 @@ public class SecureBootAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.security.secure-boot-configuration"
                     }
                 },
 
@@ -43,6 +52,9 @@ public class SecureBootAssessmentRule :
                 {
                     new()
                     {
+                        Code =
+                            "system.security.secure-boot-disabled",
+
                         Title =
                             "Secure Boot deaktiviert",
 
@@ -59,7 +71,13 @@ public class SecureBootAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Recommendation
+                            FindingSeverity.Recommendation,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.security.secure-boot-configuration"
                     }
                 },
 
@@ -68,6 +86,9 @@ public class SecureBootAssessmentRule :
                 {
                     new()
                     {
+                        Code =
+                            "hardware.secure-boot.not-supported",
+
                         Title =
                             "Secure Boot nicht unterstützt",
 
@@ -82,7 +103,13 @@ public class SecureBootAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.InformationOnly,
+
+                        CauseGroup =
+                            "hardware.secure-boot.data-quality"
                     }
                 },
 
@@ -91,6 +118,9 @@ public class SecureBootAssessmentRule :
                 {
                     new()
                     {
+                        Code =
+                            "system.security.secure-boot-not-evaluable",
+
                         Title =
                             "Secure-Boot-Status nicht ermittelbar",
 
@@ -105,7 +135,13 @@ public class SecureBootAssessmentRule :
                             FindingCategory.Security,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.InformationOnly,
+
+                        CauseGroup =
+                            "system.security.secure-boot-data-quality"
                     }
                 }
         };

@@ -23,11 +23,26 @@ public class MemoryAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
-                    Title = "Arbeitsspeicher nicht auswertbar",
+                    Code =
+                        "hardware.memory.not-evaluable",
+
+                    Title =
+                        "Arbeitsspeicher nicht auswertbar",
+
                     Description =
                         "Die Größe des installierten Arbeitsspeichers konnte nicht zuverlässig ermittelt werden.",
-                    Category = FindingCategory.Hardware,
-                    Severity = FindingSeverity.Information
+
+                    Category =
+                        FindingCategory.Hardware,
+
+                    Severity =
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "hardware.memory.data-quality"
                 }
             };
         }
@@ -38,13 +53,28 @@ public class MemoryAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
-                    Title = "Sehr wenig Arbeitsspeicher",
+                    Code =
+                        "hardware.memory.very-low",
+
+                    Title =
+                        "Sehr wenig Arbeitsspeicher",
+
                     Description =
                         $"Das Gerät verfügt über {installedMemory}. "
                         + "Für einen zuverlässigen aktuellen Windows-Betrieb "
                         + "sollten mindestens 8 GB Arbeitsspeicher vorhanden sein.",
-                    Category = FindingCategory.Hardware,
-                    Severity = FindingSeverity.Warning
+
+                    Category =
+                        FindingCategory.Hardware,
+
+                    Severity =
+                        FindingSeverity.Warning,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.HardwareCondition,
+
+                    CauseGroup =
+                        "hardware.memory.capacity"
                 }
             };
         }
@@ -55,13 +85,28 @@ public class MemoryAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
-                    Title = "Arbeitsspeicher erweiterbar",
+                    Code =
+                        "hardware.memory.upgrade-recommended",
+
+                    Title =
+                        "Arbeitsspeicher erweiterbar",
+
                     Description =
                         $"Das Gerät verfügt über {installedMemory}. "
                         + "Eine Erweiterung auf mindestens 16 GB kann "
                         + "die Alltagstauglichkeit und Leistungsreserven verbessern.",
-                    Category = FindingCategory.Hardware,
-                    Severity = FindingSeverity.Recommendation
+
+                    Category =
+                        FindingCategory.Hardware,
+
+                    Severity =
+                        FindingSeverity.Recommendation,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.HardwareCondition,
+
+                    CauseGroup =
+                        "hardware.memory.capacity"
                 }
             };
         }
@@ -70,12 +115,27 @@ public class MemoryAssessmentRule : ICheckupAssessmentRule
         {
             new()
             {
-                Title = "Ausreichend Arbeitsspeicher",
+                Code =
+                    "hardware.memory.sufficient",
+
+                Title =
+                    "Ausreichend Arbeitsspeicher",
+
                 Description =
                     $"Mit {installedMemory} verfügt das Gerät über "
                     + "eine zeitgemäße Arbeitsspeicherausstattung.",
-                Category = FindingCategory.Hardware,
-                Severity = FindingSeverity.Information
+
+                Category =
+                    FindingCategory.Hardware,
+
+                Severity =
+                    FindingSeverity.Information,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.HardwareCondition,
+
+                CauseGroup =
+                    "hardware.memory.capacity"
             }
         };
     }

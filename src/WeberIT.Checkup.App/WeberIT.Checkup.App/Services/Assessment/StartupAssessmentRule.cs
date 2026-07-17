@@ -80,6 +80,9 @@ public class StartupAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.startup.analysis-incomplete",
+
                 Title =
                     "Autostartanalyse unvollständig",
 
@@ -90,7 +93,13 @@ public class StartupAssessmentRule :
                     FindingCategory.Performance,
 
                 Severity =
-                    FindingSeverity.Information
+                    FindingSeverity.Information,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.InformationOnly,
+
+                CauseGroup =
+                    "system.startup.data-quality"
             });
     }
 
@@ -126,6 +135,9 @@ public class StartupAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.startup.conspicuous-entries",
+
                 Title =
                     "Auffällige Autostarteinträge prüfen",
 
@@ -136,7 +148,13 @@ public class StartupAssessmentRule :
                     FindingCategory.Performance,
 
                 Severity =
-                    FindingSeverity.Recommendation
+                    FindingSeverity.Recommendation,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.startup.invalid-targets"
             });
     }
 
@@ -157,6 +175,9 @@ public class StartupAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.startup.optional-entries",
+
                 Title =
                     "Optionale Autostarts prüfen",
 
@@ -170,7 +191,13 @@ public class StartupAssessmentRule :
                     FindingCategory.Performance,
 
                 Severity =
-                    FindingSeverity.Recommendation
+                    FindingSeverity.Recommendation,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.startup.background-load"
             });
     }
 
@@ -191,6 +218,9 @@ public class StartupAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.startup.extensive",
+
                 Title =
                     "Umfangreichen Autostart überprüfen",
 
@@ -206,7 +236,13 @@ public class StartupAssessmentRule :
                     FindingCategory.Performance,
 
                 Severity =
-                    FindingSeverity.Recommendation
+                    FindingSeverity.Recommendation,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.startup.background-load"
             });
     }
 }

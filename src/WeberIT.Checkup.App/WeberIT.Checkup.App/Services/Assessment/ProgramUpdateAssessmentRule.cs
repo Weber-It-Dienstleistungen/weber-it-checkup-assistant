@@ -20,6 +20,9 @@ public class ProgramUpdateAssessmentRule :
             [
                 new CheckupFinding
                 {
+                    Code =
+                        "system.program-updates.winget-unavailable",
+
                     Title =
                         "WinGet nicht verfügbar",
 
@@ -34,7 +37,13 @@ public class ProgramUpdateAssessmentRule :
                         FindingCategory.OperatingSystem,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.program-updates.data-quality"
                 }
             ];
         }
@@ -45,6 +54,9 @@ public class ProgramUpdateAssessmentRule :
             [
                 new CheckupFinding
                 {
+                    Code =
+                        "system.program-updates.winget-not-evaluable",
+
                     Title =
                         "WinGet-Status nicht ermittelbar",
 
@@ -57,7 +69,13 @@ public class ProgramUpdateAssessmentRule :
                         FindingCategory.OperatingSystem,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.program-updates.data-quality"
                 }
             ];
         }
@@ -68,6 +86,9 @@ public class ProgramUpdateAssessmentRule :
             [
                 new CheckupFinding
                 {
+                    Code =
+                        "system.program-updates.analysis-not-performed",
+
                     Title =
                         "Programupdate-Analyse nicht durchgeführt",
 
@@ -80,7 +101,13 @@ public class ProgramUpdateAssessmentRule :
                         FindingCategory.OperatingSystem,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.program-updates.data-quality"
                 }
             ];
         }
@@ -91,6 +118,9 @@ public class ProgramUpdateAssessmentRule :
             [
                 new CheckupFinding
                 {
+                    Code =
+                        "system.program-updates.analysis-not-evaluable",
+
                     Title =
                         "Programupdate-Status nicht ermittelbar",
 
@@ -104,7 +134,13 @@ public class ProgramUpdateAssessmentRule :
                         FindingCategory.OperatingSystem,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.program-updates.data-quality"
                 }
             ];
         }
@@ -115,6 +151,9 @@ public class ProgramUpdateAssessmentRule :
             [
                 new CheckupFinding
                 {
+                    Code =
+                        "system.program-updates.none-available",
+
                     Title =
                         "Keine WinGet-Programmaktualisierungen erkannt",
 
@@ -130,7 +169,13 @@ public class ProgramUpdateAssessmentRule :
                         FindingCategory.OperatingSystem,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.program-updates.available"
                 }
             ];
         }
@@ -139,6 +184,9 @@ public class ProgramUpdateAssessmentRule :
         [
             new CheckupFinding
             {
+                Code =
+                    "system.program-updates.available",
+
                 Title =
                     BuildAvailableUpdatesTitle(
                         programUpdateInformation.AvailableUpdateCount),
@@ -151,7 +199,13 @@ public class ProgramUpdateAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Recommendation
+                    FindingSeverity.Recommendation,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.program-updates.available"
             }
         ];
     }

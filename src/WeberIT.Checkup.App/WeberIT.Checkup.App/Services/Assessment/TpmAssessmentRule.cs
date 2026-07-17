@@ -22,13 +22,28 @@ public class TpmAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
-                    Title = "TPM nicht aktiv",
+                    Code =
+                        "system.security.tpm-inactive",
+
+                    Title =
+                        "TPM nicht aktiv",
+
                     Description =
                         "Ein Trusted Platform Module wurde erkannt, "
                         + "ist jedoch nicht vollständig aktiviert. "
                         + "Die TPM-Einstellungen sollten im UEFI beziehungsweise BIOS geprüft werden.",
-                    Category = FindingCategory.Security,
-                    Severity = FindingSeverity.Warning
+
+                    Category =
+                        FindingCategory.Security,
+
+                    Severity =
+                        FindingSeverity.Warning,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.security.tpm-configuration"
                 }
             };
         }
@@ -41,13 +56,28 @@ public class TpmAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
-                    Title = "TPM nicht erkannt",
+                    Code =
+                        "hardware.tpm.not-detected",
+
+                    Title =
+                        "TPM nicht erkannt",
+
                     Description =
                         "Es wurde kein aktives Trusted Platform Module erkannt. "
                         + "Möglicherweise besitzt das Gerät kein TPM oder der Status "
                         + "konnte von Windows nicht ausgelesen werden.",
-                    Category = FindingCategory.Security,
-                    Severity = FindingSeverity.Information
+
+                    Category =
+                        FindingCategory.Security,
+
+                    Severity =
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "hardware.tpm.data-quality"
                 }
             };
         }
@@ -58,11 +88,26 @@ public class TpmAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
-                    Title = "TPM 2.0 aktiv",
+                    Code =
+                        "hardware.tpm.version-2-active",
+
+                    Title =
+                        "TPM 2.0 aktiv",
+
                     Description =
                         "Ein aktives Trusted Platform Module in Version 2.0 wurde erkannt.",
-                    Category = FindingCategory.Security,
-                    Severity = FindingSeverity.Information
+
+                    Category =
+                        FindingCategory.Security,
+
+                    Severity =
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.HardwareCondition,
+
+                    CauseGroup =
+                        "hardware.tpm.capability"
                 }
             };
         }
@@ -73,12 +118,27 @@ public class TpmAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
-                    Title = "TPM aktiv",
+                    Code =
+                        "hardware.tpm.version-not-evaluable",
+
+                    Title =
+                        "TPM aktiv",
+
                     Description =
                         "Ein aktives Trusted Platform Module wurde erkannt. "
                         + "Die genaue TPM-Version konnte jedoch nicht zuverlässig bestimmt werden.",
-                    Category = FindingCategory.Security,
-                    Severity = FindingSeverity.Information
+
+                    Category =
+                        FindingCategory.Security,
+
+                    Severity =
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "hardware.tpm.data-quality"
                 }
             };
         }
@@ -87,13 +147,28 @@ public class TpmAssessmentRule : ICheckupAssessmentRule
         {
             new()
             {
-                Title = "Ältere TPM-Version erkannt",
+                Code =
+                    "hardware.tpm.older-version",
+
+                Title =
+                    "Ältere TPM-Version erkannt",
+
                 Description =
                     $"Das Trusted Platform Module ist aktiv, meldet jedoch die Version "
                     + $"\"{tpmVersion}\". TPM 2.0 sollte für aktuelle Sicherheitsfunktionen "
                     + "und moderne Windows-Anforderungen bevorzugt werden.",
-                Category = FindingCategory.Security,
-                Severity = FindingSeverity.Recommendation
+
+                Category =
+                    FindingCategory.Security,
+
+                Severity =
+                    FindingSeverity.Recommendation,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.HardwareCondition,
+
+                CauseGroup =
+                    "hardware.tpm.capability"
             }
         };
     }

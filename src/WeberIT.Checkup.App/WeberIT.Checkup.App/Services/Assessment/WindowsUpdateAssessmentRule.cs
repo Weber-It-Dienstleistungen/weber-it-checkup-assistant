@@ -40,6 +40,9 @@ public class WindowsUpdateAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "system.windows-update.search-successful",
+
                     Title =
                         "Windows-Updatesuche durchgeführt",
 
@@ -61,7 +64,13 @@ public class WindowsUpdateAssessmentRule :
                         FindingCategory.OperatingSystem,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.windows-update.search"
                 });
 
             return;
@@ -72,6 +81,9 @@ public class WindowsUpdateAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "system.windows-update.search-failed",
+
                     Title =
                         "Windows-Update-Status nicht ermittelbar",
 
@@ -87,7 +99,13 @@ public class WindowsUpdateAssessmentRule :
                         FindingCategory.OperatingSystem,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.windows-update.search-data-quality"
                 });
 
             return;
@@ -96,6 +114,9 @@ public class WindowsUpdateAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.windows-update.local-scope-only",
+
                 Title =
                     "Lokaler Updatebestand möglicherweise nicht aktuell",
 
@@ -116,7 +137,13 @@ public class WindowsUpdateAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Recommendation
+                    FindingSeverity.Recommendation,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.InformationOnly,
+
+                CauseGroup =
+                    "system.windows-update.analysis-scope"
             });
     }
 
@@ -130,6 +157,9 @@ public class WindowsUpdateAssessmentRule :
                 findings.Add(
                     new CheckupFinding
                     {
+                        Code =
+                            "system.windows-update.service-running",
+
                         Title =
                             "Windows-Update-Dienst verfügbar",
 
@@ -143,7 +173,13 @@ public class WindowsUpdateAssessmentRule :
                             FindingCategory.OperatingSystem,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.windows-update.service-configuration"
                     });
                 break;
 
@@ -151,6 +187,9 @@ public class WindowsUpdateAssessmentRule :
                 findings.Add(
                     new CheckupFinding
                     {
+                        Code =
+                            "system.windows-update.service-stopped",
+
                         Title =
                             "Windows-Update-Dienst derzeit beendet",
 
@@ -166,7 +205,13 @@ public class WindowsUpdateAssessmentRule :
                             FindingCategory.OperatingSystem,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.windows-update.service-configuration"
                     });
                 break;
 
@@ -174,6 +219,9 @@ public class WindowsUpdateAssessmentRule :
                 findings.Add(
                     new CheckupFinding
                     {
+                        Code =
+                            "system.windows-update.service-disabled",
+
                         Title =
                             "Windows-Update-Dienst deaktiviert",
 
@@ -190,7 +238,13 @@ public class WindowsUpdateAssessmentRule :
                             FindingCategory.OperatingSystem,
 
                         Severity =
-                            FindingSeverity.Warning
+                            FindingSeverity.Warning,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.SystemCondition,
+
+                        CauseGroup =
+                            "system.windows-update.service-configuration"
                     });
                 break;
 
@@ -198,6 +252,9 @@ public class WindowsUpdateAssessmentRule :
                 findings.Add(
                     new CheckupFinding
                     {
+                        Code =
+                            "system.windows-update.service-not-evaluable",
+
                         Title =
                             "Windows-Update-Dienst nicht auswertbar",
 
@@ -216,7 +273,13 @@ public class WindowsUpdateAssessmentRule :
                             FindingCategory.OperatingSystem,
 
                         Severity =
-                            FindingSeverity.Information
+                            FindingSeverity.Information,
+
+                        AssessmentTarget =
+                            FindingAssessmentTarget.InformationOnly,
+
+                        CauseGroup =
+                            "system.windows-update.service-data-quality"
                     });
                 break;
         }
@@ -238,6 +301,9 @@ public class WindowsUpdateAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "system.windows-update.history-evaluated",
+
                     Title =
                         "Windows-Updateverlauf ausgewertet",
 
@@ -254,7 +320,13 @@ public class WindowsUpdateAssessmentRule :
                         FindingCategory.OperatingSystem,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.windows-update.history-information"
                 });
         }
         else
@@ -262,6 +334,9 @@ public class WindowsUpdateAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "system.windows-update.history-not-evaluable",
+
                     Title =
                         "Windows-Updateverlauf nicht auswertbar",
 
@@ -278,7 +353,13 @@ public class WindowsUpdateAssessmentRule :
                         FindingCategory.OperatingSystem,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.windows-update.history-data-quality"
                 });
         }
 
@@ -287,6 +368,9 @@ public class WindowsUpdateAssessmentRule :
             findings.Add(
                 new CheckupFinding
                 {
+                    Code =
+                        "system.windows-update.no-recent-failures",
+
                     Title =
                         "Keine aktuellen Updatefehler erkannt",
 
@@ -301,7 +385,13 @@ public class WindowsUpdateAssessmentRule :
                         FindingCategory.OperatingSystem,
 
                     Severity =
-                        FindingSeverity.Information
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.windows-update.recent-failures"
                 });
 
             return;
@@ -321,6 +411,9 @@ public class WindowsUpdateAssessmentRule :
         findings.Add(
             new CheckupFinding
             {
+                Code =
+                    "system.windows-update.recent-failures",
+
                 Title =
                     "Kürzlich fehlgeschlagene "
                     + "Updateinstallation erkannt",
@@ -353,7 +446,13 @@ public class WindowsUpdateAssessmentRule :
                     FindingCategory.OperatingSystem,
 
                 Severity =
-                    FindingSeverity.Warning
+                    FindingSeverity.Warning,
+
+                AssessmentTarget =
+                    FindingAssessmentTarget.SystemCondition,
+
+                CauseGroup =
+                    "system.windows-update.recent-failures"
             });
     }
 }
