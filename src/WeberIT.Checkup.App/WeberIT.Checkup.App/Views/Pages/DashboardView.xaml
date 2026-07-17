@@ -1,12 +1,12 @@
-﻿<UserControl x:Class="WeberIT.Checkup.App.Views.Pages.DashboardView"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:models="clr-namespace:WeberIT.Checkup.App.Models">
+﻿<UserControl
+    x:Class="WeberIT.Checkup.App.Views.Pages.DashboardView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <ScrollViewer
-        VerticalScrollBarVisibility="Auto"
+        Background="{StaticResource BackgroundBrush}"
         HorizontalScrollBarVisibility="Disabled"
-        Background="{StaticResource BackgroundBrush}">
+        VerticalScrollBarVisibility="Auto">
 
         <Grid Margin="40,32,40,40">
 
@@ -19,6 +19,8 @@
                 <RowDefinition Height="20" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
+
+            <!-- Überschrift -->
 
             <StackPanel Grid.Row="0">
 
@@ -33,6 +35,8 @@
 
             </StackPanel>
 
+            <!-- Kennzahlen -->
+
             <Grid Grid.Row="2">
 
                 <Grid.ColumnDefinitions>
@@ -45,10 +49,12 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
+                <!-- Kunden -->
+
                 <Border
                     Grid.Column="0"
-                    Style="{StaticResource PanelCardStyle}"
-                    Padding="20">
+                    Padding="20"
+                    Style="{StaticResource PanelCardStyle}">
 
                     <Grid>
 
@@ -88,8 +94,8 @@
 
                             <TextBlock
                                 Margin="0,2,0,0"
-                                Foreground="{StaticResource TextMutedBrush}"
                                 FontSize="12"
+                                Foreground="{StaticResource TextMutedBrush}"
                                 Text="gespeicherte Kunden" />
 
                         </StackPanel>
@@ -98,10 +104,12 @@
 
                 </Border>
 
+                <!-- Geräte -->
+
                 <Border
                     Grid.Column="2"
-                    Style="{StaticResource PanelCardStyle}"
-                    Padding="20">
+                    Padding="20"
+                    Style="{StaticResource PanelCardStyle}">
 
                     <Grid>
 
@@ -141,8 +149,8 @@
 
                             <TextBlock
                                 Margin="0,2,0,0"
-                                Foreground="{StaticResource TextMutedBrush}"
                                 FontSize="12"
+                                Foreground="{StaticResource TextMutedBrush}"
                                 Text="inventarisierte Geräte" />
 
                         </StackPanel>
@@ -151,10 +159,12 @@
 
                 </Border>
 
+                <!-- Checkups -->
+
                 <Border
                     Grid.Column="4"
-                    Style="{StaticResource PanelCardStyle}"
-                    Padding="20">
+                    Padding="20"
+                    Style="{StaticResource PanelCardStyle}">
 
                     <Grid>
 
@@ -194,9 +204,9 @@
 
                             <TextBlock
                                 Margin="0,2,0,0"
-                                Foreground="{StaticResource TextMutedBrush}"
                                 FontSize="12"
-                                Text="abgeschlossene Scans" />
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="gespeicherte Scans" />
 
                         </StackPanel>
 
@@ -204,10 +214,12 @@
 
                 </Border>
 
+                <!-- Befunde -->
+
                 <Border
                     Grid.Column="6"
-                    Style="{StaticResource PanelCardStyle}"
-                    Padding="20">
+                    Padding="20"
+                    Style="{StaticResource PanelCardStyle}">
 
                     <Grid>
 
@@ -237,7 +249,7 @@
                         <StackPanel Grid.Column="1">
 
                             <TextBlock
-                                Text="EMPFEHLUNGEN"
+                                Text="BEFUNDE"
                                 Style="{StaticResource CardTitleTextStyle}" />
 
                             <TextBlock
@@ -247,9 +259,9 @@
 
                             <TextBlock
                                 Margin="0,2,0,0"
-                                Foreground="{StaticResource TextMutedBrush}"
                                 FontSize="12"
-                                Text="offene Hinweise" />
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="prüfungsrelevante Hinweise" />
 
                         </StackPanel>
 
@@ -259,6 +271,8 @@
 
             </Grid>
 
+            <!-- Aktivitäten und Bestandsübersicht -->
+
             <Grid Grid.Row="4">
 
                 <Grid.ColumnDefinitions>
@@ -266,6 +280,8 @@
                     <ColumnDefinition Width="20" />
                     <ColumnDefinition Width="2*" />
                 </Grid.ColumnDefinitions>
+
+                <!-- Letzte Aktivitäten -->
 
                 <Border
                     Grid.Column="0"
@@ -320,7 +336,8 @@
 
                             </TextBlock>
 
-                            <ItemsControl ItemsSource="{Binding RecentActivities}">
+                            <ItemsControl
+                                ItemsSource="{Binding RecentActivities}">
 
                                 <ItemsControl.ItemTemplate>
 
@@ -390,110 +407,175 @@
 
                 </Border>
 
+                <!-- Neutrale Bestandsübersicht -->
+
                 <Border
                     Grid.Column="2"
                     Style="{StaticResource PanelCardStyle}">
 
-                    <Grid>
-
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="20" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="22" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="12" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
+                    <StackPanel>
 
                         <TextBlock
-                            Grid.Row="0"
-                            Text="Systemzustand"
+                            Text="Bestandsübersicht"
                             Style="{StaticResource SectionTitleTextStyle}" />
 
-                        <Grid Grid.Row="2">
+                        <TextBlock
+                            Margin="0,6,0,0"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Geräteübergreifende Verwaltungsinformationen ohne vermeintlichen Geräte- oder Kundenscore."
+                            TextWrapping="Wrap" />
 
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="110" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                        <Border
+                            Margin="0,20,0,0"
+                            Padding="14"
+                            Background="{StaticResource BackgroundBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
 
-                            <Grid
-                                Grid.Column="0"
-                                Width="92"
-                                Height="92"
-                                HorizontalAlignment="Left">
+                            <Grid>
 
-                                <Ellipse
-                                    Stroke="{StaticResource SurfaceSecondaryBrush}"
-                                    StrokeThickness="10" />
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
 
-                                <Ellipse
-                                    Margin="12"
-                                    Fill="{StaticResource BackgroundBrush}" />
+                                <TextBlock
+                                    Grid.Column="0"
+                                    VerticalAlignment="Top"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="16"
+                                    Foreground="{StaticResource SuccessBrush}"
+                                    Text="&#xE73E;" />
 
-                                <StackPanel
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center">
-
-                                    <TextBlock
-                                        HorizontalAlignment="Center"
-                                        FontSize="25"
-                                        FontWeight="Bold"
-                                        Foreground="{StaticResource TextPrimaryBrush}"
-                                        Text="{Binding SystemScore, Mode=OneWay, StringFormat={}{0}%}" />
-
-                                </StackPanel>
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Text="{Binding ScannedDevicesText}"
+                                    TextWrapping="Wrap" />
 
                             </Grid>
 
-                            <StackPanel
-                                Grid.Column="1"
-                                VerticalAlignment="Center">
+                        </Border>
+
+                        <Border
+                            Margin="0,10,0,0"
+                            Padding="14"
+                            Background="{StaticResource BackgroundBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
 
                                 <TextBlock
-                                    FontSize="18"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource SuccessBrush}"
-                                    Text="{Binding SystemStatusText}" />
+                                    Grid.Column="0"
+                                    VerticalAlignment="Top"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="16"
+                                    Foreground="{StaticResource InformationBrush}"
+                                    Text="&#xE9D9;" />
 
                                 <TextBlock
-                                    Margin="0,7,0,0"
+                                    Grid.Column="1"
                                     Foreground="{StaticResource TextSecondaryBrush}"
-                                    Text="{Binding SystemStatusDescription}"
+                                    Text="{Binding UnscannedDevicesText}"
                                     TextWrapping="Wrap" />
 
-                            </StackPanel>
+                            </Grid>
 
-                        </Grid>
+                        </Border>
 
-                        <ProgressBar
-                            Grid.Row="4"
-                            Height="8"
-                            Minimum="0"
-                            Maximum="100"
-                            Value="{Binding SystemScore, Mode=OneWay}"
-                            Foreground="{StaticResource SuccessBrush}"
-                            Background="{StaticResource SurfaceSecondaryBrush}"
-                            BorderThickness="0" />
+                        <Border
+                            Margin="0,10,0,0"
+                            Padding="14"
+                            Background="{StaticResource BackgroundBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock
+                                    Grid.Column="0"
+                                    VerticalAlignment="Top"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="16"
+                                    Foreground="{StaticResource WarningBrush}"
+                                    Text="&#xE7BA;" />
+
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Text="{Binding DevicesWithOpenFindingsText}"
+                                    TextWrapping="Wrap" />
+
+                            </Grid>
+
+                        </Border>
+
+                        <Border
+                            Margin="0,10,0,0"
+                            Padding="14"
+                            Background="{StaticResource BackgroundBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock
+                                    Grid.Column="0"
+                                    VerticalAlignment="Top"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="16"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    Text="&#xE823;" />
+
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Text="{Binding LegacyCheckupsText}"
+                                    TextWrapping="Wrap" />
+
+                            </Grid>
+
+                        </Border>
 
                         <TextBlock
-                            Grid.Row="6"
+                            Margin="0,14,0,0"
+                            FontSize="11"
                             Foreground="{StaticResource TextMutedBrush}"
-                            FontSize="12"
-                            Text="Grundlage sind die Bewertungen aller gespeicherten Systemchecks."
+                            Text="System- und Hardwarezustände werden ausschließlich beim jeweiligen Gerät angezeigt. Ein Checkup-Abschlussgrad wird erst mit dem späteren Vorgangsmodell eingeführt."
                             TextWrapping="Wrap" />
 
-                    </Grid>
+                    </StackPanel>
 
                 </Border>
 
             </Grid>
 
+            <!-- Priorisierte Befunde -->
+
             <Border
                 Grid.Row="6"
-                Style="{StaticResource PanelCardStyle}"
-                Padding="20">
+                Padding="20"
+                Style="{StaticResource PanelCardStyle}">
 
                 <Grid>
 
@@ -515,13 +597,14 @@
                         <StackPanel>
 
                             <TextBlock
-                                Text="Empfehlungen mit hoher Priorität"
+                                Text="Befunde mit hoher Priorität"
                                 Style="{StaticResource SectionTitleTextStyle}" />
 
                             <TextBlock
                                 Margin="0,4,0,0"
                                 Foreground="{StaticResource TextSecondaryBrush}"
-                                Text="Die wichtigsten offenen Hinweise aus den gespeicherten Gerätebewertungen." />
+                                Text="Geräteübergreifende Übersicht der wichtigsten offenen Befunde. Die jeweilige Gerätebewertung befindet sich in den Gerätedetails."
+                                TextWrapping="Wrap" />
 
                         </StackPanel>
 
@@ -539,7 +622,7 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Foreground="{StaticResource TextMutedBrush}"
-                            Text="Aktuell liegen keine priorisierten Empfehlungen vor.">
+                            Text="Aktuell liegen keine priorisierten Befunde vor.">
 
                             <TextBlock.Style>
 
@@ -569,7 +652,8 @@
 
                         </TextBlock>
 
-                        <ItemsControl ItemsSource="{Binding PriorityRecommendations}">
+                        <ItemsControl
+                            ItemsSource="{Binding PriorityRecommendations}">
 
                             <ItemsControl.ItemTemplate>
 
@@ -602,7 +686,8 @@
                                                 <TextBlock
                                                     FontWeight="SemiBold"
                                                     Foreground="{StaticResource TextPrimaryBrush}"
-                                                    Text="{Binding Title}" />
+                                                    Text="{Binding Title}"
+                                                    TextWrapping="Wrap" />
 
                                                 <TextBlock
                                                     Margin="0,3,0,0"

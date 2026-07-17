@@ -179,6 +179,14 @@ public partial class App : Application
                     CheckupScanner>();
 
                 services.AddSingleton<
+                    ISystemConditionAssessmentService,
+                    SystemConditionAssessmentService>();
+
+                services.AddSingleton<
+                    IHardwareConditionAssessmentService,
+                    HardwareConditionAssessmentService>();
+
+                services.AddSingleton<
                     ICheckupAssessmentService,
                     CheckupAssessmentService>();
 

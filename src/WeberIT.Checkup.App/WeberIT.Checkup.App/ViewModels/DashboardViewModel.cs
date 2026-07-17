@@ -17,12 +17,9 @@ public class DashboardViewModel : BaseViewModel
     private int _deviceCount;
     private int _checkupCount;
     private int _recommendationCount;
-    private int _systemScore;
-
-    private string _systemStatusText = "Noch keine Daten";
-
-    private string _systemStatusDescription =
-        "Führen Sie einen ersten Systemscan durch, um eine Bewertung zu erhalten.";
+    private int _unscannedDeviceCount;
+    private int _devicesWithOpenFindingsCount;
+    private int _legacyCheckupCount;
 
     public DashboardViewModel(
         ICustomerService customerService,
@@ -30,23 +27,37 @@ public class DashboardViewModel : BaseViewModel
         CustomersViewModel customersViewModel,
         CheckupViewModel checkupViewModel)
     {
-        _customerService = customerService;
-        _navigationService = navigationService;
-        _customersViewModel = customersViewModel;
-        _checkupViewModel = checkupViewModel;
+        _customerService =
+            customerService;
 
-        StartCheckupCommand = new RelayCommand(_ => StartCheckup());
-        ShowCustomersCommand = new RelayCommand(_ => ShowCustomers());
+        _navigationService =
+            navigationService;
+
+        _customersViewModel =
+            customersViewModel;
+
+        _checkupViewModel =
+            checkupViewModel;
+
+        StartCheckupCommand =
+            new RelayCommand(
+                _ => StartCheckup());
+
+        ShowCustomersCommand =
+            new RelayCommand(
+                _ => ShowCustomers());
 
         Refresh();
     }
 
     public string WelcomeText =>
-        "Willkommen zurück. Hier sehen Sie den aktuellen Stand Ihrer Kunden und Systemchecks.";
+        "Hier sehen Sie den aktuellen Bestand Ihrer Kunden, "
+        + "Geräte und gespeicherten Systemchecks.";
 
     public int CustomerCount
     {
         get => _customerCount;
+
         private set
         {
             if (_customerCount == value)
@@ -54,7 +65,9 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
-            _customerCount = value;
+            _customerCount =
+                value;
+
             OnPropertyChanged();
         }
     }
@@ -62,6 +75,7 @@ public class DashboardViewModel : BaseViewModel
     public int DeviceCount
     {
         get => _deviceCount;
+
         private set
         {
             if (_deviceCount == value)
@@ -69,7 +83,9 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
-            _deviceCount = value;
+            _deviceCount =
+                value;
+
             OnPropertyChanged();
         }
     }
@@ -77,6 +93,7 @@ public class DashboardViewModel : BaseViewModel
     public int CheckupCount
     {
         get => _checkupCount;
+
         private set
         {
             if (_checkupCount == value)
@@ -84,7 +101,9 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
-            _checkupCount = value;
+            _checkupCount =
+                value;
+
             OnPropertyChanged();
         }
     }
@@ -92,6 +111,7 @@ public class DashboardViewModel : BaseViewModel
     public int RecommendationCount
     {
         get => _recommendationCount;
+
         private set
         {
             if (_recommendationCount == value)
@@ -99,63 +119,102 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
-            _recommendationCount = value;
+            _recommendationCount =
+                value;
+
             OnPropertyChanged();
         }
     }
 
-    public int SystemScore
+    public int UnscannedDeviceCount
     {
-        get => _systemScore;
+        get => _unscannedDeviceCount;
+
         private set
         {
-            if (_systemScore == value)
+            if (_unscannedDeviceCount == value)
             {
                 return;
             }
 
-            _systemScore = value;
+            _unscannedDeviceCount =
+                value;
+
             OnPropertyChanged();
         }
     }
 
-    public string SystemStatusText
+    public int DevicesWithOpenFindingsCount
     {
-        get => _systemStatusText;
+        get => _devicesWithOpenFindingsCount;
+
         private set
         {
-            if (_systemStatusText == value)
+            if (_devicesWithOpenFindingsCount == value)
             {
                 return;
             }
 
-            _systemStatusText = value;
+            _devicesWithOpenFindingsCount =
+                value;
+
             OnPropertyChanged();
         }
     }
 
-    public string SystemStatusDescription
+    public int LegacyCheckupCount
     {
-        get => _systemStatusDescription;
+        get => _legacyCheckupCount;
+
         private set
         {
-            if (_systemStatusDescription == value)
+            if (_legacyCheckupCount == value)
             {
                 return;
             }
 
-            _systemStatusDescription = value;
+            _legacyCheckupCount =
+                value;
+
             OnPropertyChanged();
         }
     }
 
-    public ObservableCollection<DashboardActivityItem> RecentActivities { get; } = new();
+    public string ScannedDevicesText =>
+        CheckupCount == 1
+            ? "1 Gerät besitzt einen gespeicherten Checkup."
+            : $"{CheckupCount} Geräte besitzen einen gespeicherten Checkup.";
 
-    public ObservableCollection<DashboardRecommendationItem> PriorityRecommendations { get; } = new();
+    public string UnscannedDevicesText =>
+        UnscannedDeviceCount == 1
+            ? "1 Gerät besitzt noch keinen gespeicherten Checkup."
+            : $"{UnscannedDeviceCount} Geräte besitzen noch keinen gespeicherten Checkup.";
 
-    public bool HasRecentActivities => RecentActivities.Count > 0;
+    public string DevicesWithOpenFindingsText =>
+        DevicesWithOpenFindingsCount == 1
+            ? "1 Gerät enthält mindestens einen offenen Befund."
+            : $"{DevicesWithOpenFindingsCount} Geräte enthalten mindestens einen offenen Befund.";
 
-    public bool HasPriorityRecommendations => PriorityRecommendations.Count > 0;
+    public string LegacyCheckupsText =>
+        LegacyCheckupCount == 1
+            ? "1 gespeicherter Checkup verwendet noch keine getrennte Zustandsbewertung."
+            : $"{LegacyCheckupCount} gespeicherte Checkups verwenden noch keine getrennte Zustandsbewertung.";
+
+    public ObservableCollection<DashboardActivityItem>
+        RecentActivities
+    { get; } =
+            new();
+
+    public ObservableCollection<DashboardRecommendationItem>
+        PriorityRecommendations
+    { get; } =
+            new();
+
+    public bool HasRecentActivities =>
+        RecentActivities.Count > 0;
+
+    public bool HasPriorityRecommendations =>
+        PriorityRecommendations.Count > 0;
 
     public ICommand StartCheckupCommand { get; }
 
@@ -163,51 +222,127 @@ public class DashboardViewModel : BaseViewModel
 
     public void Refresh()
     {
-        var customers = _customerService
-            .GetCustomers()
-            .OrderBy(customer => customer.DisplayName)
-            .ToList();
+        var customers =
+            _customerService
+                .GetCustomers()
+                .OrderBy(
+                    customer =>
+                        customer.DisplayName)
+                .ToList();
 
-        var devices = customers
-            .SelectMany(customer =>
-                customer.Devices.Select(device => new DashboardDeviceContext
-                {
-                    Customer = customer,
-                    Device = device
-                }))
-            .ToList();
+        var devices =
+            customers
+                .SelectMany(
+                    customer =>
+                        customer.Devices.Select(
+                            device =>
+                                new DashboardDeviceContext
+                                {
+                                    Customer =
+                                        customer,
 
-        var scannedDevices = devices
-            .Where(item => item.Device.CheckupSession.ScanDate.HasValue)
-            .ToList();
+                                    Device =
+                                        device
+                                }))
+                .ToList();
 
-        var findings = scannedDevices
-            .SelectMany(item => item.Device.CheckupSession.Assessment.Findings)
-            .ToList();
+        var scannedDevices =
+            devices
+                .Where(
+                    item =>
+                        item.Device
+                            .CheckupSession
+                            .ScanDate
+                            .HasValue)
+                .ToList();
 
-        CustomerCount = customers.Count;
-        DeviceCount = devices.Count;
-        CheckupCount = scannedDevices.Count;
+        var findings =
+            scannedDevices
+                .SelectMany(
+                    item =>
+                        item.Device
+                            .CheckupSession
+                            .Assessment
+                            .Findings)
+                .ToList();
 
-        RecommendationCount = findings.Count(finding =>
-            finding.Severity is FindingSeverity.Recommendation
-                or FindingSeverity.Warning
-                or FindingSeverity.Critical);
+        CustomerCount =
+            customers.Count;
 
-        BuildRecentActivities(customers, devices);
-        BuildPriorityRecommendations(devices);
-        CalculateSystemStatus(scannedDevices);
+        DeviceCount =
+            devices.Count;
+
+        CheckupCount =
+            scannedDevices.Count;
+
+        UnscannedDeviceCount =
+            Math.Max(
+                0,
+                DeviceCount - CheckupCount);
+
+        RecommendationCount =
+            findings.Count(
+                finding =>
+                    finding.Severity
+                        is FindingSeverity.Recommendation
+                        or FindingSeverity.Warning
+                        or FindingSeverity.Critical);
+
+        DevicesWithOpenFindingsCount =
+            scannedDevices.Count(
+                item =>
+                    item.Device
+                        .CheckupSession
+                        .Assessment
+                        .Findings
+                        .Any(
+                            finding =>
+                                finding.Severity
+                                    is FindingSeverity.Recommendation
+                                    or FindingSeverity.Warning
+                                    or FindingSeverity.Critical));
+
+        LegacyCheckupCount =
+            scannedDevices.Count(
+                item =>
+                    item.Device
+                        .CheckupSession
+                        .Assessment
+                        .ScoringVersion <= 0);
+
+        OnPropertyChanged(
+            nameof(ScannedDevicesText));
+
+        OnPropertyChanged(
+            nameof(UnscannedDevicesText));
+
+        OnPropertyChanged(
+            nameof(DevicesWithOpenFindingsText));
+
+        OnPropertyChanged(
+            nameof(LegacyCheckupsText));
+
+        BuildRecentActivities(
+            customers,
+            devices);
+
+        BuildPriorityRecommendations(
+            devices);
     }
 
     private void StartCheckup()
     {
-        _checkupViewModel.SetCustomer(_customersViewModel.SelectedCustomer);
-        _navigationService.NavigateTo(_checkupViewModel);
+        _checkupViewModel.SetCustomer(
+            _customersViewModel.SelectedCustomer);
+
+        _navigationService.NavigateTo(
+            _checkupViewModel);
     }
 
     private void ShowCustomers()
     {
-        _navigationService.NavigateTo(_customersViewModel);
+        _navigationService.NavigateTo(
+            _customersViewModel);
     }
 
     private void BuildRecentActivities(
@@ -216,65 +351,107 @@ public class DashboardViewModel : BaseViewModel
     {
         RecentActivities.Clear();
 
-        var activities = new List<DashboardActivityItem>();
+        var activities =
+            new List<DashboardActivityItem>();
 
         foreach (var customer in customers)
         {
-            activities.Add(new DashboardActivityItem
-            {
-                Title = "Kunde angelegt",
-                Description = customer.DisplayName,
-                Timestamp = customer.CreatedAt,
-                ActivityType = DashboardActivityType.Customer
-            });
+            activities.Add(
+                new DashboardActivityItem
+                {
+                    Title =
+                        "Kunde angelegt",
+
+                    Description =
+                        customer.DisplayName,
+
+                    Timestamp =
+                        customer.CreatedAt,
+
+                    ActivityType =
+                        DashboardActivityType.Customer
+                });
 
             if (customer.UpdatedAt.HasValue)
             {
-                activities.Add(new DashboardActivityItem
-                {
-                    Title = "Kundendaten aktualisiert",
-                    Description = customer.DisplayName,
-                    Timestamp = customer.UpdatedAt.Value,
-                    ActivityType = DashboardActivityType.Customer
-                });
+                activities.Add(
+                    new DashboardActivityItem
+                    {
+                        Title =
+                            "Kundendaten aktualisiert",
+
+                        Description =
+                            customer.DisplayName,
+
+                        Timestamp =
+                            customer.UpdatedAt.Value,
+
+                        ActivityType =
+                            DashboardActivityType.Customer
+                    });
             }
         }
 
         foreach (var item in devices)
         {
-            var customer = item.Customer;
-            var device = item.Device;
+            var customer =
+                item.Customer;
+
+            var device =
+                item.Device;
 
             if (device.CheckupSession.ScanDate.HasValue)
             {
-                activities.Add(new DashboardActivityItem
-                {
-                    Title = "Systemcheck durchgeführt",
-                    Description = $"{device.DisplayName} · {customer.DisplayName}",
-                    Timestamp = device.CheckupSession.ScanDate.Value,
-                    ActivityType = DashboardActivityType.Checkup
-                });
+                activities.Add(
+                    new DashboardActivityItem
+                    {
+                        Title =
+                            "Systemcheck durchgeführt",
+
+                        Description =
+                            $"{device.DisplayName} · "
+                            + $"{customer.DisplayName}",
+
+                        Timestamp =
+                            device.CheckupSession.ScanDate.Value,
+
+                        ActivityType =
+                            DashboardActivityType.Checkup
+                    });
             }
             else
             {
-                activities.Add(new DashboardActivityItem
-                {
-                    Title = "Gerät angelegt",
-                    Description = $"{device.DisplayName} · {customer.DisplayName}",
-                    Timestamp = device.CreatedAt,
-                    ActivityType = DashboardActivityType.Device
-                });
+                activities.Add(
+                    new DashboardActivityItem
+                    {
+                        Title =
+                            "Gerät angelegt",
+
+                        Description =
+                            $"{device.DisplayName} · "
+                            + $"{customer.DisplayName}",
+
+                        Timestamp =
+                            device.CreatedAt,
+
+                        ActivityType =
+                            DashboardActivityType.Device
+                    });
             }
         }
 
         foreach (var activity in activities
-                     .OrderByDescending(activity => activity.Timestamp)
+                     .OrderByDescending(
+                         activity =>
+                             activity.Timestamp)
                      .Take(6))
         {
-            RecentActivities.Add(activity);
+            RecentActivities.Add(
+                activity);
         }
 
-        OnPropertyChanged(nameof(HasRecentActivities));
+        OnPropertyChanged(
+            nameof(HasRecentActivities));
     }
 
     private void BuildPriorityRecommendations(
@@ -282,115 +459,64 @@ public class DashboardViewModel : BaseViewModel
     {
         PriorityRecommendations.Clear();
 
-        var recommendations = devices
-            .SelectMany(item =>
-                item.Device.CheckupSession.Assessment.Findings
-                    .Where(finding =>
-                        finding.Severity is FindingSeverity.Recommendation
-                            or FindingSeverity.Warning
-                            or FindingSeverity.Critical)
-                    .Select(finding => new DashboardRecommendationItem
-                    {
-                        Title = finding.Title,
-                        Description = finding.Description,
-                        DeviceName = item.Device.DisplayName,
-                        CustomerName = item.Customer.DisplayName,
-                        Severity = finding.Severity
-                    }))
-            .OrderByDescending(item => GetSeverityPriority(item.Severity))
-            .ThenBy(item => item.CustomerName)
-            .ThenBy(item => item.DeviceName)
-            .Take(5)
-            .ToList();
+        var recommendations =
+            devices
+                .SelectMany(
+                    item =>
+                        item.Device
+                            .CheckupSession
+                            .Assessment
+                            .Findings
+                            .Where(
+                                finding =>
+                                    finding.Severity
+                                        is FindingSeverity.Recommendation
+                                        or FindingSeverity.Warning
+                                        or FindingSeverity.Critical)
+                            .Select(
+                                finding =>
+                                    new DashboardRecommendationItem
+                                    {
+                                        Title =
+                                            finding.Title,
+
+                                        Description =
+                                            finding.Description,
+
+                                        DeviceName =
+                                            item.Device.DisplayName,
+
+                                        CustomerName =
+                                            item.Customer.DisplayName,
+
+                                        Severity =
+                                            finding.Severity
+                                    }))
+                .OrderByDescending(
+                    item =>
+                        GetSeverityPriority(
+                            item.Severity))
+                .ThenBy(
+                    item =>
+                        item.CustomerName)
+                .ThenBy(
+                    item =>
+                        item.DeviceName)
+                .Take(5)
+                .ToList();
 
         foreach (var recommendation in recommendations)
         {
-            PriorityRecommendations.Add(recommendation);
+            PriorityRecommendations.Add(
+                recommendation);
         }
 
-        OnPropertyChanged(nameof(HasPriorityRecommendations));
+        OnPropertyChanged(
+            nameof(HasPriorityRecommendations));
     }
 
-    private void CalculateSystemStatus(
-        IReadOnlyCollection<DashboardDeviceContext> scannedDevices)
-    {
-        if (scannedDevices.Count == 0)
-        {
-            SystemScore = 0;
-            SystemStatusText = "Noch keine Daten";
-            SystemStatusDescription =
-                "Führen Sie einen ersten Systemscan durch, um eine Bewertung zu erhalten.";
-
-            return;
-        }
-
-        var deviceScores = scannedDevices
-            .Select(item => CalculateDeviceScore(
-                item.Device.CheckupSession.Assessment.Findings))
-            .ToList();
-
-        SystemScore = deviceScores.Min();
-
-        var findings = scannedDevices
-            .SelectMany(item =>
-                item.Device.CheckupSession.Assessment.Findings)
-            .ToList();
-
-        if (findings.Any(finding =>
-                finding.Severity == FindingSeverity.Critical))
-        {
-            SystemStatusText = "Kritischer Zustand";
-            SystemStatusDescription =
-                "Mindestens ein gespeichertes Gerät weist einen kritischen Befund auf.";
-
-            return;
-        }
-
-        if (findings.Any(finding =>
-                finding.Severity == FindingSeverity.Warning))
-        {
-            SystemStatusText = "Handlungsbedarf";
-            SystemStatusDescription =
-                "Mindestens ein gespeichertes Gerät weist einen relevanten Warnhinweis auf.";
-
-            return;
-        }
-
-        if (findings.Any(finding =>
-                finding.Severity == FindingSeverity.Recommendation))
-        {
-            SystemStatusText = "Optimierung empfohlen";
-            SystemStatusDescription =
-                "Für mindestens ein gespeichertes Gerät liegt eine konkrete Empfehlung vor.";
-
-            return;
-        }
-
-        SystemStatusText = "Sehr guter Zustand";
-        SystemStatusDescription =
-            "Die gespeicherten Geräte weisen derzeit keine wesentlichen Probleme auf.";
-    }
-
-    private static int CalculateDeviceScore(
-        IEnumerable<CheckupFinding> findings)
-    {
-        var deduction = findings.Sum(finding =>
-            finding.Severity switch
-            {
-                FindingSeverity.Information => 0,
-                FindingSeverity.Recommendation => 8,
-                FindingSeverity.Warning => 20,
-                FindingSeverity.Critical => 50,
-                _ => 0
-            });
-
-        return Math.Clamp(
-            100 - deduction,
-            0,
-            100);
-    }
-
-    private static int GetSeverityPriority(FindingSeverity severity)
+    private static int GetSeverityPriority(
+        FindingSeverity severity)
     {
         return severity switch
         {
@@ -412,19 +538,25 @@ public class DashboardDeviceContext
 
 public class DashboardActivityItem
 {
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; set; } =
+        string.Empty;
 
-    public string Description { get; set; } = string.Empty;
+    public string Description { get; set; } =
+        string.Empty;
 
     public DateTime Timestamp { get; set; }
 
     public DashboardActivityType ActivityType { get; set; }
 
-    public string TimestampText => FormatTimestamp(Timestamp);
+    public string TimestampText =>
+        FormatTimestamp(
+            Timestamp);
 
-    private static string FormatTimestamp(DateTime timestamp)
+    private static string FormatTimestamp(
+        DateTime timestamp)
     {
-        var difference = DateTime.Now - timestamp;
+        var difference =
+            DateTime.Now - timestamp;
 
         if (difference.TotalMinutes < 1)
         {
@@ -446,32 +578,48 @@ public class DashboardActivityItem
             return $"vor {(int)difference.TotalDays} Tagen";
         }
 
-        return timestamp.ToString("dd.MM.yyyy");
+        return timestamp.ToString(
+            "dd.MM.yyyy");
     }
 }
 
 public class DashboardRecommendationItem
 {
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; set; } =
+        string.Empty;
 
-    public string Description { get; set; } = string.Empty;
+    public string Description { get; set; } =
+        string.Empty;
 
-    public string DeviceName { get; set; } = string.Empty;
+    public string DeviceName { get; set; } =
+        string.Empty;
 
-    public string CustomerName { get; set; } = string.Empty;
+    public string CustomerName { get; set; } =
+        string.Empty;
 
     public FindingSeverity Severity { get; set; }
 
-    public string ContextText => $"{CustomerName} · {DeviceName}";
+    public string ContextText =>
+        $"{CustomerName} · {DeviceName}";
 
-    public string SeverityText => Severity switch
-    {
-        FindingSeverity.Critical => "Kritisch",
-        FindingSeverity.Warning => "Warnung",
-        FindingSeverity.Recommendation => "Empfehlung",
-        FindingSeverity.Information => "Information",
-        _ => "Hinweis"
-    };
+    public string SeverityText =>
+        Severity switch
+        {
+            FindingSeverity.Critical =>
+                "Kritisch",
+
+            FindingSeverity.Warning =>
+                "Warnung",
+
+            FindingSeverity.Recommendation =>
+                "Empfehlung",
+
+            FindingSeverity.Information =>
+                "Information",
+
+            _ =>
+                "Hinweis"
+        };
 }
 
 public enum DashboardActivityType
