@@ -1,5 +1,6 @@
 ﻿using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
+using WeberIT.Checkup.App.Services.Tasks;
 
 namespace WeberIT.Checkup.App.Services.Assessment;
 
@@ -73,6 +74,10 @@ public class CheckupAssessmentService :
 
         assessment.HardwarePlanningSummary =
             hardwareAssessment.PlanningSummary;
+
+        checkupSession.TaskList =
+            CheckupTaskGenerator.Generate(
+                assessment.Findings);
 
         return assessment;
     }

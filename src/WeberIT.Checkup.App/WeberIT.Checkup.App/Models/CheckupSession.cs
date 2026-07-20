@@ -57,4 +57,7 @@ public class CheckupSession
 
     public CheckupAssessment Assessment { get; set; } =
         new();
+
+    public CheckupTaskList TaskList { get; set; } =
+        new();
 }
