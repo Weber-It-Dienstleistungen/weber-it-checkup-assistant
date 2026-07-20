@@ -241,7 +241,7 @@ public sealed class ProgramUpdateActionExecutor :
                 + "pauschale Rechteerhöhung anfordern.");
         }
 
-        if (command.Arguments.Count != 9)
+        if (command.Arguments.Count != 11)
         {
             throw new InvalidOperationException(
                 "Der WinGet-Befehl besitzt nicht die "
@@ -264,31 +264,39 @@ public sealed class ProgramUpdateActionExecutor :
         ValidateFixedArgument(
             command,
             3,
-            "--source");
+            "--version");
 
-        ValidateFixedArgument(
-            command,
-            4,
-            SupportedSource);
+        ValidateTargetVersion(
+            command.Arguments[4]);
 
         ValidateFixedArgument(
             command,
             5,
-            "--exact");
+            "--source");
 
         ValidateFixedArgument(
             command,
             6,
-            "--disable-interactivity");
+            SupportedSource);
 
         ValidateFixedArgument(
             command,
             7,
-            "--accept-source-agreements");
+            "--exact");
 
         ValidateFixedArgument(
             command,
             8,
+            "--disable-interactivity");
+
+        ValidateFixedArgument(
+            command,
+            9,
+            "--accept-source-agreements");
+
+        ValidateFixedArgument(
+            command,
+            10,
             "--accept-package-agreements");
     }
 
@@ -336,6 +344,38 @@ public sealed class ProgramUpdateActionExecutor :
         {
             throw new InvalidOperationException(
                 "Die Paket-ID enthält unzulässige "
+                + "Steuerzeichen.");
+        }
+    }
+
+    private static void ValidateTargetVersion(
+        string targetVersion)
+    {
+        if (string.IsNullOrWhiteSpace(
+                targetVersion))
+        {
+            throw new InvalidOperationException(
+                "Der WinGet-Befehl enthält keine "
+                + "gültige Zielversion.");
+        }
+
+        if (!string.Equals(
+                targetVersion,
+                targetVersion.Trim(),
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Die Zielversion enthält unzulässige "
+                + "äußere Leerzeichen.");
+        }
+
+        if (targetVersion.Any(
+                character =>
+                    char.IsControl(
+                        character)))
+        {
+            throw new InvalidOperationException(
+                "Die Zielversion enthält unzulässige "
                 + "Steuerzeichen.");
         }
     }

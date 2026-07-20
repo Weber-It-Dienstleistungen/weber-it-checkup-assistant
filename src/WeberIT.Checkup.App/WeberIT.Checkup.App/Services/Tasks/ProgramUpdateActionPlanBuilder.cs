@@ -359,6 +359,8 @@ public sealed class ProgramUpdateActionPlanBuilder :
                     "upgrade",
                     "--id",
                     update.PackageId,
+                    "--version",
+                    update.AvailableVersion,
                     "--source",
                     update.Source,
                     "--exact",
