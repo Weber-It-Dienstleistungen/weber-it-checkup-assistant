@@ -1,0 +1,252 @@
+﻿<Window
+    x:Class="WeberIT.Checkup.App.Views.Dialogs.TaskActionDetailsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Aktionsdetails"
+    Width="720"
+    Height="620"
+    MinWidth="620"
+    MinHeight="520"
+    WindowStartupLocation="CenterOwner"
+    ResizeMode="CanResize"
+    ShowInTaskbar="False"
+    Background="{StaticResource BackgroundBrush}">
+
+    <Grid>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ScrollViewer
+            Grid.Row="0"
+            Padding="28"
+            VerticalScrollBarVisibility="Auto">
+
+            <StackPanel>
+
+                <Grid>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="62" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Grid.Column="0"
+                        Width="48"
+                        Height="48"
+                        VerticalAlignment="Top"
+                        Background="{StaticResource SurfaceSecondaryBrush}"
+                        BorderBrush="{StaticResource AccentBrush}"
+                        BorderThickness="1"
+                        CornerRadius="24">
+
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="21"
+                            Foreground="{StaticResource AccentBrush}"
+                            Text="&#xE9D2;" />
+
+                    </Border>
+
+                    <StackPanel Grid.Column="1">
+
+                        <TextBlock
+                            FontSize="21"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Text="{Binding ActionTitle}"
+                            TextWrapping="Wrap" />
+
+                        <TextBlock
+                            Margin="0,6,0,0"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource AccentBrush}"
+                            Text="{Binding AvailabilityText}" />
+
+                    </StackPanel>
+
+                </Grid>
+
+                <Border
+                    Margin="0,24,0,0"
+                    Padding="16"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="9">
+
+                    <StackPanel>
+
+                        <TextBlock
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextMutedBrush}"
+                            Text="VORGESEHENE UNTERSTÜTZUNG" />
+
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            FontSize="14"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Text="{Binding Description}"
+                            TextWrapping="Wrap" />
+
+                    </StackPanel>
+
+                </Border>
+
+                <Border
+                    Margin="0,16,0,0"
+                    Padding="16"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource WarningBrush}"
+                    BorderThickness="1"
+                    CornerRadius="9">
+
+                    <StackPanel>
+
+                        <TextBlock
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource WarningBrush}"
+                            Text="RISIKO UND AUSWIRKUNG" />
+
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Text="{Binding RiskLevelText}" />
+
+                        <TextBlock
+                            Margin="0,6,0,0"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="{Binding RiskDescription}"
+                            TextWrapping="Wrap" />
+
+                    </StackPanel>
+
+                </Border>
+
+                <Grid Margin="0,16,0,0">
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Grid.Column="0"
+                        Padding="16"
+                        Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="9">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="11"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="BERECHTIGUNG" />
+
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="{Binding AdministratorRequirementText}"
+                                TextWrapping="Wrap" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border
+                        Grid.Column="2"
+                        Padding="16"
+                        Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="9">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="11"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="NEUSTART" />
+
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="{Binding RestartPossibilityText}"
+                                TextWrapping="Wrap" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                </Grid>
+
+                <Border
+                    Margin="0,16,0,0"
+                    Padding="14"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderBrush="{StaticResource InformationBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+
+                    <TextBlock
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Text="Diese Ansicht dient ausschließlich der Vorbereitung. Es wird kein Befehl gestartet, keine Einstellung verändert und kein Aktionsergebnis gespeichert."
+                        TextWrapping="Wrap" />
+
+                </Border>
+
+            </StackPanel>
+
+        </ScrollViewer>
+
+        <Border
+            Grid.Row="1"
+            Padding="28,18"
+            Background="{StaticResource SurfaceBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+
+            <Grid>
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="Noch keine Ausführung oder Bestätigung"
+                    TextWrapping="Wrap" />
+
+                <Button
+                    Grid.Column="1"
+                    Width="120"
+                    Height="40"
+                    Content="Schließen"
+                    IsCancel="True"
+                    Click="CloseButton_OnClick" />
+
+            </Grid>
+
+        </Border>
+
+    </Grid>
+
+</Window>

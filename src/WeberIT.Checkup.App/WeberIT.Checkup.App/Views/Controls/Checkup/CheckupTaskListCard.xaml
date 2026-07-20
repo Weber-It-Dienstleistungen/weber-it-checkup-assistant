@@ -654,6 +654,12 @@
                                                 Text="{Binding RiskDescription}"
                                                 TextWrapping="Wrap" />
 
+                                            <Button
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Content="Aktionsdetails anzeigen"
+                                                Click="ActionDetailsButton_OnClick" />
+
                                         </StackPanel>
 
                                     </Border>

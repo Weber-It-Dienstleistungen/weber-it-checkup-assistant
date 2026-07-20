@@ -1,5 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using WeberIT.Checkup.App.Models;
+using WeberIT.Checkup.App.Views.Dialogs;
 
 namespace WeberIT.Checkup.App.Views.Controls.Checkup;
 
@@ -34,5 +36,27 @@ public partial class CheckupTaskListCard : UserControl
 
         rootStackPanel.Children.Add(
             statusEditor);
+    }
+
+    private void ActionDetailsButton_OnClick(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (sender is not Button button
+            || button.DataContext
+                is not CheckupTaskActionDefinition definition)
+        {
+            return;
+        }
+
+        var dialog =
+            new TaskActionDetailsDialog(
+                definition)
+            {
+                Owner =
+                    Window.GetWindow(this)
+            };
+
+        dialog.ShowDialog();
     }
 }
