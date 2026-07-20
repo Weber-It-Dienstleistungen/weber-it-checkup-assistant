@@ -201,7 +201,7 @@
                                         Margin="0,8,0,0"
                                         MaxHeight="150"
                                         IsReadOnly="True"
-                                        Text="{Binding OutputText}"
+                                        Text="{Binding OutputText, Mode=OneWay}"
                                         TextWrapping="Wrap"
                                         VerticalScrollBarVisibility="Auto">
 

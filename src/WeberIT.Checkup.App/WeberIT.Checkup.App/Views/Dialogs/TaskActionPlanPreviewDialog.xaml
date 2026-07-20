@@ -196,7 +196,7 @@
 
                                     <TextBox
                                         IsReadOnly="True"
-                                        Text="{Binding DisplayText}"
+                                        Text="{Binding DisplayText, Mode=OneWay}"
                                         TextWrapping="Wrap"
                                         VerticalScrollBarVisibility="Auto" />
 
@@ -254,7 +254,7 @@
                             Margin="0,8,0,0"
                             FontSize="11"
                             Foreground="{StaticResource TextMutedBrush}"
-                            Text="In dieser Ausbaustufe wird die Zustimmung nur an den aufrufenden Dialog zurückgegeben. Es wird noch kein Befehl gestartet."
+                            Text="Nach der Bestätigung wird der dargestellte Aktionsplan kontrolliert ausgeführt. Die ausgewählten Pakete werden einzeln verarbeitet."
                             TextWrapping="Wrap" />
 
                     </StackPanel>
@@ -286,7 +286,7 @@
                     VerticalAlignment="Center"
                     FontSize="12"
                     Foreground="{StaticResource TextMutedBrush}"
-                    Text="Bestätigungsschritt – noch keine Ausführung"
+                    Text="Bestätigung startet die dargestellten Einzelbefehle"
                     TextWrapping="Wrap" />
 
                 <Button

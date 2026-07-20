@@ -63,6 +63,13 @@ public partial class ProgramUpdateExecutionDialog :
 
     public string ActionTitle { get; }
 
+    public ProgramUpdateActionExecutionResult?
+        ExecutionResult
+    {
+        get;
+        private set;
+    }
+
     public ObservableCollection<CommandExecutionDisplayItem>
         CommandResults
     { get; } =
@@ -195,15 +202,15 @@ public partial class ProgramUpdateExecutionDialog :
 
         try
         {
-            var executionResult =
+            ExecutionResult =
                 await _executor.ExecuteAsync(
                     _plan);
 
             PopulateCommandResults(
-                executionResult);
+                ExecutionResult);
 
             ApplyExecutionResult(
-                executionResult);
+                ExecutionResult);
         }
         catch (Exception exception)
         {

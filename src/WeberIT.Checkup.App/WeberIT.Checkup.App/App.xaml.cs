@@ -266,6 +266,9 @@ public partial class App : Application
             .Build();
     }
 
+    public IServiceProvider Services =>
+        _host.Services;
+
     protected override async void OnStartup(
         StartupEventArgs e)
     {

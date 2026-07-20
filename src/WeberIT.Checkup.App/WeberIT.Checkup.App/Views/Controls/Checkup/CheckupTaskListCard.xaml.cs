@@ -106,7 +106,8 @@ public partial class CheckupTaskListCard : UserControl
         var dialog =
             new ProgramUpdateSelectionDialog(
                 task,
-                CheckupSession.ProgramUpdateInformation)
+                CheckupSession.ProgramUpdateInformation,
+                CheckupSession.TaskList)
             {
                 Owner =
                     Window.GetWindow(this)
