@@ -75,6 +75,10 @@ public partial class App : Application
                     MaintenanceProcessRunner>();
 
                 services.AddSingleton<
+                    IProgramUpdateActionExecutor,
+                    ProgramUpdateActionExecutor>();
+
+                services.AddSingleton<
                     ISystemFileChecker,
                     SystemFileChecker>();
 
