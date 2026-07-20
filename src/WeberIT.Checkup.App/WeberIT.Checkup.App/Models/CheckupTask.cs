@@ -1,9 +1,24 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace WeberIT.Checkup.App.Models;
 
-public class CheckupTask
+public class CheckupTask : INotifyPropertyChanged
 {
+    private CheckupTaskStatus _status =
+        CheckupTaskStatus.Open;
+
+    private DateTime? _statusChangedAt;
+
+    private string _statusReason =
+        string.Empty;
+
+    private string _technicianNote =
+        string.Empty;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public Guid Id { get; set; } =
         Guid.NewGuid();
 
@@ -28,19 +43,87 @@ public class CheckupTask
     public CheckupTaskCategory Category { get; set; } =
         CheckupTaskCategory.General;
 
-    public CheckupTaskStatus Status { get; set; } =
-        CheckupTaskStatus.Open;
+    public CheckupTaskStatus Status
+    {
+        get => _status;
+        set
+        {
+            if (_status == value)
+            {
+                return;
+            }
+
+            _status = value;
+
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsOpen));
+            OnPropertyChanged(nameof(IsDocumented));
+            OnPropertyChanged(nameof(StatusText));
+        }
+    }
 
     public DateTime CreatedAt { get; set; } =
         DateTime.Now;
 
-    public DateTime? StatusChangedAt { get; set; }
+    public DateTime? StatusChangedAt
+    {
+        get => _statusChangedAt;
+        set
+        {
+            if (_statusChangedAt == value)
+            {
+                return;
+            }
 
-    public string StatusReason { get; set; } =
-        string.Empty;
+            _statusChangedAt = value;
 
-    public string TechnicianNote { get; set; } =
-        string.Empty;
+            OnPropertyChanged();
+            OnPropertyChanged(
+                nameof(StatusChangedAtText));
+        }
+    }
+
+    public string StatusReason
+    {
+        get => _statusReason;
+        set
+        {
+            var normalizedValue =
+                value ?? string.Empty;
+
+            if (_statusReason == normalizedValue)
+            {
+                return;
+            }
+
+            _statusReason = normalizedValue;
+
+            OnPropertyChanged();
+            OnPropertyChanged(
+                nameof(HasStatusReason));
+        }
+    }
+
+    public string TechnicianNote
+    {
+        get => _technicianNote;
+        set
+        {
+            var normalizedValue =
+                value ?? string.Empty;
+
+            if (_technicianNote == normalizedValue)
+            {
+                return;
+            }
+
+            _technicianNote = normalizedValue;
+
+            OnPropertyChanged();
+            OnPropertyChanged(
+                nameof(HasTechnicianNote));
+        }
+    }
 
     [JsonIgnore]
     public bool IsOpen =>
@@ -49,6 +132,16 @@ public class CheckupTask
     [JsonIgnore]
     public bool IsDocumented =>
         Status != CheckupTaskStatus.Open;
+
+    [JsonIgnore]
+    public bool HasStatusReason =>
+        !string.IsNullOrWhiteSpace(
+            StatusReason);
+
+    [JsonIgnore]
+    public bool HasTechnicianNote =>
+        !string.IsNullOrWhiteSpace(
+            TechnicianNote);
 
     [JsonIgnore]
     public string PriorityText =>
@@ -123,4 +216,41 @@ public class CheckupTask
                 "dd.MM.yyyy HH:mm")
               + " Uhr"
             : string.Empty;
+
+    public void ApplyStatus(
+        CheckupTaskStatus status,
+        string statusReason,
+        string technicianNote)
+    {
+        if (string.IsNullOrWhiteSpace(
+                statusReason))
+        {
+            throw new ArgumentException(
+                "Für eine Statusänderung ist eine "
+                + "Begründung erforderlich.",
+                nameof(statusReason));
+        }
+
+        Status =
+            status;
+
+        StatusChangedAt =
+            DateTime.Now;
+
+        StatusReason =
+            statusReason.Trim();
+
+        TechnicianNote =
+            technicianNote?.Trim()
+            ?? string.Empty;
+    }
+
+    private void OnPropertyChanged(
+        [CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(
+            this,
+            new PropertyChangedEventArgs(
+                propertyName));
+    }
 }

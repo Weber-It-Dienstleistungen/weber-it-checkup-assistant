@@ -1,9 +1,13 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace WeberIT.Checkup.App.Models;
 
-public class CheckupTaskList
+public class CheckupTaskList : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public int TaskListVersion { get; set; }
 
     public DateTime? CreatedAt { get; set; }
@@ -122,4 +126,63 @@ public class CheckupTaskList
         TaskListVersion > 0
             ? $"Aufgabenmodell Version {TaskListVersion}"
             : "Historischer Checkup ohne Aufgabenliste";
+
+    public void ChangeTaskStatus(
+        CheckupTask task,
+        CheckupTaskStatus status,
+        string statusReason,
+        string technicianNote)
+    {
+        if (!Tasks.Any(
+                existingTask =>
+                    existingTask.Id == task.Id))
+        {
+            throw new InvalidOperationException(
+                "Die ausgewählte Aufgabe gehört nicht "
+                + "zu dieser Aufgabenliste.");
+        }
+
+        task.ApplyStatus(
+            status,
+            statusReason,
+            technicianNote);
+
+        NotifySummaryChanged();
+    }
+
+    private void NotifySummaryChanged()
+    {
+        OnPropertyChanged(
+            nameof(OpenTaskCount));
+
+        OnPropertyChanged(
+            nameof(CompletedTaskCount));
+
+        OnPropertyChanged(
+            nameof(SkippedTaskCount));
+
+        OnPropertyChanged(
+            nameof(NotFeasibleTaskCount));
+
+        OnPropertyChanged(
+            nameof(DocumentedTaskCount));
+
+        OnPropertyChanged(
+            nameof(RequiredOpenTaskCount));
+
+        OnPropertyChanged(
+            nameof(AvailabilityText));
+
+        OnPropertyChanged(
+            nameof(ProgressText));
+    }
+
+    private void OnPropertyChanged(
+        [CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(
+            this,
+            new PropertyChangedEventArgs(
+                propertyName));
+    }
 }
