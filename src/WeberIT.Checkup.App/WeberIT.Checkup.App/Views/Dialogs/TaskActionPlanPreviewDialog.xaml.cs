@@ -5,6 +5,8 @@ namespace WeberIT.Checkup.App.Views.Dialogs;
 
 public partial class TaskActionPlanPreviewDialog : Window
 {
+    public bool IsExecutionConfirmed { get; private set; }
+
     public TaskActionPlanPreviewDialog(
         CheckupTaskActionPlan plan)
     {
@@ -23,6 +25,25 @@ public partial class TaskActionPlanPreviewDialog : Window
         object sender,
         RoutedEventArgs e)
     {
+        IsExecutionConfirmed =
+            false;
+
         Close();
+    }
+
+    private void ConfirmExecutionButton_OnClick(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (ExecutionConfirmationCheckBox.IsChecked != true)
+        {
+            return;
+        }
+
+        IsExecutionConfirmed =
+            true;
+
+        DialogResult =
+            true;
     }
 }

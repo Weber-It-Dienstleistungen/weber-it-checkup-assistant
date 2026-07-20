@@ -220,14 +220,44 @@
                     Margin="0,6,0,0"
                     Padding="14"
                     Background="{StaticResource SurfaceSecondaryBrush}"
-                    BorderBrush="{StaticResource InformationBrush}"
+                    BorderBrush="{StaticResource WarningBrush}"
                     BorderThickness="1"
                     CornerRadius="8">
 
-                    <TextBlock
-                        Foreground="{StaticResource TextSecondaryBrush}"
-                        Text="Diese Vorschau führt keinen der dargestellten Befehle aus. Der Aktionsplan wird beim Schließen verworfen und noch nicht als Ergebnis gespeichert."
-                        TextWrapping="Wrap" />
+                    <StackPanel>
+
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource WarningBrush}"
+                            Text="Ausdrückliche Bestätigung erforderlich"
+                            TextWrapping="Wrap" />
+
+                        <TextBlock
+                            Margin="0,6,0,0"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Prüfe Ziele, Risiken und jeden vorgesehenen Einzelbefehl. Die Zustimmung gilt ausschließlich für den oben dargestellten Aktionsplan."
+                            TextWrapping="Wrap" />
+
+                        <CheckBox
+                            x:Name="ExecutionConfirmationCheckBox"
+                            Margin="0,12,0,0"
+                            VerticalContentAlignment="Top">
+
+                            <TextBlock
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="Ich habe den Aktionsplan vollständig geprüft und bestätige die kontrollierte Ausführung der ausgewählten Programmupdates."
+                                TextWrapping="Wrap" />
+
+                        </CheckBox>
+
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            FontSize="11"
+                            Foreground="{StaticResource TextMutedBrush}"
+                            Text="In dieser Ausbaustufe wird die Zustimmung nur an den aufrufenden Dialog zurückgegeben. Es wird noch kein Befehl gestartet."
+                            TextWrapping="Wrap" />
+
+                    </StackPanel>
 
                 </Border>
 
@@ -247,6 +277,8 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock
@@ -254,15 +286,23 @@
                     VerticalAlignment="Center"
                     FontSize="12"
                     Foreground="{StaticResource TextMutedBrush}"
-                    Text="Nur Vorschau – keine Ausführung"
+                    Text="Bestätigungsschritt – noch keine Ausführung"
                     TextWrapping="Wrap" />
 
                 <Button
                     Grid.Column="1"
                     Width="120"
-                    Content="Schließen"
+                    Content="Abbrechen"
                     IsCancel="True"
                     Click="CloseButton_OnClick" />
+
+                <Button
+                    Grid.Column="3"
+                    MinWidth="210"
+                    Content="Ausführung bestätigen"
+                    IsDefault="True"
+                    IsEnabled="{Binding IsChecked, ElementName=ExecutionConfirmationCheckBox}"
+                    Click="ConfirmExecutionButton_OnClick" />
 
             </Grid>
 
