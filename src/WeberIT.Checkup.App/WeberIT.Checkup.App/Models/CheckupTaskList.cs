@@ -8,6 +8,8 @@ public class CheckupTaskList : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public event EventHandler? PersistenceRequested;
+
     public int TaskListVersion { get; set; }
 
     public DateTime? CreatedAt { get; set; }
@@ -142,12 +144,43 @@ public class CheckupTaskList : INotifyPropertyChanged
                 + "zu dieser Aufgabenliste.");
         }
 
+        var previousStatus =
+            task.Status;
+
+        var previousStatusChangedAt =
+            task.StatusChangedAt;
+
+        var previousStatusReason =
+            task.StatusReason;
+
+        var previousTechnicianNote =
+            task.TechnicianNote;
+
         task.ApplyStatus(
             status,
             statusReason,
             technicianNote);
 
         NotifySummaryChanged();
+
+        try
+        {
+            PersistenceRequested?.Invoke(
+                this,
+                EventArgs.Empty);
+        }
+        catch
+        {
+            task.RestoreStatus(
+                previousStatus,
+                previousStatusChangedAt,
+                previousStatusReason,
+                previousTechnicianNote);
+
+            NotifySummaryChanged();
+
+            throw;
+        }
     }
 
     private void NotifySummaryChanged()

@@ -119,7 +119,7 @@ public partial class CheckupTaskStatusEditor : UserControl
 
         SetValidationMessage(
             $"Status „{selectedTask.StatusText}“ "
-            + "wurde für den aktuellen Checkup übernommen.",
+            + "wurde übernommen.",
             true);
     }
 

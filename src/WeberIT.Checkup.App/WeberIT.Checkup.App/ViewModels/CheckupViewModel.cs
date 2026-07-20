@@ -18,6 +18,7 @@ public class CheckupViewModel : BaseViewModel
     private Customer? _selectedCustomer;
     private CheckupSession _currentCheckup = new();
     private Guid? _savedCustomerId;
+    private Guid? _savedDeviceId;
     private bool _lastSaveUpdatedExistingDevice;
 
     public CheckupViewModel(
@@ -32,6 +33,9 @@ public class CheckupViewModel : BaseViewModel
         _customerService = customerService;
         _deviceIdentityService = deviceIdentityService;
         _dialogService = dialogService;
+
+        SubscribeToTaskList(
+            _currentCheckup.TaskList);
 
         ReadSystemCommand =
             new RelayCommand(_ => ReadSystem());
@@ -85,7 +89,21 @@ public class CheckupViewModel : BaseViewModel
         get => _currentCheckup;
         private set
         {
-            _currentCheckup = value;
+            if (ReferenceEquals(
+                    _currentCheckup,
+                    value))
+            {
+                return;
+            }
+
+            UnsubscribeFromTaskList(
+                _currentCheckup.TaskList);
+
+            _currentCheckup =
+                value;
+
+            SubscribeToTaskList(
+                _currentCheckup.TaskList);
 
             OnPropertyChanged();
             OnPropertyChanged(nameof(DeviceInformation));
@@ -127,7 +145,9 @@ public class CheckupViewModel : BaseViewModel
 
     public bool IsCurrentCheckupSaved =>
         SelectedCustomer is not null
-        && _savedCustomerId == SelectedCustomer.Id;
+        && _savedCustomerId
+            == SelectedCustomer.Id
+        && _savedDeviceId.HasValue;
 
     public bool CanSaveCheckup =>
         HasCurrentCheckup
@@ -170,34 +190,46 @@ public class CheckupViewModel : BaseViewModel
 
     public void SetCustomer(Customer? customer)
     {
-        SelectedCustomer = customer;
+        SelectedCustomer =
+            customer;
     }
 
     private void ReadSystem()
     {
         try
         {
-            var checkupSession = _checkupScanner.Scan();
+            var checkupSession =
+                _checkupScanner.Scan();
 
             checkupSession.Assessment =
-                _checkupAssessmentService.Assess(checkupSession);
+                _checkupAssessmentService.Assess(
+                    checkupSession);
 
-            _savedCustomerId = null;
-            _lastSaveUpdatedExistingDevice = false;
+            _savedCustomerId =
+                null;
 
-            CurrentCheckup = checkupSession;
+            _savedDeviceId =
+                null;
+
+            _lastSaveUpdatedExistingDevice =
+                false;
+
+            CurrentCheckup =
+                checkupSession;
         }
         catch (Exception exception)
         {
             _dialogService.ShowError(
                 "Systemscan fehlgeschlagen",
-                BuildScanErrorMessage(exception));
+                BuildScanErrorMessage(
+                    exception));
         }
     }
 
     private void SaveCheckup()
     {
-        if (!CanSaveCheckup || SelectedCustomer is null)
+        if (!CanSaveCheckup
+            || SelectedCustomer is null)
         {
             return;
         }
@@ -209,44 +241,60 @@ public class CheckupViewModel : BaseViewModel
 
         if (matchingDevice is not null)
         {
-            UpdateExistingDevice(matchingDevice);
+            UpdateExistingDevice(
+                matchingDevice);
+
             return;
         }
 
         AddNewDevice();
     }
 
-    private void UpdateExistingDevice(CustomerDevice matchingDevice)
+    private void UpdateExistingDevice(
+        CustomerDevice matchingDevice)
     {
         if (SelectedCustomer is null)
         {
             return;
         }
 
-        var confirmed = _dialogService.Confirm(
-            "Gerät bereits vorhanden",
-            $"Das Gerät \"{matchingDevice.DisplayName}\" ist diesem Kunden bereits zugeordnet. "
-            + "Soll der vorhandene Systemcheck durch den neuen Scan ersetzt werden?");
+        var confirmed =
+            _dialogService.Confirm(
+                "Gerät bereits vorhanden",
+                $"Das Gerät \"{matchingDevice.DisplayName}\" "
+                + "ist diesem Kunden bereits zugeordnet. "
+                + "Soll der vorhandene Systemcheck durch "
+                + "den neuen Scan ersetzt werden?");
 
         if (!confirmed)
         {
             return;
         }
 
-        var previousDisplayName = matchingDevice.DisplayName;
-        var previousCheckupSession = matchingDevice.CheckupSession;
-        var previousUpdatedAt = matchingDevice.UpdatedAt;
+        var previousDisplayName =
+            matchingDevice.DisplayName;
+
+        var previousCheckupSession =
+            matchingDevice.CheckupSession;
+
+        var previousUpdatedAt =
+            matchingDevice.UpdatedAt;
 
         var scannedComputerName =
             CurrentCheckup.DeviceInformation.Name;
 
-        if (!string.IsNullOrWhiteSpace(scannedComputerName))
+        if (!string.IsNullOrWhiteSpace(
+                scannedComputerName))
         {
-            matchingDevice.DisplayName = scannedComputerName;
+            matchingDevice.DisplayName =
+                scannedComputerName;
         }
 
-        matchingDevice.CheckupSession = CurrentCheckup;
-        matchingDevice.UpdatedAt = DateTime.Now;
+        matchingDevice.CheckupSession =
+            CurrentCheckup;
+
+        matchingDevice.UpdatedAt =
+            DateTime.Now;
 
         try
         {
@@ -264,7 +312,8 @@ public class CheckupViewModel : BaseViewModel
                     previousUpdatedAt);
 
                 ShowPersistenceError(
-                    "Das Gerät oder der zugehörige Kunde ist in der Datenbank nicht mehr vorhanden.");
+                    "Das Gerät oder der zugehörige Kunde "
+                    + "ist in der Datenbank nicht mehr vorhanden.");
 
                 return;
             }
@@ -277,11 +326,15 @@ public class CheckupViewModel : BaseViewModel
                 previousCheckupSession,
                 previousUpdatedAt);
 
-            ShowPersistenceError(exception.Message);
+            ShowPersistenceError(
+                exception.Message);
+
             return;
         }
 
-        CompleteSave(true);
+        CompleteSave(
+            true,
+            matchingDevice.Id);
     }
 
     private void AddNewDevice()
@@ -297,11 +350,15 @@ public class CheckupViewModel : BaseViewModel
                 ? CurrentCheckup.DeviceInformation.Name
                 : $"Gerät {SelectedCustomer.Devices.Count + 1}";
 
-        var device = new CustomerDevice
-        {
-            DisplayName = displayName,
-            CheckupSession = CurrentCheckup
-        };
+        var device =
+            new CustomerDevice
+            {
+                DisplayName =
+                    displayName,
+
+                CheckupSession =
+                    CurrentCheckup
+            };
 
         try
         {
@@ -313,49 +370,185 @@ public class CheckupViewModel : BaseViewModel
             if (!wasAdded)
             {
                 ShowPersistenceError(
-                    "Der ausgewählte Kunde ist in der Datenbank nicht mehr vorhanden.");
+                    "Der ausgewählte Kunde ist in der "
+                    + "Datenbank nicht mehr vorhanden.");
 
                 return;
             }
         }
         catch (Exception exception)
         {
-            ShowPersistenceError(exception.Message);
+            ShowPersistenceError(
+                exception.Message);
+
             return;
         }
 
-        SelectedCustomer.Devices.Add(device);
+        SelectedCustomer.Devices.Add(
+            device);
 
-        CompleteSave(false);
+        CompleteSave(
+            false,
+            device.Id);
     }
 
-    private void CompleteSave(bool updatedExistingDevice)
+    private void CompleteSave(
+        bool updatedExistingDevice,
+        Guid savedDeviceId)
     {
         if (SelectedCustomer is null)
         {
             return;
         }
 
-        _savedCustomerId = SelectedCustomer.Id;
-        _lastSaveUpdatedExistingDevice = updatedExistingDevice;
+        _savedCustomerId =
+            SelectedCustomer.Id;
 
-        OnPropertyChanged(nameof(IsCurrentCheckupSaved));
-        OnPropertyChanged(nameof(CanSaveCheckup));
-        OnPropertyChanged(nameof(PersistenceStatusText));
+        _savedDeviceId =
+            savedDeviceId;
 
-        _saveCheckupCommand.RaiseCanExecuteChanged();
+        _lastSaveUpdatedExistingDevice =
+            updatedExistingDevice;
+
+        OnPropertyChanged(
+            nameof(IsCurrentCheckupSaved));
+
+        OnPropertyChanged(
+            nameof(CanSaveCheckup));
+
+        OnPropertyChanged(
+            nameof(PersistenceStatusText));
+
+        _saveCheckupCommand
+            .RaiseCanExecuteChanged();
     }
 
-    private void ShowPersistenceError(string errorDetails)
+    private void SubscribeToTaskList(
+        CheckupTaskList taskList)
     {
-        var details = string.IsNullOrWhiteSpace(errorDetails)
-            ? "Keine weiteren Fehlerdetails verfügbar."
-            : errorDetails;
+        taskList.PersistenceRequested +=
+            CurrentTaskList_OnPersistenceRequested;
+    }
+
+    private void UnsubscribeFromTaskList(
+        CheckupTaskList taskList)
+    {
+        taskList.PersistenceRequested -=
+            CurrentTaskList_OnPersistenceRequested;
+    }
+
+    private void CurrentTaskList_OnPersistenceRequested(
+        object? sender,
+        EventArgs e)
+    {
+        if (!IsCurrentCheckupSaved)
+        {
+            return;
+        }
+
+        PersistCurrentTaskList();
+    }
+
+    private void PersistCurrentTaskList()
+    {
+        if (SelectedCustomer is null
+            || !_savedDeviceId.HasValue)
+        {
+            return;
+        }
+
+        var device =
+            SelectedCustomer.Devices
+                .FirstOrDefault(
+                    existingDevice =>
+                        existingDevice.Id
+                        == _savedDeviceId.Value);
+
+        if (device is null)
+        {
+            var message =
+                "Das gespeicherte Gerät wurde in der "
+                + "aktuellen Kundenliste nicht mehr gefunden.";
+
+            ShowTaskPersistenceError(
+                message);
+
+            throw new InvalidOperationException(
+                message);
+        }
+
+        var previousUpdatedAt =
+            device.UpdatedAt;
+
+        device.CheckupSession =
+            CurrentCheckup;
+
+        device.UpdatedAt =
+            DateTime.Now;
+
+        try
+        {
+            var wasUpdated =
+                _customerService.UpdateCustomerDevice(
+                    SelectedCustomer.Id,
+                    device);
+
+            if (!wasUpdated)
+            {
+                throw new InvalidOperationException(
+                    "Das Gerät oder der zugehörige Kunde "
+                    + "ist in der Datenbank nicht mehr vorhanden.");
+            }
+        }
+        catch (Exception exception)
+        {
+            device.UpdatedAt =
+                previousUpdatedAt;
+
+            ShowTaskPersistenceError(
+                exception.Message);
+
+            throw new InvalidOperationException(
+                "Der Aufgabenstatus konnte nicht "
+                + "dauerhaft gespeichert werden.",
+                exception);
+        }
+    }
+
+    private void ShowTaskPersistenceError(
+        string errorDetails)
+    {
+        var details =
+            string.IsNullOrWhiteSpace(
+                errorDetails)
+                ? "Keine weiteren Fehlerdetails verfügbar."
+                : errorDetails;
+
+        _dialogService.ShowError(
+            "Aufgabenstatus nicht gespeichert",
+            "Die Statusänderung konnte nicht dauerhaft "
+            + "gespeichert werden und wurde deshalb "
+            + "zurückgenommen."
+            + Environment.NewLine
+            + Environment.NewLine
+            + $"Technische Details: {details}");
+    }
+
+    private void ShowPersistenceError(
+        string errorDetails)
+    {
+        var details =
+            string.IsNullOrWhiteSpace(
+                errorDetails)
+                ? "Keine weiteren Fehlerdetails verfügbar."
+                : errorDetails;
 
         _dialogService.ShowError(
             "Speichern fehlgeschlagen",
-            "Der Systemcheck konnte nicht dauerhaft gespeichert werden. "
-            + "Die angezeigten Scandaten bleiben erhalten und können erneut gespeichert werden."
+            "Der Systemcheck konnte nicht dauerhaft "
+            + "gespeichert werden. Die angezeigten "
+            + "Scandaten bleiben erhalten und können "
+            + "erneut gespeichert werden."
             + Environment.NewLine
             + Environment.NewLine
             + $"Technische Details: {details}");
@@ -367,21 +560,31 @@ public class CheckupViewModel : BaseViewModel
         CheckupSession checkupSession,
         DateTime? updatedAt)
     {
-        device.DisplayName = displayName;
-        device.CheckupSession = checkupSession;
-        device.UpdatedAt = updatedAt;
+        device.DisplayName =
+            displayName;
+
+        device.CheckupSession =
+            checkupSession;
+
+        device.UpdatedAt =
+            updatedAt;
     }
 
-    private static string BuildScanErrorMessage(Exception exception)
+    private static string BuildScanErrorMessage(
+        Exception exception)
     {
-        var errorDetails = string.IsNullOrWhiteSpace(exception.Message)
-            ? "Keine weiteren Fehlerdetails verfügbar."
-            : exception.Message;
+        var errorDetails =
+            string.IsNullOrWhiteSpace(
+                exception.Message)
+                ? "Keine weiteren Fehlerdetails verfügbar."
+                : exception.Message;
 
-        return "Die Systeminformationen konnten nicht vollständig ausgelesen oder bewertet werden. "
-               + "Die bisherigen Checkup-Daten bleiben unverändert."
-               + Environment.NewLine
-               + Environment.NewLine
-               + $"Technische Details: {errorDetails}";
+        return
+            "Die Systeminformationen konnten nicht "
+            + "vollständig ausgelesen oder bewertet werden. "
+            + "Die bisherigen Checkup-Daten bleiben unverändert."
+            + Environment.NewLine
+            + Environment.NewLine
+            + $"Technische Details: {errorDetails}";
     }
 }

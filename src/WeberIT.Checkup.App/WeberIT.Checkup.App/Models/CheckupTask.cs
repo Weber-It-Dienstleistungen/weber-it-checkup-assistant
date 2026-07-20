@@ -245,6 +245,25 @@ public class CheckupTask : INotifyPropertyChanged
             ?? string.Empty;
     }
 
+    internal void RestoreStatus(
+        CheckupTaskStatus status,
+        DateTime? statusChangedAt,
+        string statusReason,
+        string technicianNote)
+    {
+        Status =
+            status;
+
+        StatusChangedAt =
+            statusChangedAt;
+
+        StatusReason =
+            statusReason;
+
+        TechnicianNote =
+            technicianNote;
+    }
+
     private void OnPropertyChanged(
         [CallerMemberName] string? propertyName = null)
     {
