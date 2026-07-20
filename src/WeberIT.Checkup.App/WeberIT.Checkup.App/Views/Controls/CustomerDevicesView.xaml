@@ -539,6 +539,7 @@
 
                 <checkup:CheckupTaskListCard
                     Margin="0,20,0,0"
+                    CheckupSession="{Binding DataContext.SelectedDevice.CheckupSession, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     DataContext="{Binding TaskList}" />
 
                 <checkup:ProgramUpdatesCard

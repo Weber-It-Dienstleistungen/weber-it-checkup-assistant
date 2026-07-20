@@ -15,6 +15,7 @@ using WeberIT.Checkup.App.Services.Scanners;
 using WeberIT.Checkup.App.Services.Security;
 using WeberIT.Checkup.App.Services.Startup;
 using WeberIT.Checkup.App.Services.Storage;
+using WeberIT.Checkup.App.Services.Tasks;
 using WeberIT.Checkup.App.Services.Updates;
 using WeberIT.Checkup.App.Services.Windows;
 using WeberIT.Checkup.App.ViewModels;
@@ -54,6 +55,10 @@ public partial class App : Application
                 services.AddSingleton<
                     IDialogService,
                     DialogService>();
+
+                services.AddSingleton<
+                    ICheckupTaskActionExecutionCoordinator,
+                    CheckupTaskActionExecutionCoordinator>();
 
                 services.AddSingleton<
                     IDeviceIdentityService,
