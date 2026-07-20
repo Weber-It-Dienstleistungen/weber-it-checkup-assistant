@@ -537,6 +537,10 @@
 
                 </Border>
 
+                <checkup:CheckupTaskListCard
+                    Margin="0,20,0,0"
+                    DataContext="{Binding TaskList}" />
+
                 <checkup:ProgramUpdatesCard
                     Margin="0,20,0,0"
                     DataContext="{Binding ProgramUpdateInformation}" />

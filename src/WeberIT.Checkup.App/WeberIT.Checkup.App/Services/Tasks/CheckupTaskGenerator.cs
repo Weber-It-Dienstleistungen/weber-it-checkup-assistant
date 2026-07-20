@@ -5,7 +5,7 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 public static class CheckupTaskGenerator
 {
     private const int CurrentTaskListVersion =
-        1;
+        2;
 
     public static CheckupTaskList Generate(
         IReadOnlyCollection<CheckupFinding> findings)
@@ -402,7 +402,10 @@ public static class CheckupTaskGenerator
                 CheckupTaskStatus.Open,
 
             CreatedAt =
-                createdAt
+                createdAt,
+
+            ActionResults =
+                new List<CheckupTaskActionResult>()
         };
     }
 

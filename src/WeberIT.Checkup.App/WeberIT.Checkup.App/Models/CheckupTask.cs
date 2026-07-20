@@ -17,6 +17,9 @@ public class CheckupTask : INotifyPropertyChanged
     private string _technicianNote =
         string.Empty;
 
+    private List<CheckupTaskActionResult> _actionResults =
+        new();
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public Guid Id { get; set; } =
@@ -59,6 +62,8 @@ public class CheckupTask : INotifyPropertyChanged
             OnPropertyChanged(nameof(IsOpen));
             OnPropertyChanged(nameof(IsDocumented));
             OnPropertyChanged(nameof(StatusText));
+            OnPropertyChanged(
+                nameof(HasSuccessfulActionAwaitingVerification));
         }
     }
 
@@ -125,6 +130,29 @@ public class CheckupTask : INotifyPropertyChanged
         }
     }
 
+    public List<CheckupTaskActionResult> ActionResults
+    {
+        get => _actionResults;
+        set
+        {
+            var normalizedValue =
+                value
+                ?? new List<CheckupTaskActionResult>();
+
+            if (ReferenceEquals(
+                    _actionResults,
+                    normalizedValue))
+            {
+                return;
+            }
+
+            _actionResults =
+                normalizedValue;
+
+            NotifyActionResultPropertiesChanged();
+        }
+    }
+
     [JsonIgnore]
     public bool IsOpen =>
         Status == CheckupTaskStatus.Open;
@@ -142,6 +170,64 @@ public class CheckupTask : INotifyPropertyChanged
     public bool HasTechnicianNote =>
         !string.IsNullOrWhiteSpace(
             TechnicianNote);
+
+    [JsonIgnore]
+    public bool HasActionResults =>
+        ActionResults.Count > 0;
+
+    [JsonIgnore]
+    public int ActionResultCount =>
+        ActionResults.Count;
+
+    [JsonIgnore]
+    public CheckupTaskActionResult? LatestActionResult =>
+        ActionResults
+            .OrderByDescending(
+                result =>
+                    result.FinishedAt
+                    ?? result.StartedAt
+                    ?? DateTimeOffset.MinValue)
+            .FirstOrDefault();
+
+    [JsonIgnore]
+    public bool HasSuccessfulActionAwaitingVerification =>
+        IsOpen
+        && ActionResults.Any(
+            result =>
+                result.Status
+                == CheckupTaskActionStatus.Successful);
+
+    [JsonIgnore]
+    public bool HasRestartRequirement =>
+        ActionResults.Any(
+            result =>
+                result.RestartRequired);
+
+    [JsonIgnore]
+    public string ActionProgressText
+    {
+        get
+        {
+            if (!HasActionResults)
+            {
+                return
+                    "Für diese Aufgabe wurde noch keine "
+                    + "technische Aktion dokumentiert.";
+            }
+
+            if (HasSuccessfulActionAwaitingVerification)
+            {
+                return
+                    "Aktion ausgeführt – Abschlusskontrolle "
+                    + "ausstehend.";
+            }
+
+            return ActionResultCount == 1
+                ? "Eine technische Aktion wurde dokumentiert."
+                : $"{ActionResultCount} technische Aktionen "
+                  + "wurden dokumentiert.";
+        }
+    }
 
     [JsonIgnore]
     public string PriorityText =>
@@ -245,6 +331,44 @@ public class CheckupTask : INotifyPropertyChanged
             ?? string.Empty;
     }
 
+    internal void AddActionResult(
+        CheckupTaskActionResult actionResult)
+    {
+        ArgumentNullException.ThrowIfNull(
+            actionResult);
+
+        ActionResults.Add(
+            actionResult);
+
+        NotifyActionResultPropertiesChanged();
+    }
+
+    internal bool RemoveActionResult(
+        Guid actionResultId)
+    {
+        var actionResult =
+            ActionResults.FirstOrDefault(
+                existingResult =>
+                    existingResult.Id
+                    == actionResultId);
+
+        if (actionResult is null)
+        {
+            return false;
+        }
+
+        var wasRemoved =
+            ActionResults.Remove(
+                actionResult);
+
+        if (wasRemoved)
+        {
+            NotifyActionResultPropertiesChanged();
+        }
+
+        return wasRemoved;
+    }
+
     internal void RestoreStatus(
         CheckupTaskStatus status,
         DateTime? statusChangedAt,
@@ -262,6 +386,30 @@ public class CheckupTask : INotifyPropertyChanged
 
         TechnicianNote =
             technicianNote;
+    }
+
+    private void NotifyActionResultPropertiesChanged()
+    {
+        OnPropertyChanged(
+            nameof(ActionResults));
+
+        OnPropertyChanged(
+            nameof(HasActionResults));
+
+        OnPropertyChanged(
+            nameof(ActionResultCount));
+
+        OnPropertyChanged(
+            nameof(LatestActionResult));
+
+        OnPropertyChanged(
+            nameof(HasSuccessfulActionAwaitingVerification));
+
+        OnPropertyChanged(
+            nameof(HasRestartRequirement));
+
+        OnPropertyChanged(
+            nameof(ActionProgressText));
     }
 
     private void OnPropertyChanged(
