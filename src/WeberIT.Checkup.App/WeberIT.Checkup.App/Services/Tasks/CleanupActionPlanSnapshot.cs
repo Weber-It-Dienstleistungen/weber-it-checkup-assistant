@@ -13,9 +13,6 @@ internal static class CleanupActionPlanSnapshot
     private const string SupportedActionCode =
         "action.cleanup.selected-safe-categories";
 
-    private const CleanupCategoryType ExecutableCategory =
-        CleanupCategoryType.UserTemporaryFiles;
-
     public static CheckupTaskActionPlan CreatePreviewCopy(
         CheckupTaskActionPlan plan)
     {
@@ -101,8 +98,8 @@ internal static class CleanupActionPlanSnapshot
             plan);
 
         return plan.CleanupCategories.Count == 1
-               && plan.CleanupCategories[0].Category
-                   == ExecutableCategory
+               && IsExecutableCategory(
+                   plan.CleanupCategories[0])
                && !plan.RequiresAdministrator
                && !plan.MayRequireRestart;
     }
@@ -116,24 +113,23 @@ internal static class CleanupActionPlanSnapshot
         if (plan.CleanupCategories.Count != 1)
         {
             return
-                "In dieser Ausbaustufe kann nur eine einzelne "
-                + "Bereinigungskategorie ausgeführt werden. "
-                + "Der dargestellte Mehrfachplan dient daher "
-                + "ausschließlich als Vorschau.";
+                "In dieser Ausbaustufe wird jede sichere "
+                + "Bereinigungskategorie einzeln bestätigt und "
+                + "ausgeführt. Der dargestellte Mehrfachplan dient "
+                + "daher ausschließlich als Vorschau.";
         }
 
         var category =
             plan.CleanupCategories[0];
 
-        if (category.Category
-            != ExecutableCategory)
+        if (!IsExecutableCategory(
+                category))
         {
             return
                 "Die Kategorie „"
                 + category.Title
-                + "“ kann bereits vollständig geprüft werden, "
-                + "ist in dieser Ausbaustufe jedoch noch nicht "
-                + "zur automatischen Ausführung freigegeben.";
+                + "“ kann bereits geprüft werden, ist jedoch noch "
+                + "nicht zur automatischen Ausführung freigegeben.";
         }
 
         if (plan.RequiresAdministrator)
@@ -153,9 +149,9 @@ internal static class CleanupActionPlanSnapshot
         }
 
         return
-            "Dieser Plan enthält genau die freigegebene "
-            + "Kategorie Benutzertemporärdateien und kann "
-            + "nach ausdrücklicher Bestätigung kontrolliert "
+            "Dieser Plan enthält genau eine sicher freigegebene "
+            + "Bereinigungskategorie und kann nach vollständiger "
+            + "Prüfung und ausdrücklicher Bestätigung kontrolliert "
             + "ausgeführt werden.";
     }
 
@@ -215,34 +211,43 @@ internal static class CleanupActionPlanSnapshot
         if (plan.CleanupCategories.Count != 1)
         {
             throw new InvalidOperationException(
-                "In dieser Ausbaustufe darf genau eine "
-                + "Bereinigungskategorie ausgeführt werden.");
+                "Für eine kontrollierte Ausführung muss genau "
+                + "eine Bereinigungskategorie ausgewählt werden.");
         }
 
         var category =
             plan.CleanupCategories.Single();
 
-        if (category.Category
-            != ExecutableCategory)
+        if (!IsExecutableCategory(
+                category))
         {
             throw new InvalidOperationException(
-                "In dieser Ausbaustufe können ausschließlich "
-                + "Benutzertemporärdateien bereinigt werden.");
+                "Die ausgewählte Bereinigungskategorie ist noch "
+                + "nicht zur automatischen Ausführung freigegeben.");
         }
 
         if (plan.RequiresAdministrator)
         {
             throw new InvalidOperationException(
-                "Der freigegebene Benutzer-Temp-Plan darf "
-                + "keine Administratorrechte anfordern.");
+                "Der freigegebene Bereinigungsplan darf keine "
+                + "Administratorrechte anfordern.");
         }
 
         if (plan.MayRequireRestart)
         {
             throw new InvalidOperationException(
-                "Der freigegebene Benutzer-Temp-Plan darf "
-                + "keinen Neustart vorsehen.");
+                "Der freigegebene Bereinigungsplan darf keinen "
+                + "Neustart vorsehen.");
         }
+    }
+
+    private static bool IsExecutableCategory(
+        CleanupActionCategory category)
+    {
+        return category.Category
+            is CleanupCategoryType.UserTemporaryFiles
+            or CleanupCategoryType.DirectXShaderCache
+            or CleanupCategoryType.ThumbnailCache;
     }
 
     private static CleanupActionCategory CloneCategory(

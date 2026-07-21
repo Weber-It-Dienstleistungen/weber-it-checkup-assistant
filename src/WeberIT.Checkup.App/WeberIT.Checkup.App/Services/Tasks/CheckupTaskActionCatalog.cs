@@ -25,16 +25,18 @@ public static class CheckupTaskActionCatalog
                     mayRequireRestart: true),
 
             "task.restart.perform-controlled-restart" =>
-                CreateExecutableDefinition(
+                CreateManualDefinition(
                     taskCode,
-                    "action.restart.controlled",
-                    "Kontrollierten Neustart vorbereiten",
-                    "Nach einer ausdrücklichen Bestätigung kann ein "
-                    + "kontrollierter Windows-Neustart vorbereitet werden.",
+                    "Neustart manuell vorbereiten",
+                    "Für den Neustart ist noch keine kontrollierte "
+                    + "technische Ausführung freigegeben. Vor der "
+                    + "manuellen Durchführung müssen alle Arbeiten "
+                    + "gespeichert und geöffnete Programme geschlossen "
+                    + "werden.",
                     "Nicht gespeicherte Arbeiten in anderen Anwendungen "
-                    + "können verloren gehen. Vor dem Neustart müssen "
-                    + "alle Arbeiten gespeichert und Programme "
-                    + "geschlossen werden.",
+                    + "können verloren gehen. Ein Neustart darf deshalb "
+                    + "nicht allein aufgrund eines vorhandenen Befehls "
+                    + "automatisiert werden.",
                     CheckupTaskActionRiskLevel.Medium,
                     requiresAdministrator: false,
                     mayRequireRestart: true),
@@ -52,7 +54,7 @@ public static class CheckupTaskActionCatalog
                     + "gemessene oder manuell zu prüfende Kategorien "
                     + "dürfen nicht automatisch freigegeben werden.",
                     CheckupTaskActionRiskLevel.Medium,
-                    requiresAdministrator: true,
+                    requiresAdministrator: false,
                     mayRequireRestart: false),
 
             "task.storage.controlled-cleanup" =>
@@ -68,7 +70,7 @@ public static class CheckupTaskActionCatalog
                     + "gemessene oder manuell zu prüfende Kategorien "
                     + "dürfen nicht automatisch freigegeben werden.",
                     CheckupTaskActionRiskLevel.Medium,
-                    requiresAdministrator: true,
+                    requiresAdministrator: false,
                     mayRequireRestart: false),
 
             "task.performance.invalid-startup-targets" =>
@@ -340,6 +342,30 @@ public static class CheckupTaskActionCatalog
         CreateManualDefinition(
             string taskCode)
     {
+        return CreateManualDefinition(
+            taskCode,
+            "Aufgabe manuell bearbeiten",
+            "Für diese Aufgabe ist keine automatische oder "
+            + "geführte Systemaktion freigegeben. Die Prüfung, "
+            + "Entscheidung und Durchführung bleiben vollständig "
+            + "in der Verantwortung des Technikers.",
+            "Das konkrete Risiko hängt von der erforderlichen "
+            + "manuellen Maßnahme ab.",
+            CheckupTaskActionRiskLevel.None,
+            requiresAdministrator: false,
+            mayRequireRestart: false);
+    }
+
+    private static CheckupTaskActionDefinition
+        CreateManualDefinition(
+            string taskCode,
+            string actionTitle,
+            string description,
+            string riskDescription,
+            CheckupTaskActionRiskLevel riskLevel,
+            bool requiresAdministrator,
+            bool mayRequireRestart)
+    {
         return new CheckupTaskActionDefinition
         {
             TaskCode =
@@ -349,26 +375,22 @@ public static class CheckupTaskActionCatalog
                 CheckupTaskActionAvailability.ManualOnly,
 
             ActionTitle =
-                "Aufgabe manuell bearbeiten",
+                actionTitle,
 
             Description =
-                "Für diese Aufgabe ist keine automatische oder "
-                + "geführte Systemaktion freigegeben. Die Prüfung, "
-                + "Entscheidung und Durchführung bleiben vollständig "
-                + "in der Verantwortung des Technikers.",
+                description,
 
             RiskDescription =
-                "Das konkrete Risiko hängt von der erforderlichen "
-                + "manuellen Maßnahme ab.",
+                riskDescription,
 
             RiskLevel =
-                CheckupTaskActionRiskLevel.None,
+                riskLevel,
 
             RequiresAdministrator =
-                false,
+                requiresAdministrator,
 
             MayRequireRestart =
-                false
+                mayRequireRestart
         };
     }
 }

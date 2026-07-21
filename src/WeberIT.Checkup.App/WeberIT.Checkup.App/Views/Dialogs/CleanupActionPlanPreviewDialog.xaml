@@ -198,7 +198,7 @@
                         <TextBlock
                             Margin="0,6,0,0"
                             Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Dieser Plan enthält ausschließlich die Benutzertemporärdateien. Nach vollständiger Prüfung und ausdrücklicher Bestätigung kann diese einzelne Kategorie ausgeführt werden."
+                            Text="Dieser Plan enthält genau eine sicher freigegebene Bereinigungskategorie. Nach vollständiger Prüfung und ausdrücklicher Bestätigung kann diese einzelne Kategorie ausgeführt werden."
                             TextWrapping="Wrap" />
 
                     </StackPanel>
@@ -462,7 +462,7 @@
 
                             <TextBlock
                                 Foreground="{StaticResource TextPrimaryBrush}"
-                                Text="Ich habe den Zielbereich vollständig geprüft und bestätige die kontrollierte Bereinigung der Benutzertemporärdateien."
+                                Text="Ich habe den angezeigten Zielbereich vollständig geprüft und bestätige die kontrollierte Bereinigung dieser einzelnen Kategorie."
                                 TextWrapping="Wrap" />
 
                         </CheckBox>
@@ -471,7 +471,7 @@
                             Margin="36,10,0,0"
                             FontSize="11"
                             Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Geöffnete oder gesperrte Dateien können übersprungen werden. Der Temp-Stammordner selbst bleibt bestehen. Das Ergebnis wird anschließend im Checkup protokolliert."
+                            Text="Geöffnete oder gesperrte Dateien können übersprungen werden. Nicht freigegebene Dateien und die Zielordner selbst bleiben bestehen. Das Ergebnis wird anschließend im Checkup protokolliert."
                             TextWrapping="Wrap" />
 
                     </StackPanel>

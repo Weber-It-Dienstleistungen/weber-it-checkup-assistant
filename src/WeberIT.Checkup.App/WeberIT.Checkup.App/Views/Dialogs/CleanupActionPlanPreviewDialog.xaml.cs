@@ -51,7 +51,7 @@ public partial class CleanupActionPlanPreviewDialog : Window
             plan;
 
         _executionIsAvailable =
-            DetermineExecutionAvailability(
+            CleanupActionPlanSnapshot.CanExecute(
                 plan);
 
         InitializeComponent();
@@ -67,21 +67,6 @@ public partial class CleanupActionPlanPreviewDialog : Window
     {
         get;
         private set;
-    }
-
-    private static bool DetermineExecutionAvailability(
-        CheckupTaskActionPlan plan)
-    {
-        if (plan.CleanupCategories.Count != 1)
-        {
-            return false;
-        }
-
-        var category =
-            plan.CleanupCategories[0];
-
-        return category.Category
-            == CleanupCategoryType.UserTemporaryFiles;
     }
 
     private void ApplyExecutionAvailability()

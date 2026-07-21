@@ -127,7 +127,7 @@
                         <TextBlock
                             Margin="0,7,0,0"
                             Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Der bestätigte Plan wird erneut geprüft. Anschließend werden ausschließlich Inhalte des freigegebenen Benutzer-Temp-Ordners verarbeitet."
+                            Text="Der bestätigte Plan wird erneut geprüft. Anschließend wird ausschließlich der einzeln bestätigte und freigegebene Zielbereich verarbeitet."
                             TextWrapping="Wrap" />
 
                         <TextBlock

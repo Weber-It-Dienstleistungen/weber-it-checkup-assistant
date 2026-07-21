@@ -16,9 +16,6 @@ public sealed class CleanupActionExecutor :
     private const string SupportedActionCode =
         "action.cleanup.selected-safe-categories";
 
-    private const CleanupCategoryType SupportedCategory =
-        CleanupCategoryType.UserTemporaryFiles;
-
     private readonly ICheckupTaskActionExecutionCoordinator
         _executionCoordinator;
 
@@ -99,7 +96,7 @@ public sealed class CleanupActionExecutor :
             var categoryResult =
                 await Task.Run(
                     () =>
-                        ExecuteUserTemporaryFiles(
+                        ExecuteCategory(
                             selectedCategory,
                             cancellationToken));
 
@@ -193,8 +190,15 @@ public sealed class CleanupActionExecutor :
         if (plan.CleanupCategories.Count != 1)
         {
             throw new InvalidOperationException(
-                "In dieser Ausbaustufe darf genau eine "
-                + "Bereinigungskategorie ausgeführt werden.");
+                "Für eine kontrollierte Ausführung muss genau "
+                + "eine Bereinigungskategorie ausgewählt werden.");
+        }
+
+        if (plan.RequiresAdministrator)
+        {
+            throw new InvalidOperationException(
+                "Der freigegebene Bereinigungsplan darf keine "
+                + "Administratorrechte anfordern.");
         }
 
         if (plan.MayRequireRestart)
@@ -209,18 +213,64 @@ public sealed class CleanupActionExecutor :
 
         category.Validate();
 
-        if (category.Category
-            != SupportedCategory)
+        if (!IsExecutableCategory(
+                category))
         {
             throw new InvalidOperationException(
-                "In dieser Ausbaustufe können ausschließlich "
-                + "Benutzertemporärdateien bereinigt werden.");
+                "Die ausgewählte Bereinigungskategorie ist "
+                + "nicht zur automatischen Ausführung freigegeben.");
         }
     }
 
+    private static bool IsExecutableCategory(
+        CleanupActionCategory category)
+    {
+        return category.Category
+            is CleanupCategoryType.UserTemporaryFiles
+            or CleanupCategoryType.DirectXShaderCache
+            or CleanupCategoryType.ThumbnailCache;
+    }
+
     private static CleanupActionCategoryExecutionResult
-        ExecuteUserTemporaryFiles(
+        ExecuteCategory(
             CleanupActionCategory category,
+            CancellationToken cancellationToken)
+    {
+        return category.Category switch
+        {
+            CleanupCategoryType.UserTemporaryFiles =>
+                ExecuteDirectoryContentsCategory(
+                    category,
+                    ResolveUserTemporaryDirectory,
+                    "Die Benutzertemporärdateien konnten "
+                    + "nicht sicher bereinigt werden.",
+                    cancellationToken),
+
+            CleanupCategoryType.DirectXShaderCache =>
+                ExecuteDirectoryContentsCategory(
+                    category,
+                    ResolveDirectXShaderCacheDirectory,
+                    "Der DirectX-Shadercache konnte nicht "
+                    + "sicher bereinigt werden.",
+                    cancellationToken),
+
+            CleanupCategoryType.ThumbnailCache =>
+                ExecuteThumbnailCache(
+                    category,
+                    cancellationToken),
+
+            _ =>
+                throw new InvalidOperationException(
+                    "Die ausgewählte Bereinigungskategorie "
+                    + "besitzt keinen freigegebenen Executor.")
+        };
+    }
+
+    private static CleanupActionCategoryExecutionResult
+        ExecuteDirectoryContentsCategory(
+            CleanupActionCategory category,
+            Func<string> resolveTargetPath,
+            string fallbackErrorMessage,
             CancellationToken cancellationToken)
     {
         var metrics =
@@ -235,7 +285,7 @@ public sealed class CleanupActionExecutor :
                 .ThrowIfCancellationRequested();
 
             targetPath =
-                ResolveUserTemporaryDirectory();
+                resolveTargetPath();
 
             cancellationToken
                 .ThrowIfCancellationRequested();
@@ -255,7 +305,8 @@ public sealed class CleanupActionExecutor :
             }
 
             ValidateTargetDirectory(
-                targetPath);
+                targetPath,
+                category.Title);
 
             DeleteDirectoryContents(
                 targetPath,
@@ -288,8 +339,128 @@ public sealed class CleanupActionExecutor :
                 errorMessage:
                     string.IsNullOrWhiteSpace(
                         exception.Message)
-                        ? "Die Benutzertemporärdateien "
-                          + "konnten nicht sicher bereinigt werden."
+                        ? fallbackErrorMessage
+                        : exception.Message);
+        }
+    }
+
+    private static CleanupActionCategoryExecutionResult
+        ExecuteThumbnailCache(
+            CleanupActionCategory category,
+            CancellationToken cancellationToken)
+    {
+        var metrics =
+            new DeletionMetrics();
+
+        var targetPath =
+            string.Empty;
+
+        try
+        {
+            cancellationToken
+                .ThrowIfCancellationRequested();
+
+            targetPath =
+                ResolveThumbnailCacheDirectory();
+
+            cancellationToken
+                .ThrowIfCancellationRequested();
+
+            metrics.WasStarted =
+                true;
+
+            if (!Directory.Exists(
+                    targetPath))
+            {
+                return CreateCategoryResult(
+                    category,
+                    targetPath,
+                    metrics,
+                    wasCancelled: false,
+                    errorMessage: string.Empty);
+            }
+
+            ValidateTargetDirectory(
+                targetPath,
+                category.Title);
+
+            if (!TryEnumerateMatchingFiles(
+                    targetPath,
+                    "thumbcache_*.db",
+                    metrics,
+                    out var files))
+            {
+                return CreateCategoryResult(
+                    category,
+                    targetPath,
+                    metrics,
+                    wasCancelled: false,
+                    errorMessage: string.Empty);
+            }
+
+            foreach (var file
+                     in files)
+            {
+                cancellationToken
+                    .ThrowIfCancellationRequested();
+
+                EnsureSafeDescendant(
+                    file,
+                    targetPath);
+
+                if (!TryReadAttributes(
+                        file,
+                        metrics,
+                        out var attributes))
+                {
+                    continue;
+                }
+
+                if ((attributes
+                     & FileAttributes.ReparsePoint)
+                    != 0
+                    || (attributes
+                        & FileAttributes.Directory)
+                    != 0)
+                {
+                    metrics.SkippedEntryCount++;
+
+                    continue;
+                }
+
+                TryDeleteFile(
+                    file,
+                    metrics);
+            }
+
+            return CreateCategoryResult(
+                category,
+                targetPath,
+                metrics,
+                wasCancelled: false,
+                errorMessage: string.Empty);
+        }
+        catch (OperationCanceledException)
+        {
+            return CreateCategoryResult(
+                category,
+                targetPath,
+                metrics,
+                wasCancelled: true,
+                errorMessage: string.Empty);
+        }
+        catch (Exception exception)
+        {
+            return CreateCategoryResult(
+                category,
+                targetPath,
+                metrics,
+                wasCancelled: false,
+                errorMessage:
+                    string.IsNullOrWhiteSpace(
+                        exception.Message)
+                        ? "Der Windows-Vorschaubildcache konnte "
+                          + "nicht sicher bereinigt werden."
                         : exception.Message);
         }
     }
@@ -423,6 +594,44 @@ public sealed class CleanupActionExecutor :
             metrics.FailedEntryCount++;
 
             entries =
+                Array.Empty<string>();
+
+            return false;
+        }
+    }
+
+    private static bool TryEnumerateMatchingFiles(
+        string directoryPath,
+        string searchPattern,
+        DeletionMetrics metrics,
+        out IReadOnlyList<string> files)
+    {
+        try
+        {
+            files =
+                Directory
+                    .EnumerateFiles(
+                        directoryPath,
+                        searchPattern,
+                        SearchOption.TopDirectoryOnly)
+                    .ToList();
+
+            return true;
+        }
+        catch (DirectoryNotFoundException)
+        {
+            metrics.SkippedEntryCount++;
+
+            files =
+                Array.Empty<string>();
+
+            return false;
+        }
+        catch
+        {
+            metrics.FailedEntryCount++;
+
+            files =
                 Array.Empty<string>();
 
             return false;
@@ -580,16 +789,7 @@ public sealed class CleanupActionExecutor :
     private static string ResolveUserTemporaryDirectory()
     {
         var localApplicationData =
-            Environment.GetFolderPath(
-                Environment.SpecialFolder.LocalApplicationData);
-
-        if (string.IsNullOrWhiteSpace(
-                localApplicationData))
-        {
-            throw new InvalidOperationException(
-                "Der lokale Anwendungsdatenordner des "
-                + "angemeldeten Benutzers ist nicht verfügbar.");
-        }
+            GetLocalApplicationDataDirectory();
 
         var expectedTemporaryDirectory =
             NormalizeDirectoryPath(
@@ -601,15 +801,15 @@ public sealed class CleanupActionExecutor :
             NormalizeDirectoryPath(
                 Path.GetTempPath());
 
-        if (IsNetworkPath(
-                expectedTemporaryDirectory)
-            || IsNetworkPath(
-                currentTemporaryDirectory))
-        {
-            throw new InvalidOperationException(
-                "Ein Bereinigungsziel auf einem Netzwerkpfad "
-                + "ist nicht zulässig.");
-        }
+        ValidateLocalTargetPath(
+            localApplicationData,
+            expectedTemporaryDirectory,
+            "Benutzer-Temp");
+
+        ValidateLocalTargetPath(
+            localApplicationData,
+            currentTemporaryDirectory,
+            "Benutzer-Temp");
 
         if (!string.Equals(
                 currentTemporaryDirectory,
@@ -623,28 +823,150 @@ public sealed class CleanupActionExecutor :
                 + "wurde vorsorglich nicht gestartet.");
         }
 
+        return currentTemporaryDirectory;
+    }
+
+    private static string ResolveDirectXShaderCacheDirectory()
+    {
+        return ResolveLocalApplicationDataChild(
+            "DirectX-Shadercache",
+            "D3DSCache");
+    }
+
+    private static string ResolveThumbnailCacheDirectory()
+    {
+        return ResolveLocalApplicationDataChild(
+            "Windows-Vorschaubildcache",
+            "Microsoft",
+            "Windows",
+            "Explorer");
+    }
+
+    private static string ResolveLocalApplicationDataChild(
+        string targetTitle,
+        params string[] pathSegments)
+    {
+        var localApplicationData =
+            GetLocalApplicationDataDirectory();
+
+        var targetPath =
+            localApplicationData;
+
+        foreach (var pathSegment
+                 in pathSegments)
+        {
+            if (string.IsNullOrWhiteSpace(
+                    pathSegment)
+                || Path.IsPathRooted(
+                    pathSegment))
+            {
+                throw new InvalidOperationException(
+                    "Der freigegebene Zielpfad enthält ein "
+                    + "ungültiges Pfadsegment.");
+            }
+
+            targetPath =
+                Path.Combine(
+                    targetPath,
+                    pathSegment);
+        }
+
+        var normalizedTargetPath =
+            NormalizeDirectoryPath(
+                targetPath);
+
+        ValidateLocalTargetPath(
+            localApplicationData,
+            normalizedTargetPath,
+            targetTitle);
+
+        return normalizedTargetPath;
+    }
+
+    private static string GetLocalApplicationDataDirectory()
+    {
+        var localApplicationData =
+            Environment.GetFolderPath(
+                Environment.SpecialFolder.LocalApplicationData);
+
+        if (string.IsNullOrWhiteSpace(
+                localApplicationData))
+        {
+            throw new InvalidOperationException(
+                "Der lokale Anwendungsdatenordner des "
+                + "angemeldeten Benutzers ist nicht verfügbar.");
+        }
+
+        var normalizedPath =
+            NormalizeDirectoryPath(
+                localApplicationData);
+
+        if (IsNetworkPath(
+                normalizedPath))
+        {
+            throw new InvalidOperationException(
+                "Ein Bereinigungsziel auf einem Netzwerkpfad "
+                + "ist nicht zulässig.");
+        }
+
+        return normalizedPath;
+    }
+
+    private static void ValidateLocalTargetPath(
+        string localApplicationData,
+        string targetPath,
+        string targetTitle)
+    {
+        var normalizedRoot =
+            NormalizeDirectoryPath(
+                localApplicationData);
+
+        var normalizedTarget =
+            NormalizeDirectoryPath(
+                targetPath);
+
+        if (IsNetworkPath(
+                normalizedTarget))
+        {
+            throw new InvalidOperationException(
+                "Ein Bereinigungsziel auf einem Netzwerkpfad "
+                + "ist nicht zulässig.");
+        }
+
+        var requiredPrefix =
+            normalizedRoot
+            + Path.DirectorySeparatorChar;
+
+        if (!normalizedTarget.StartsWith(
+                requiredPrefix,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Der Zielpfad für {targetTitle} liegt außerhalb "
+                + "des freigegebenen lokalen Anwendungsdatenordners.");
+        }
+
         var volumeRoot =
             Path.GetPathRoot(
-                currentTemporaryDirectory);
+                normalizedTarget);
 
         if (string.IsNullOrWhiteSpace(
                 volumeRoot)
             || string.Equals(
                 NormalizeDirectoryPath(
                     volumeRoot),
-                currentTemporaryDirectory,
+                normalizedTarget,
                 StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
-                "Der Benutzer-Temp-Pfad konnte nicht sicher "
-                + "von einem Volumestamm unterschieden werden.");
+                $"Der Zielpfad für {targetTitle} konnte nicht "
+                + "sicher von einem Volumestamm unterschieden werden.");
         }
-
-        return currentTemporaryDirectory;
     }
 
     private static void ValidateTargetDirectory(
-        string targetPath)
+        string targetPath,
+        string targetTitle)
     {
         var attributes =
             File.GetAttributes(
@@ -655,8 +977,8 @@ public sealed class CleanupActionExecutor :
             == 0)
         {
             throw new InvalidOperationException(
-                "Das freigegebene Bereinigungsziel ist "
-                + "kein Verzeichnis.");
+                $"Das freigegebene Bereinigungsziel "
+                + $"„{targetTitle}“ ist kein Verzeichnis.");
         }
 
         if ((attributes
@@ -664,7 +986,7 @@ public sealed class CleanupActionExecutor :
             != 0)
         {
             throw new InvalidOperationException(
-                "Der Benutzer-Temp-Ordner ist ein "
+                $"Das Bereinigungsziel „{targetTitle}“ ist ein "
                 + "Verweis beziehungsweise Reparse Point. "
                 + "Die Bereinigung wurde vorsorglich nicht gestartet.");
         }
@@ -692,7 +1014,7 @@ public sealed class CleanupActionExecutor :
         {
             throw new InvalidOperationException(
                 "Ein ermittelter Bereinigungseintrag liegt "
-                + "außerhalb des freigegebenen Temp-Ordners.");
+                + "außerhalb des freigegebenen Zielordners.");
         }
     }
 
@@ -754,6 +1076,13 @@ public sealed class CleanupActionExecutor :
             bool wasCancelled,
             string errorMessage)
     {
+        if (!category.Category.HasValue)
+        {
+            throw new InvalidOperationException(
+                "Das technische Ergebnis kann keiner "
+                + "Bereinigungskategorie zugeordnet werden.");
+        }
+
         var normalizedErrorMessage =
             wasCancelled
                 ? string.Empty
@@ -764,7 +1093,7 @@ public sealed class CleanupActionExecutor :
         return new CleanupActionCategoryExecutionResult
         {
             Category =
-                SupportedCategory,
+                category.Category.Value,
 
             CategoryTitle =
                 category.Title,

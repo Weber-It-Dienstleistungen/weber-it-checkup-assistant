@@ -201,12 +201,22 @@ public partial class CleanupActionExecutionDialog :
         IsRunning =
             true;
 
+        var plannedCategory =
+            _plan.CleanupCategories.Single();
+
+        var categoryTitle =
+            string.IsNullOrWhiteSpace(
+                plannedCategory.Title)
+                ? "Ausgewählte Bereinigungskategorie"
+                : plannedCategory.Title;
+
         ExecutionStatusText =
-            "Benutzertemporärdateien werden bereinigt";
+            categoryTitle
+            + " wird bereinigt";
 
         ExecutionDetailText =
-            "Es werden ausschließlich Inhalte des zuvor "
-            + "geprüften Benutzer-Temp-Ordners verarbeitet.";
+            "Es wird ausschließlich der zuvor geprüfte und "
+            + "ausdrücklich bestätigte Zielbereich verarbeitet.";
 
         FooterStatusText =
             "Ausführung läuft – Fenster nicht schließen";
@@ -281,10 +291,20 @@ public partial class CleanupActionExecutionDialog :
                 + "Kategorien als der bestätigte Plan.");
         }
 
+        var plannedCategory =
+            _plan.CleanupCategories.Single().Category;
+
+        if (!plannedCategory.HasValue)
+        {
+            throw new InvalidOperationException(
+                "Der bestätigte Bereinigungsplan besitzt "
+                + "keinen eindeutigen Kategoriecode.");
+        }
+
         if (executionResult.CategoryResults.Any(
                 result =>
                     result.Category
-                    != CleanupCategoryType.UserTemporaryFiles))
+                    != plannedCategory.Value))
         {
             throw new InvalidOperationException(
                 "Das technische Ergebnis enthält eine "
@@ -518,7 +538,7 @@ public partial class CleanupActionExecutionDialog :
             CategoryTitle =
                 string.IsNullOrWhiteSpace(
                     result.CategoryTitle)
-                    ? "Benutzertemporärdateien"
+                    ? "Bereinigungskategorie"
                     : result.CategoryTitle;
 
             TargetPathText =
