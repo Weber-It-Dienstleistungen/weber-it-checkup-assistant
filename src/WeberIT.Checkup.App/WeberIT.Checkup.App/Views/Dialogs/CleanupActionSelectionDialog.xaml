@@ -12,6 +12,118 @@
     ShowInTaskbar="False"
     Background="{StaticResource BackgroundBrush}">
 
+    <Window.Resources>
+
+        <Style
+            x:Key="CategorySelectionCheckBoxStyle"
+            TargetType="{x:Type CheckBox}">
+
+            <Setter
+                Property="Width"
+                Value="22" />
+
+            <Setter
+                Property="Height"
+                Value="22" />
+
+            <Setter
+                Property="Focusable"
+                Value="False" />
+
+            <Setter
+                Property="Cursor"
+                Value="Hand" />
+
+            <Setter Property="Template">
+
+                <Setter.Value>
+
+                    <ControlTemplate
+                        TargetType="{x:Type CheckBox}">
+
+                        <Border
+                            x:Name="SelectionBox"
+                            Width="22"
+                            Height="22"
+                            Background="{StaticResource SurfaceBrush}"
+                            BorderBrush="{StaticResource TextMutedBrush}"
+                            BorderThickness="2"
+                            CornerRadius="4">
+
+                            <Path
+                                x:Name="SelectionMark"
+                                Width="12"
+                                Height="9"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Data="M 1,4 L 5,8 L 11,1"
+                                SnapsToDevicePixels="True"
+                                Stroke="White"
+                                StrokeEndLineCap="Round"
+                                StrokeLineJoin="Round"
+                                StrokeStartLineCap="Round"
+                                StrokeThickness="2.2"
+                                Visibility="Collapsed" />
+
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger
+                                Property="IsMouseOver"
+                                Value="True">
+
+                                <Setter
+                                    TargetName="SelectionBox"
+                                    Property="BorderBrush"
+                                    Value="{StaticResource AccentBrush}" />
+
+                            </Trigger>
+
+                            <Trigger
+                                Property="IsChecked"
+                                Value="True">
+
+                                <Setter
+                                    TargetName="SelectionBox"
+                                    Property="Background"
+                                    Value="{StaticResource AccentBrush}" />
+
+                                <Setter
+                                    TargetName="SelectionBox"
+                                    Property="BorderBrush"
+                                    Value="{StaticResource AccentBrush}" />
+
+                                <Setter
+                                    TargetName="SelectionMark"
+                                    Property="Visibility"
+                                    Value="Visible" />
+
+                            </Trigger>
+
+                            <Trigger
+                                Property="IsEnabled"
+                                Value="False">
+
+                                <Setter
+                                    TargetName="SelectionBox"
+                                    Property="Opacity"
+                                    Value="0.45" />
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+
+            </Setter>
+
+        </Style>
+
+    </Window.Resources>
+
     <Grid>
 
         <Grid.RowDefinitions>
@@ -45,7 +157,7 @@
                     Margin="0,6,0,0"
                     FontSize="11"
                     Foreground="{StaticResource WarningBrush}"
-                    Text="In diesem Schritt wird noch nichts gelöscht. Die Auswahl dient ausschließlich der Erstellung einer kontrollierten Planvorschau."
+                    Text="Die Auswahl selbst löscht noch nichts. Der Benutzer-Temp-Plan kann erst nach vollständiger Vorschau, Checkbox und ausdrücklicher Bestätigung ausgeführt werden. Andere Kategorien bleiben reine Planvorschauen."
                     TextWrapping="Wrap" />
 
             </StackPanel>
@@ -132,10 +244,45 @@
                         <Border
                             Margin="5"
                             Padding="14"
-                            Background="{StaticResource SurfaceSecondaryBrush}"
-                            BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1"
                             CornerRadius="7">
+
+                            <Border.Style>
+
+                                <Style TargetType="Border">
+
+                                    <Setter
+                                        Property="Background"
+                                        Value="{StaticResource SurfaceSecondaryBrush}" />
+
+                                    <Setter
+                                        Property="BorderBrush"
+                                        Value="{StaticResource BorderBrush}" />
+
+                                    <Setter
+                                        Property="BorderThickness"
+                                        Value="1" />
+
+                                    <Style.Triggers>
+
+                                        <DataTrigger
+                                            Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}}"
+                                            Value="True">
+
+                                            <Setter
+                                                Property="BorderBrush"
+                                                Value="{StaticResource AccentBrush}" />
+
+                                            <Setter
+                                                Property="BorderThickness"
+                                                Value="2" />
+
+                                        </DataTrigger>
+
+                                    </Style.Triggers>
+
+                                </Style>
+
+                            </Border.Style>
 
                             <Grid>
 
@@ -149,9 +296,8 @@
                                     Grid.Column="0"
                                     Margin="0,2,12,0"
                                     VerticalAlignment="Top"
-                                    Focusable="False"
-                                    IsHitTestVisible="False"
-                                    IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}" />
+                                    IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}, Mode=TwoWay}"
+                                    Style="{StaticResource CategorySelectionCheckBoxStyle}" />
 
                                 <StackPanel Grid.Column="1">
 
@@ -238,7 +384,7 @@
                     VerticalAlignment="Center"
                     FontSize="12"
                     Foreground="{StaticResource TextMutedBrush}"
-                    Text="Nur Auswahl und Planvorschau – keine Löschung"
+                    Text="Ausführung ausschließlich nach separater Bestätigung"
                     TextWrapping="Wrap" />
 
                 <Button

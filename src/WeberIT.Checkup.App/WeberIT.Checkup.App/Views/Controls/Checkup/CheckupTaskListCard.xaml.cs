@@ -145,7 +145,8 @@ public partial class CheckupTaskListCard : UserControl
             var dialog =
                 new CleanupActionSelectionDialog(
                     task,
-                    CheckupSession.CleanupPotentialInformation)
+                    CheckupSession.CleanupPotentialInformation,
+                    CheckupSession.TaskList)
                 {
                     Owner =
                         Window.GetWindow(this)

@@ -4,13 +4,151 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Bereinigungsplan prüfen"
     Width="880"
-    Height="740"
+    Height="790"
     MinWidth="740"
-    MinHeight="600"
+    MinHeight="620"
     WindowStartupLocation="CenterOwner"
     ResizeMode="CanResize"
     ShowInTaskbar="False"
     Background="{StaticResource BackgroundBrush}">
+
+    <Window.Resources>
+
+        <Style
+            x:Key="ExecutionConfirmationCheckBoxStyle"
+            TargetType="{x:Type CheckBox}">
+
+            <Setter
+                Property="Foreground"
+                Value="{StaticResource TextPrimaryBrush}" />
+
+            <Setter
+                Property="Cursor"
+                Value="Hand" />
+
+            <Setter
+                Property="Focusable"
+                Value="True" />
+
+            <Setter Property="Template">
+
+                <Setter.Value>
+
+                    <ControlTemplate
+                        TargetType="{x:Type CheckBox}">
+
+                        <Grid>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border
+                                x:Name="SelectionBox"
+                                Grid.Column="0"
+                                Width="24"
+                                Height="24"
+                                VerticalAlignment="Top"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource TextMutedBrush}"
+                                BorderThickness="2"
+                                CornerRadius="4">
+
+                                <Path
+                                    x:Name="SelectionMark"
+                                    Width="13"
+                                    Height="10"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Data="M 1,5 L 5,9 L 12,1"
+                                    SnapsToDevicePixels="True"
+                                    Stroke="White"
+                                    StrokeEndLineCap="Round"
+                                    StrokeLineJoin="Round"
+                                    StrokeStartLineCap="Round"
+                                    StrokeThickness="2.3"
+                                    Visibility="Collapsed" />
+
+                            </Border>
+
+                            <ContentPresenter
+                                Grid.Column="1"
+                                Margin="12,0,0,0"
+                                VerticalAlignment="Center"
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                RecognizesAccessKey="True"
+                                SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger
+                                Property="IsMouseOver"
+                                Value="True">
+
+                                <Setter
+                                    TargetName="SelectionBox"
+                                    Property="BorderBrush"
+                                    Value="{StaticResource AccentBrush}" />
+
+                            </Trigger>
+
+                            <Trigger
+                                Property="IsKeyboardFocused"
+                                Value="True">
+
+                                <Setter
+                                    TargetName="SelectionBox"
+                                    Property="BorderBrush"
+                                    Value="{StaticResource AccentBrush}" />
+
+                            </Trigger>
+
+                            <Trigger
+                                Property="IsChecked"
+                                Value="True">
+
+                                <Setter
+                                    TargetName="SelectionBox"
+                                    Property="Background"
+                                    Value="{StaticResource AccentBrush}" />
+
+                                <Setter
+                                    TargetName="SelectionBox"
+                                    Property="BorderBrush"
+                                    Value="{StaticResource AccentBrush}" />
+
+                                <Setter
+                                    TargetName="SelectionMark"
+                                    Property="Visibility"
+                                    Value="Visible" />
+
+                            </Trigger>
+
+                            <Trigger
+                                Property="IsEnabled"
+                                Value="False">
+
+                                <Setter
+                                    Property="Opacity"
+                                    Value="0.45" />
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+
+            </Setter>
+
+        </Style>
+
+    </Window.Resources>
 
     <Grid>
 
@@ -40,6 +178,35 @@
                     TextWrapping="Wrap" />
 
                 <Border
+                    x:Name="ExecutionAvailableNotice"
+                    Margin="0,20,0,0"
+                    Padding="14"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderBrush="{StaticResource SuccessBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="Collapsed">
+
+                    <StackPanel>
+
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource SuccessBrush}"
+                            Text="Kontrollierte Ausführung verfügbar"
+                            TextWrapping="Wrap" />
+
+                        <TextBlock
+                            Margin="0,6,0,0"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Dieser Plan enthält ausschließlich die Benutzertemporärdateien. Nach vollständiger Prüfung und ausdrücklicher Bestätigung kann diese einzelne Kategorie ausgeführt werden."
+                            TextWrapping="Wrap" />
+
+                    </StackPanel>
+
+                </Border>
+
+                <Border
+                    x:Name="PurePreviewNotice"
                     Margin="0,20,0,0"
                     Padding="14"
                     Background="{StaticResource SurfaceSecondaryBrush}"
@@ -58,7 +225,7 @@
                         <TextBlock
                             Margin="0,6,0,0"
                             Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Dieser Dialog besitzt bewusst keine Ausführungsfunktion. Es werden weder Dateien gelöscht noch externe Prozesse gestartet."
+                            Text="Für diese Auswahl ist noch keine technische Ausführung freigegeben. Es werden weder Dateien gelöscht noch externe Prozesse gestartet."
                             TextWrapping="Wrap" />
 
                     </StackPanel>
@@ -268,6 +435,49 @@
 
                 </ItemsControl>
 
+                <Border
+                    x:Name="ExecutionConfirmationPanel"
+                    Margin="0,12,0,0"
+                    Padding="16"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderBrush="{StaticResource WarningBrush}"
+                    BorderThickness="1"
+                    CornerRadius="9"
+                    Visibility="Collapsed">
+
+                    <StackPanel>
+
+                        <TextBlock
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource WarningBrush}"
+                            Text="AUSFÜHRUNG AUSDRÜCKLICH BESTÄTIGEN" />
+
+                        <CheckBox
+                            x:Name="ExecutionConfirmationCheckBox"
+                            Margin="0,12,0,0"
+                            Style="{StaticResource ExecutionConfirmationCheckBoxStyle}"
+                            Checked="ExecutionConfirmationCheckBox_OnChanged"
+                            Unchecked="ExecutionConfirmationCheckBox_OnChanged">
+
+                            <TextBlock
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="Ich habe den Zielbereich vollständig geprüft und bestätige die kontrollierte Bereinigung der Benutzertemporärdateien."
+                                TextWrapping="Wrap" />
+
+                        </CheckBox>
+
+                        <TextBlock
+                            Margin="36,10,0,0"
+                            FontSize="11"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Geöffnete oder gesperrte Dateien können übersprungen werden. Der Temp-Stammordner selbst bleibt bestehen. Das Ergebnis wird anschließend im Checkup protokolliert."
+                            TextWrapping="Wrap" />
+
+                    </StackPanel>
+
+                </Border>
+
             </StackPanel>
 
         </ScrollViewer>
@@ -284,9 +494,12 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock
+                    x:Name="FooterStatusTextBlock"
                     Grid.Column="0"
                     VerticalAlignment="Center"
                     FontSize="12"
@@ -295,12 +508,23 @@
                     TextWrapping="Wrap" />
 
                 <Button
+                    x:Name="CloseButton"
                     Grid.Column="1"
-                    MinWidth="190"
+                    MinWidth="150"
                     Content="Planvorschau schließen"
                     IsCancel="True"
-                    IsDefault="True"
                     Click="CloseButton_OnClick" />
+
+                <Button
+                    x:Name="StartCleanupButton"
+                    Grid.Column="3"
+                    MinWidth="190"
+                    Content="Bereinigung starten"
+                    IsDefault="True"
+                    IsEnabled="False"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Visibility="Collapsed"
+                    Click="StartCleanupButton_OnClick" />
 
             </Grid>
 
