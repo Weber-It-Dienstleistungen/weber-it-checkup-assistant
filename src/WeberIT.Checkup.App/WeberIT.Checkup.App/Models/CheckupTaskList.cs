@@ -26,6 +26,12 @@ public class CheckupTaskList : INotifyPropertyChanged
         set;
     } = string.Empty;
 
+    public CheckupCompletionCheckResult? LastCompletionCheckResult
+    {
+        get;
+        set;
+    }
+
     public List<CheckupTask> Tasks { get; set; } =
         new();
 
@@ -382,6 +388,9 @@ public class CheckupTaskList : INotifyPropertyChanged
         var previousCompletionCheckSummary =
             LastCompletionCheckSummary;
 
+        var previousCompletionCheckResult =
+            LastCompletionCheckResult;
+
         foreach (var mapping in taskMappings)
         {
             var status =
@@ -404,6 +413,9 @@ public class CheckupTaskList : INotifyPropertyChanged
         LastCompletionCheckSummary =
             BuildCompletionCheckSummary(
                 completionCheck);
+
+        LastCompletionCheckResult =
+            completionCheck;
 
         NotifySummaryChanged();
         NotifyCompletionCheckChanged();
@@ -429,6 +441,9 @@ public class CheckupTaskList : INotifyPropertyChanged
 
             LastCompletionCheckSummary =
                 previousCompletionCheckSummary;
+
+            LastCompletionCheckResult =
+                previousCompletionCheckResult;
 
             NotifySummaryChanged();
             NotifyCompletionCheckChanged();
@@ -817,6 +832,9 @@ public class CheckupTaskList : INotifyPropertyChanged
 
         OnPropertyChanged(
             nameof(LastCompletionCheckSummary));
+
+        OnPropertyChanged(
+            nameof(LastCompletionCheckResult));
 
         OnPropertyChanged(
             nameof(HasCompletionCheck));
