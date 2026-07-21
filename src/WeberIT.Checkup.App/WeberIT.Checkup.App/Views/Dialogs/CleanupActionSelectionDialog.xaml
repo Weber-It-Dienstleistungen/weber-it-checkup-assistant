@@ -1,0 +1,266 @@
+﻿<Window
+    x:Class="WeberIT.Checkup.App.Views.Dialogs.CleanupActionSelectionDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Bereinigungskategorien auswählen"
+    Width="880"
+    Height="700"
+    MinWidth="740"
+    MinHeight="580"
+    WindowStartupLocation="CenterOwner"
+    ResizeMode="CanResize"
+    ShowInTaskbar="False"
+    Background="{StaticResource BackgroundBrush}">
+
+    <Grid>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border
+            Grid.Row="0"
+            Padding="28,24"
+            Background="{StaticResource SurfaceBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="0,0,0,1">
+
+            <StackPanel>
+
+                <TextBlock
+                    FontSize="21"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource TextPrimaryBrush}"
+                    Text="Sichere Bereinigungskategorien auswählen" />
+
+                <TextBlock
+                    Margin="0,6,0,0"
+                    Foreground="{StaticResource TextSecondaryBrush}"
+                    Text="Angezeigt werden ausschließlich vollständig gemessene Kategorien, die zentral als sicher auswählbares Bereinigungspotenzial freigegeben sind."
+                    TextWrapping="Wrap" />
+
+                <TextBlock
+                    Margin="0,6,0,0"
+                    FontSize="11"
+                    Foreground="{StaticResource WarningBrush}"
+                    Text="In diesem Schritt wird noch nichts gelöscht. Die Auswahl dient ausschließlich der Erstellung einer kontrollierten Planvorschau."
+                    TextWrapping="Wrap" />
+
+            </StackPanel>
+
+        </Border>
+
+        <Grid
+            Grid.Row="1"
+            Margin="28,20">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="12" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="12" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0">
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource TextPrimaryBrush}"
+                    Text="{Binding SelectableCategoryCountText}" />
+
+                <Button
+                    Grid.Column="1"
+                    MinWidth="120"
+                    Content="Alle auswählen"
+                    IsEnabled="{Binding HasSelectableCategories}"
+                    Click="SelectAllButton_OnClick" />
+
+                <Button
+                    Grid.Column="3"
+                    MinWidth="130"
+                    Content="Auswahl aufheben"
+                    IsEnabled="{Binding HasSelectableCategories}"
+                    Click="ClearSelectionButton_OnClick" />
+
+            </Grid>
+
+            <ListBox
+                x:Name="CategoriesListBox"
+                Grid.Row="2"
+                ItemsSource="{Binding AvailableCategories}"
+                SelectionMode="Multiple"
+                Background="Transparent"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                SelectionChanged="CategoriesListBox_OnSelectionChanged">
+
+                <ListBox.ItemContainerStyle>
+
+                    <Style
+                        TargetType="ListBoxItem"
+                        BasedOn="{StaticResource {x:Type ListBoxItem}}">
+
+                        <Setter
+                            Property="HorizontalContentAlignment"
+                            Value="Stretch" />
+
+                        <Setter
+                            Property="Padding"
+                            Value="0" />
+
+                    </Style>
+
+                </ListBox.ItemContainerStyle>
+
+                <ListBox.ItemTemplate>
+
+                    <DataTemplate>
+
+                        <Border
+                            Margin="5"
+                            Padding="14"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="7">
+
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="210" />
+                                </Grid.ColumnDefinitions>
+
+                                <CheckBox
+                                    Grid.Column="0"
+                                    Margin="0,2,12,0"
+                                    VerticalAlignment="Top"
+                                    Focusable="False"
+                                    IsHitTestVisible="False"
+                                    IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}" />
+
+                                <StackPanel Grid.Column="1">
+
+                                    <TextBlock
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        Text="{Binding Title}"
+                                        TextWrapping="Wrap" />
+
+                                    <TextBlock
+                                        Margin="0,6,18,0"
+                                        FontSize="11"
+                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                        Text="{Binding TargetAreaDescription}"
+                                        TextWrapping="Wrap" />
+
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+
+                                    <TextBlock
+                                        HorizontalAlignment="Right"
+                                        FontSize="10"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource SuccessBrush}"
+                                        Text="VOLLSTÄNDIG GEMESSEN" />
+
+                                    <TextBlock
+                                        Margin="0,6,0,0"
+                                        HorizontalAlignment="Right"
+                                        FontSize="11"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        Text="{Binding MeasurementSummaryText}"
+                                        TextAlignment="Right"
+                                        TextWrapping="Wrap" />
+
+                                </StackPanel>
+
+                            </Grid>
+
+                        </Border>
+
+                    </DataTemplate>
+
+                </ListBox.ItemTemplate>
+
+            </ListBox>
+
+            <Border
+                Grid.Row="4"
+                Padding="12"
+                Background="{StaticResource SurfaceSecondaryBrush}"
+                BorderBrush="{StaticResource InformationBrush}"
+                BorderThickness="1"
+                CornerRadius="7">
+
+                <TextBlock
+                    Foreground="{StaticResource TextSecondaryBrush}"
+                    Text="{Binding SelectionStatusText}"
+                    TextWrapping="Wrap" />
+
+            </Border>
+
+        </Grid>
+
+        <Border
+            Grid.Row="2"
+            Padding="28,18"
+            Background="{StaticResource SurfaceBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+
+            <Grid>
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="Nur Auswahl und Planvorschau – keine Löschung"
+                    TextWrapping="Wrap" />
+
+                <Button
+                    Grid.Column="1"
+                    Width="120"
+                    Content="Schließen"
+                    IsCancel="True"
+                    Click="CloseButton_OnClick" />
+
+                <Button
+                    x:Name="PreviewPlanButton"
+                    Grid.Column="3"
+                    MinWidth="170"
+                    Content="Aktionsplan prüfen"
+                    IsEnabled="False"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Click="PreviewPlanButton_OnClick" />
+
+            </Grid>
+
+        </Border>
+
+    </Grid>
+
+</Window>

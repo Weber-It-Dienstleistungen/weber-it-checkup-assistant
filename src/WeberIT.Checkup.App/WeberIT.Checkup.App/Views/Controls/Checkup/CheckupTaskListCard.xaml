@@ -589,6 +589,35 @@
                                                         </Style>
                                                     </Button.Style>
                                                 </Button>
+
+                                                <Button
+                                                    Margin="8,0,0,0"
+                                                    CommandParameter="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
+                                                    Content="Bereinigung auswählen"
+                                                    Click="CleanupSelectionButton_OnClick">
+
+                                                    <Button.Style>
+                                                        <Style
+                                                            BasedOn="{StaticResource {x:Type Button}}"
+                                                            TargetType="Button">
+
+                                                            <Setter
+                                                                Property="Visibility"
+                                                                Value="Collapsed" />
+
+                                                            <Style.Triggers>
+                                                                <DataTrigger
+                                                                    Binding="{Binding ActionCode}"
+                                                                    Value="action.cleanup.selected-safe-categories">
+
+                                                                    <Setter
+                                                                        Property="Visibility"
+                                                                        Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
@@ -718,7 +747,7 @@
                 Margin="0,2,0,0"
                 FontSize="11"
                 Foreground="{StaticResource TextMutedBrush}"
-                Text="In dieser Ausbaustufe werden Aktionsart und mögliche Risiken nur angezeigt. Aus der Aufgabenkarte wird noch keine Reparatur, Installation, Aktualisierung oder sonstige Systemänderung gestartet."
+                Text="Technische Aktionen können nur für ausdrücklich unterstützte Aufgaben nach Auswahl, Planprüfung und zusätzlicher Bestätigung gestartet werden. Die Bereinigungsfunktion erstellt in diesem Schritt ausschließlich eine Vorschau und löscht noch keine Daten."
                 TextWrapping="Wrap">
 
                 <TextBlock.Style>

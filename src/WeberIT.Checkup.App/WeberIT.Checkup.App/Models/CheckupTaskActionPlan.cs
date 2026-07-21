@@ -43,26 +43,55 @@ public sealed class CheckupTaskActionPlan
         init;
     } = new();
 
+    public List<CleanupActionCategory> CleanupCategories
+    {
+        get;
+        init;
+    } = new();
+
     [JsonIgnore]
     public bool HasCommands =>
         Commands.Count > 0;
+
+    [JsonIgnore]
+    public bool HasCleanupCategories =>
+        CleanupCategories.Count > 0;
 
     [JsonIgnore]
     public int CommandCount =>
         Commands.Count;
 
     [JsonIgnore]
+    public int CleanupCategoryCount =>
+        CleanupCategories.Count;
+
+    [JsonIgnore]
     public string CommandCountText =>
         CommandCount switch
         {
             0 =>
-                "Keine automatische Befehlsausführung vorgesehen",
+                "Keine externe Befehlsausführung vorgesehen",
 
             1 =>
                 "Ein Befehl ist vorgesehen",
 
             _ =>
                 $"{CommandCount} Befehle sind vorgesehen"
+        };
+
+    [JsonIgnore]
+    public string CleanupCategoryCountText =>
+        CleanupCategoryCount switch
+        {
+            0 =>
+                "Keine Bereinigungskategorie vorgesehen",
+
+            1 =>
+                "Eine Bereinigungskategorie ist vorgesehen",
+
+            _ =>
+                $"{CleanupCategoryCount} "
+                + "Bereinigungskategorien sind vorgesehen"
         };
 
     [JsonIgnore]
@@ -161,11 +190,23 @@ public sealed class CheckupTaskActionPlan
                 + "der Ausführung beschrieben sein.");
         }
 
-        if (!HasCommands)
+        if (!HasCommands
+            && !HasCleanupCategories)
         {
             throw new InvalidOperationException(
                 "Ein ausführbarer Aktionsplan benötigt "
-                + "mindestens einen konkreten Befehl.");
+                + "mindestens einen konkreten Befehl "
+                + "oder eine validierte "
+                + "Bereinigungskategorie.");
+        }
+
+        if (HasCommands
+            && HasCleanupCategories)
+        {
+            throw new InvalidOperationException(
+                "Ein Aktionsplan darf nicht gleichzeitig "
+                + "externe Befehle und Bereinigungsziele "
+                + "enthalten.");
         }
 
         foreach (var command in Commands)
@@ -178,6 +219,34 @@ public sealed class CheckupTaskActionPlan
             }
 
             command.Validate();
+        }
+
+        foreach (var category in CleanupCategories)
+        {
+            if (category is null)
+            {
+                throw new InvalidOperationException(
+                    "Der Aktionsplan enthält eine "
+                    + "ungültige Bereinigungskategorie.");
+            }
+
+            category.Validate();
+        }
+
+        var duplicateCleanupCategory =
+            CleanupCategories
+                .GroupBy(
+                    category =>
+                        category.Category)
+                .FirstOrDefault(
+                    group =>
+                        group.Count() > 1);
+
+        if (duplicateCleanupCategory is not null)
+        {
+            throw new InvalidOperationException(
+                "Der Aktionsplan enthält mindestens "
+                + "eine Bereinigungskategorie mehrfach.");
         }
 
         if (RequiresAdministrator

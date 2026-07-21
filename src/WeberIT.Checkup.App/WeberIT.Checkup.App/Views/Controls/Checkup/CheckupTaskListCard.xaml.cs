@@ -116,6 +116,55 @@ public partial class CheckupTaskListCard : UserControl
         dialog.ShowDialog();
     }
 
+    private void CleanupSelectionButton_OnClick(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (sender is not Button button
+            || button.CommandParameter
+                is not CheckupTask task)
+        {
+            ShowPreparationError(
+                "Die zugehörige Aufgabe konnte nicht "
+                + "eindeutig bestimmt werden.");
+
+            return;
+        }
+
+        if (CheckupSession is null)
+        {
+            ShowPreparationError(
+                "Der zugehörige Checkup-Kontext ist "
+                + "nicht verfügbar.");
+
+            return;
+        }
+
+        try
+        {
+            var dialog =
+                new CleanupActionSelectionDialog(
+                    task,
+                    CheckupSession.CleanupPotentialInformation)
+                {
+                    Owner =
+                        Window.GetWindow(this)
+                };
+
+            dialog.ShowDialog();
+        }
+        catch (Exception exception)
+        {
+            ShowPreparationError(
+                string.IsNullOrWhiteSpace(
+                    exception.Message)
+                    ? "Die auswählbaren "
+                      + "Bereinigungskategorien konnten "
+                      + "nicht sicher bestimmt werden."
+                    : exception.Message);
+        }
+    }
+
     private void ShowPreparationError(
         string message)
     {
