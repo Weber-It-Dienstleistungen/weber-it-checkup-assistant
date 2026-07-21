@@ -199,11 +199,26 @@ public sealed class CleanupActionPlanBuilder :
                    category.Category)
                && category.Classification
                    == CleanupCategoryClassification.SafePotential
-               && category.MeasurementStatus
-                   == CleanupMeasurementStatus.Measured
+               && HasSelectableMeasurement(
+                   category)
                && category.SizeBytes.HasValue
                && category.FileCount.HasValue
                && category.FileCount.Value >= 0;
+    }
+
+    private static bool HasSelectableMeasurement(
+        CleanupCategoryResult category)
+    {
+        if (category.MeasurementStatus
+            == CleanupMeasurementStatus.Measured)
+        {
+            return true;
+        }
+
+        return category.Category
+                   == CleanupCategoryType.UserTemporaryFiles
+               && category.MeasurementStatus
+                   == CleanupMeasurementStatus.PartiallyMeasured;
     }
 
     private static List<CleanupActionCategory>
@@ -261,8 +276,8 @@ public sealed class CleanupActionPlanBuilder :
                     $"Die Kategorie "
                     + $"„{GetCategoryTitle(selectedCategoryType)}“ "
                     + "ist im zugehörigen Checkup nicht als "
-                    + "vollständig gemessene sichere Kategorie "
-                    + "eindeutig freigegeben.");
+                    + "sichere und ausreichend gemessene "
+                    + "Kategorie eindeutig freigegeben.");
             }
 
             matchingCategory.Validate();
@@ -421,10 +436,10 @@ public sealed class CleanupActionPlanBuilder :
 
         builder.Append(
             categories.Count == 1
-                ? "Eine ausgewählte, vollständig gemessene "
+                ? "Eine ausgewählte und sicher freigegebene "
                   + "Bereinigungskategorie"
-                : $"{categories.Count} ausgewählte, vollständig "
-                  + "gemessene Bereinigungskategorien");
+                : $"{categories.Count} ausgewählte und sicher "
+                  + "freigegebene Bereinigungskategorien");
 
         builder.Append(
             " auf dem im Checkup gespeicherten Systemvolume ");
@@ -453,16 +468,33 @@ public sealed class CleanupActionPlanBuilder :
         IReadOnlyCollection<CleanupActionCategory>
             categories)
     {
-        return categories.Count == 1
-            ? "Vorgesehen ist ausschließlich die kontrollierte "
-              + "Bereinigung der einzeln ausgewählten Kategorie. "
-              + "Andere Kategorien und nicht freigegebene Bereiche "
-              + "sind nicht Bestandteil des Plans."
-            : "Vorgesehen ist ausschließlich die getrennte und "
-              + "kontrollierte Bereinigung der einzeln ausgewählten "
-              + "Kategorien. Andere Kategorien und nicht "
-              + "freigegebene Bereiche sind nicht Bestandteil "
-              + "des Plans.";
+        var expectedEffect =
+            categories.Count == 1
+                ? "Vorgesehen ist ausschließlich die kontrollierte "
+                  + "Bereinigung der einzeln ausgewählten Kategorie. "
+                  + "Andere Kategorien und nicht freigegebene Bereiche "
+                  + "sind nicht Bestandteil des Plans."
+                : "Vorgesehen ist ausschließlich die getrennte und "
+                  + "kontrollierte Bereinigung der einzeln ausgewählten "
+                  + "Kategorien. Andere Kategorien und nicht "
+                  + "freigegebene Bereiche sind nicht Bestandteil "
+                  + "des Plans.";
+
+        if (!categories.Any(
+                category =>
+                    category.MeasurementStatus
+                    == CleanupMeasurementStatus.PartiallyMeasured))
+        {
+            return expectedEffect;
+        }
+
+        return expectedEffect
+               + " Die gespeicherte Messung der "
+               + "Benutzertemporärdateien ist unvollständig. "
+               + "Die angezeigte Größe und Dateianzahl sind daher "
+               + "Mindestwerte. Gesperrte oder nicht zugängliche "
+               + "Einträge werden nicht gelöscht und im technischen "
+               + "Ergebnis berücksichtigt.";
     }
 
     private static string GetCategoryTitle(

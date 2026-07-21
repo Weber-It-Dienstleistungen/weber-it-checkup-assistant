@@ -42,20 +42,37 @@ public sealed class CleanupActionExecutionResult
                 result.IsSuccessful);
 
     [JsonIgnore]
+    public bool IsPartiallySuccessful =>
+        !WasBlocked
+        && !WasCancelled
+        && CategoryResults.Count > 0
+        && CategoryResults.Any(
+            result =>
+                result.IsPartiallySuccessful)
+        && CategoryResults.All(
+            result =>
+                result.IsSuccessful
+                || result.IsPartiallySuccessful);
+
+    [JsonIgnore]
     public bool HasFailures =>
         !WasBlocked
         && !WasCancelled
+        && !IsSuccessful
+        && !IsPartiallySuccessful
         && (!string.IsNullOrWhiteSpace(
                 ErrorMessage)
             || CategoryResults.Any(
                 result =>
-                    !result.IsSuccessful));
+                    !result.IsSuccessful
+                    && !result.IsPartiallySuccessful));
 
     [JsonIgnore]
     public int CompletedCategoryCount =>
         CategoryResults.Count(
             result =>
-                result.IsSuccessful);
+                result.IsSuccessful
+                || result.IsPartiallySuccessful);
 
     [JsonIgnore]
     public long DeletedFileCount =>

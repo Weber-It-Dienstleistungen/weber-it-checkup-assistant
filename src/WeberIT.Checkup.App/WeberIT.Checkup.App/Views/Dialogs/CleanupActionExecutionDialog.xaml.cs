@@ -366,15 +366,30 @@ public partial class CleanupActionExecutionDialog :
             return;
         }
 
+        if (executionResult.IsPartiallySuccessful)
+        {
+            ExecutionStatusText =
+                "Bereinigung mit Hinweisen abgeschlossen";
+
+            ExecutionDetailText =
+                BuildPartialCompletionText(
+                    executionResult);
+
+            FooterStatusText =
+                "Ausgeführt mit Hinweisen – Abschlusskontrolle ausstehend";
+
+            return;
+        }
+
         ExecutionStatusText =
             "Bereinigung mit Fehlern beendet";
 
         ExecutionDetailText =
             string.IsNullOrWhiteSpace(
                 executionResult.ErrorMessage)
-                ? "Mindestens ein Eintrag konnte nicht "
-                  + "vollständig verarbeitet werden. "
-                  + "Die Einzelergebnisse bleiben erhalten."
+                ? "Die Bereinigung konnte nicht ausreichend "
+                  + "ausgeführt werden. Die technischen "
+                  + "Einzelergebnisse bleiben erhalten."
                 : executionResult.ErrorMessage;
 
         FooterStatusText =
@@ -395,6 +410,28 @@ public partial class CleanupActionExecutionDialog :
             + ". Protokollierte Dateigröße: "
             + categoryResult.DeletedSizeText
             + ".";
+    }
+
+    private static string BuildPartialCompletionText(
+        CleanupActionExecutionResult executionResult)
+    {
+        var categoryResult =
+            executionResult.CategoryResults
+                .Single();
+
+        return
+            categoryResult.DeletedFileCountText
+            + ", "
+            + categoryResult.DeletedDirectoryCountText
+            + ". Protokollierte Dateigröße: "
+            + categoryResult.DeletedSizeText
+            + ". "
+            + categoryResult.FailureCountText
+            + ". "
+            + categoryResult.SkippedEntryCountText
+            + ". Gesperrte, bereits entfernte oder "
+            + "sicherheitsbedingt nicht freigegebene Einträge "
+            + "blieben unverändert.";
     }
 
     private void CancelButton_OnClick(
@@ -559,7 +596,7 @@ public partial class CleanupActionExecutionDialog :
             if (result.IsPartiallySuccessful)
             {
                 return
-                    "Teilweise ausgeführt";
+                    "Mit Hinweisen abgeschlossen";
             }
 
             if (!result.WasStarted)

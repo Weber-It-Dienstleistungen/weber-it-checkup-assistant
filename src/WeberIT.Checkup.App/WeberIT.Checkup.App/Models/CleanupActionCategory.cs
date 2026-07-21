@@ -29,15 +29,58 @@ public sealed class CleanupActionCategory
     public long MeasuredFileCount { get; init; }
 
     [JsonIgnore]
-    public string SizeText =>
-        FormatBytes(
-            MeasuredSizeBytes);
+    public bool HasIncompleteMeasurement =>
+        MeasurementStatus
+            == CleanupMeasurementStatus.PartiallyMeasured;
 
     [JsonIgnore]
-    public string FileCountText =>
-        MeasuredFileCount == 1
-            ? "1 vollständig gemessene Datei"
-            : $"{MeasuredFileCount:N0} vollständig gemessene Dateien";
+    public string MeasurementStatusText =>
+        MeasurementStatus switch
+        {
+            CleanupMeasurementStatus.Measured =>
+                "VOLLSTÄNDIG GEMESSEN",
+
+            CleanupMeasurementStatus.PartiallyMeasured =>
+                "TEILWEISE GEMESSEN",
+
+            _ =>
+                "NICHT VOLLSTÄNDIG GEMESSEN"
+        };
+
+    [JsonIgnore]
+    public string SizeText
+    {
+        get
+        {
+            var formattedSize =
+                FormatBytes(
+                    MeasuredSizeBytes);
+
+            return HasIncompleteMeasurement
+                ? $"Mindestens {formattedSize} erfasst"
+                : formattedSize;
+        }
+    }
+
+    [JsonIgnore]
+    public string FileCountText
+    {
+        get
+        {
+            if (HasIncompleteMeasurement)
+            {
+                return MeasuredFileCount == 1
+                    ? "mindestens 1 Datei erfasst"
+                    : $"mindestens {MeasuredFileCount:N0} "
+                      + "Dateien erfasst";
+            }
+
+            return MeasuredFileCount == 1
+                ? "1 vollständig gemessene Datei"
+                : $"{MeasuredFileCount:N0} "
+                  + "vollständig gemessene Dateien";
+        }
+    }
 
     [JsonIgnore]
     public string MeasurementSummaryText =>
@@ -79,12 +122,14 @@ public sealed class CleanupActionCategory
                 + "als sicher auswählbares Potenzial eingestuft.");
         }
 
-        if (MeasurementStatus
-            != CleanupMeasurementStatus.Measured)
+        if (!HasSupportedMeasurement(
+                Category.Value,
+                MeasurementStatus))
         {
             throw new InvalidOperationException(
-                "Die Bereinigungskategorie wurde nicht "
-                + "vollständig gemessen.");
+                "Die Bereinigungskategorie besitzt kein "
+                + "für diese Aktion ausreichend belastbares "
+                + "Messergebnis.");
         }
 
         if (MeasuredFileCount < 0)
@@ -120,6 +165,22 @@ public sealed class CleanupActionCategory
             or CleanupCategoryType.DirectXShaderCache
             or CleanupCategoryType.ThumbnailCache
             or CleanupCategoryType.BrowserCache;
+    }
+
+    private static bool HasSupportedMeasurement(
+        CleanupCategoryType category,
+        CleanupMeasurementStatus measurementStatus)
+    {
+        if (measurementStatus
+            == CleanupMeasurementStatus.Measured)
+        {
+            return true;
+        }
+
+        return category
+                   == CleanupCategoryType.UserTemporaryFiles
+               && measurementStatus
+                   == CleanupMeasurementStatus.PartiallyMeasured;
     }
 
     private static string FormatBytes(

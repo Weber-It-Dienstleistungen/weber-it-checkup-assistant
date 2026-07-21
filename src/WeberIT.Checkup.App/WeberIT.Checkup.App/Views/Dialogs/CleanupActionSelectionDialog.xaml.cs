@@ -60,7 +60,7 @@ public partial class CleanupActionSelectionDialog :
         if (AvailableCategories.Count == 0)
         {
             _selectionStatusText =
-                "Im gespeicherten Checkup ist keine vollständig "
+                "Im gespeicherten Checkup ist keine ausreichend "
                 + "gemessene und sicher freigegebene "
                 + "Bereinigungskategorie enthalten.";
         }
@@ -142,7 +142,7 @@ public partial class CleanupActionSelectionDialog :
             {
                 0 when AvailableCategories.Count == 0 =>
                     "Im gespeicherten Checkup ist keine "
-                    + "vollständig gemessene und sicher "
+                    + "ausreichend gemessene und sicher "
                     + "freigegebene Bereinigungskategorie enthalten.",
 
                 0 =>
@@ -398,7 +398,8 @@ public partial class CleanupActionSelectionDialog :
         DetermineActionStatus(
             CleanupActionExecutionResult executionResult)
     {
-        if (executionResult.IsSuccessful)
+        if (executionResult.IsSuccessful
+            || executionResult.IsPartiallySuccessful)
         {
             return
                 CheckupTaskActionStatus.Successful;
@@ -428,6 +429,20 @@ public partial class CleanupActionSelectionDialog :
                 + "technisch erfolgreich beendet. "
                 + deletionSummary
                 + ". Die Abschlusskontrolle steht aus.";
+        }
+
+        if (executionResult.IsPartiallySuccessful)
+        {
+            return
+                "Die kontrollierte Bereinigung wurde "
+                + "mit technischen Hinweisen abgeschlossen. "
+                + deletionSummary
+                + $". {executionResult.FailedEntryCount:N0} "
+                + "Einträge konnten nicht gelöscht und "
+                + $"{executionResult.SkippedEntryCount:N0} "
+                + "Einträge wurden sicherheitsbedingt oder "
+                + "wegen zwischenzeitlicher Änderungen "
+                + "übersprungen. Die Abschlusskontrolle steht aus.";
         }
 
         if (executionResult.WasCancelled)
@@ -546,7 +561,11 @@ public partial class CleanupActionSelectionDialog :
         if (!string.IsNullOrWhiteSpace(
                 executionResult.ErrorMessage))
         {
-            builder.Append("Technischer Gesamtfehler: ");
+            builder.Append(
+                executionResult.IsPartiallySuccessful
+                    ? "Technischer Gesamthinweis: "
+                    : "Technischer Gesamtfehler: ");
+
             builder.AppendLine(
                 executionResult.ErrorMessage.Trim());
         }
@@ -605,7 +624,11 @@ public partial class CleanupActionSelectionDialog :
             if (!string.IsNullOrWhiteSpace(
                     categoryResult.ErrorMessage))
             {
-                builder.Append("Kategoriefehler: ");
+                builder.Append(
+                    categoryResult.IsPartiallySuccessful
+                        ? "Kategoriehinweis: "
+                        : "Kategoriefehler: ");
+
                 builder.AppendLine(
                     categoryResult.ErrorMessage.Trim());
             }
