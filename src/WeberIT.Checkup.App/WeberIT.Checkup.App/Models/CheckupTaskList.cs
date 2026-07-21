@@ -14,6 +14,18 @@ public class CheckupTaskList : INotifyPropertyChanged
 
     public DateTime? CreatedAt { get; set; }
 
+    public DateTimeOffset? LastCompletionCheckAt
+    {
+        get;
+        set;
+    }
+
+    public string LastCompletionCheckSummary
+    {
+        get;
+        set;
+    } = string.Empty;
+
     public List<CheckupTask> Tasks { get; set; } =
         new();
 
@@ -93,6 +105,17 @@ public class CheckupTaskList : INotifyPropertyChanged
     [JsonIgnore]
     public bool HasTasksAwaitingVerification =>
         AwaitingVerificationTaskCount > 0;
+
+    [JsonIgnore]
+    public bool HasCompletionCheck =>
+        LastCompletionCheckAt.HasValue
+        && !string.IsNullOrWhiteSpace(
+            LastCompletionCheckSummary);
+
+    [JsonIgnore]
+    public bool ShouldShowCompletionCheckPanel =>
+        HasTasksAwaitingVerification
+        || HasCompletionCheck;
 
     [JsonIgnore]
     public bool HasRestartRequirement =>
@@ -186,6 +209,45 @@ public class CheckupTaskList : INotifyPropertyChanged
                   + "dokumentiert";
         }
     }
+
+    [JsonIgnore]
+    public string CompletionCheckStatusText
+    {
+        get
+        {
+            if (HasCompletionCheck)
+            {
+                return
+                    LastCompletionCheckSummary
+                    + Environment.NewLine
+                    + "Kontrolliert am "
+                    + LastCompletionCheckAt!
+                        .Value
+                        .ToLocalTime()
+                        .ToString(
+                            "dd.MM.yyyy HH:mm")
+                    + " Uhr.";
+            }
+
+            if (HasTasksAwaitingVerification)
+            {
+                return
+                    "Mindestens eine technische Aktion wurde "
+                    + "erfolgreich ausgeführt. Ein neuer "
+                    + "lesender Kontrollscan prüft, ob der "
+                    + "zugrunde liegende Befund weiterhin besteht.";
+            }
+
+            return
+                "Aktuell steht keine Abschlusskontrolle aus.";
+        }
+    }
+
+    [JsonIgnore]
+    public string CompletionCheckButtonText =>
+        HasCompletionCheck
+            ? "Abschlusskontrolle erneut starten"
+            : "Abschlusskontrolle starten";
 
     [JsonIgnore]
     public string VersionText =>
@@ -283,6 +345,98 @@ public class CheckupTaskList : INotifyPropertyChanged
         }
     }
 
+    public void ApplyCompletionCheck(
+        CheckupCompletionCheckResult completionCheck)
+    {
+        ArgumentNullException.ThrowIfNull(
+            completionCheck);
+
+        ValidateCompletionCheck(
+            completionCheck);
+
+        var taskMappings =
+            completionCheck.TaskResults
+                .Select(
+                    result =>
+                        new CompletionCheckTaskMapping(
+                            GetCompletionCheckTask(
+                                result),
+                            result))
+                .ToList();
+
+        var taskSnapshots =
+            taskMappings
+                .Select(
+                    mapping =>
+                        new TaskStatusSnapshot(
+                            mapping.Task,
+                            mapping.Task.Status,
+                            mapping.Task.StatusChangedAt,
+                            mapping.Task.StatusReason,
+                            mapping.Task.TechnicianNote))
+                .ToList();
+
+        var previousCompletionCheckAt =
+            LastCompletionCheckAt;
+
+        var previousCompletionCheckSummary =
+            LastCompletionCheckSummary;
+
+        foreach (var mapping in taskMappings)
+        {
+            var status =
+                mapping.Result.FindingStillPresent
+                    ? CheckupTaskStatus.Open
+                    : CheckupTaskStatus.Completed;
+
+            mapping.Task.ApplyStatus(
+                status,
+                BuildCompletionCheckReason(
+                    mapping.Result,
+                    completionCheck
+                        .VerificationScanDate),
+                mapping.Task.TechnicianNote);
+        }
+
+        LastCompletionCheckAt =
+            completionCheck.VerificationScanDate;
+
+        LastCompletionCheckSummary =
+            BuildCompletionCheckSummary(
+                completionCheck);
+
+        NotifySummaryChanged();
+        NotifyCompletionCheckChanged();
+
+        try
+        {
+            RequestPersistence();
+        }
+        catch
+        {
+            foreach (var snapshot
+                     in taskSnapshots)
+            {
+                snapshot.Task.RestoreStatus(
+                    snapshot.Status,
+                    snapshot.StatusChangedAt,
+                    snapshot.StatusReason,
+                    snapshot.TechnicianNote);
+            }
+
+            LastCompletionCheckAt =
+                previousCompletionCheckAt;
+
+            LastCompletionCheckSummary =
+                previousCompletionCheckSummary;
+
+            NotifySummaryChanged();
+            NotifyCompletionCheckChanged();
+
+            throw;
+        }
+    }
+
     private void EnsureTaskBelongsToList(
         CheckupTask task)
     {
@@ -297,6 +451,108 @@ public class CheckupTaskList : INotifyPropertyChanged
             throw new InvalidOperationException(
                 "Die ausgewählte Aufgabe gehört nicht "
                 + "zu dieser Aufgabenliste.");
+        }
+    }
+
+    private CheckupTask GetCompletionCheckTask(
+        CheckupTaskCompletionCheckResult result)
+    {
+        var task =
+            Tasks.SingleOrDefault(
+                existingTask =>
+                    existingTask.Id
+                    == result.TaskId);
+
+        if (task is null)
+        {
+            throw new InvalidOperationException(
+                "Eine geprüfte Aufgabe gehört nicht mehr "
+                + "zur aktuellen Aufgabenliste.");
+        }
+
+        if (!string.Equals(
+                task.TaskCode,
+                result.TaskCode,
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Der Aufgabencode des Kontrollergebnisses "
+                + "stimmt nicht mit der gespeicherten "
+                + "Aufgabe überein.");
+        }
+
+        if (!task.HasSuccessfulActionAwaitingVerification)
+        {
+            throw new InvalidOperationException(
+                "Der Status einer zu prüfenden Aufgabe "
+                + "wurde während des Kontrollscans verändert.");
+        }
+
+        return task;
+    }
+
+    private void ValidateCompletionCheck(
+        CheckupCompletionCheckResult completionCheck)
+    {
+        if (completionCheck.TaskResults.Count == 0)
+        {
+            throw new ArgumentException(
+                "Die Abschlusskontrolle enthält kein "
+                + "Aufgabenergebnis.",
+                nameof(completionCheck));
+        }
+
+        if (completionCheck.FinishedAt
+            < completionCheck.StartedAt)
+        {
+            throw new ArgumentException(
+                "Der Abschlusszeitpunkt der Kontrolle "
+                + "darf nicht vor dem Startzeitpunkt liegen.",
+                nameof(completionCheck));
+        }
+
+        var duplicateTaskIds =
+            completionCheck.TaskResults
+                .GroupBy(
+                    result =>
+                        result.TaskId)
+                .Any(
+                    group =>
+                        group.Count() > 1);
+
+        if (duplicateTaskIds)
+        {
+            throw new ArgumentException(
+                "Die Abschlusskontrolle enthält eine "
+                + "Aufgabe mehrfach.",
+                nameof(completionCheck));
+        }
+
+        var expectedTaskIds =
+            Tasks
+                .Where(
+                    task =>
+                        task
+                            .HasSuccessfulActionAwaitingVerification)
+                .Select(
+                    task =>
+                        task.Id)
+                .ToHashSet();
+
+        var receivedTaskIds =
+            completionCheck.TaskResults
+                .Select(
+                    result =>
+                        result.TaskId)
+                .ToHashSet();
+
+        if (!expectedTaskIds.SetEquals(
+                receivedTaskIds))
+        {
+            throw new InvalidOperationException(
+                "Die Aufgabenlage hat sich während des "
+                + "Kontrollscans verändert. Es wurde kein "
+                + "Status übernommen.");
         }
     }
 
@@ -385,6 +641,93 @@ public class CheckupTaskList : INotifyPropertyChanged
         }
     }
 
+    private static string BuildCompletionCheckReason(
+        CheckupTaskCompletionCheckResult taskResult,
+        DateTimeOffset verificationScanDate)
+    {
+        var checkedAt =
+            verificationScanDate
+                .ToLocalTime()
+                .ToString(
+                    "dd.MM.yyyy HH:mm");
+
+        if (taskResult.FindingStillPresent)
+        {
+            return
+                "Automatische Abschlusskontrolle vom "
+                + checkedAt
+                + " Uhr: Der zugrunde liegende Befund "
+                + "wurde im aktuellen Kontrollscan erneut "
+                + "festgestellt. Die Aufgabe bleibt offen.";
+        }
+
+        return
+            "Automatische Abschlusskontrolle vom "
+            + checkedAt
+            + " Uhr: Der zugrunde liegende Befund wurde "
+            + "im aktuellen Kontrollscan nicht erneut "
+            + "festgestellt. Die Aufgabe wurde abgeschlossen.";
+    }
+
+    private static string BuildCompletionCheckSummary(
+        CheckupCompletionCheckResult completionCheck)
+    {
+        var resolvedText =
+            completionCheck.ResolvedTaskCount switch
+            {
+                0 =>
+                    "Keine geprüfte Aufgabe wurde abgeschlossen.",
+
+                1 =>
+                    "Eine geprüfte Aufgabe wurde abgeschlossen.",
+
+                _ =>
+                    $"{completionCheck.ResolvedTaskCount} "
+                    + "geprüfte Aufgaben wurden abgeschlossen."
+            };
+
+        var remainingText =
+            completionCheck.RemainingTaskCount switch
+            {
+                0 =>
+                    "Keine geprüfte Aufgabe bleibt aufgrund "
+                    + "des Kontrollscans offen.",
+
+                1 =>
+                    "Eine geprüfte Aufgabe bleibt aufgrund "
+                    + "eines weiterhin vorhandenen Befunds offen.",
+
+                _ =>
+                    $"{completionCheck.RemainingTaskCount} "
+                    + "geprüfte Aufgaben bleiben aufgrund "
+                    + "weiterhin vorhandener Befunde offen."
+            };
+
+        var currentTaskText =
+            completionCheck.CurrentTaskCount switch
+            {
+                0 =>
+                    "Im Kontrollscan wurde aktuell keine "
+                    + "Aufgabe abgeleitet.",
+
+                1 =>
+                    "Im Kontrollscan wurde insgesamt eine "
+                    + "aktuelle Aufgabe abgeleitet.",
+
+                _ =>
+                    "Im Kontrollscan wurden insgesamt "
+                    + $"{completionCheck.CurrentTaskCount} "
+                    + "aktuelle Aufgaben abgeleitet."
+            };
+
+        return
+            resolvedText
+            + " "
+            + remainingText
+            + " "
+            + currentTaskText;
+    }
+
     private void RequestPersistence()
     {
         PersistenceRequested?.Invoke(
@@ -419,6 +762,9 @@ public class CheckupTaskList : INotifyPropertyChanged
             nameof(HasTasksAwaitingVerification));
 
         OnPropertyChanged(
+            nameof(ShouldShowCompletionCheckPanel));
+
+        OnPropertyChanged(
             nameof(AvailabilityText));
 
         OnPropertyChanged(
@@ -426,6 +772,12 @@ public class CheckupTaskList : INotifyPropertyChanged
 
         OnPropertyChanged(
             nameof(ActionSummaryText));
+
+        OnPropertyChanged(
+            nameof(CompletionCheckStatusText));
+
+        OnPropertyChanged(
+            nameof(CompletionCheckButtonText));
     }
 
     private void NotifyActionSummaryChanged()
@@ -443,10 +795,40 @@ public class CheckupTaskList : INotifyPropertyChanged
             nameof(HasTasksAwaitingVerification));
 
         OnPropertyChanged(
+            nameof(ShouldShowCompletionCheckPanel));
+
+        OnPropertyChanged(
             nameof(HasRestartRequirement));
 
         OnPropertyChanged(
             nameof(ActionSummaryText));
+
+        OnPropertyChanged(
+            nameof(CompletionCheckStatusText));
+
+        OnPropertyChanged(
+            nameof(CompletionCheckButtonText));
+    }
+
+    private void NotifyCompletionCheckChanged()
+    {
+        OnPropertyChanged(
+            nameof(LastCompletionCheckAt));
+
+        OnPropertyChanged(
+            nameof(LastCompletionCheckSummary));
+
+        OnPropertyChanged(
+            nameof(HasCompletionCheck));
+
+        OnPropertyChanged(
+            nameof(ShouldShowCompletionCheckPanel));
+
+        OnPropertyChanged(
+            nameof(CompletionCheckStatusText));
+
+        OnPropertyChanged(
+            nameof(CompletionCheckButtonText));
     }
 
     private void OnPropertyChanged(
@@ -457,4 +839,15 @@ public class CheckupTaskList : INotifyPropertyChanged
             new PropertyChangedEventArgs(
                 propertyName));
     }
+
+    private sealed record CompletionCheckTaskMapping(
+        CheckupTask Task,
+        CheckupTaskCompletionCheckResult Result);
+
+    private sealed record TaskStatusSnapshot(
+        CheckupTask Task,
+        CheckupTaskStatus Status,
+        DateTime? StatusChangedAt,
+        string StatusReason,
+        string TechnicianNote);
 }

@@ -1,6 +1,7 @@
 ﻿<Window x:Class="WeberIT.Checkup.App.Views.Dialogs.MessageDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:dialogs="clr-namespace:WeberIT.Checkup.App.Views.Dialogs"
         Title="{Binding DialogTitle}"
         Width="500"
         Height="310"
@@ -41,17 +42,69 @@
                     Height="48"
                     VerticalAlignment="Top"
                     Background="{StaticResource SurfaceSecondaryBrush}"
-                    BorderBrush="{StaticResource WarningBrush}"
                     BorderThickness="1"
                     CornerRadius="24">
+
+                    <Border.Style>
+
+                        <Style TargetType="{x:Type Border}">
+
+                            <Setter
+                                Property="BorderBrush"
+                                Value="{StaticResource WarningBrush}" />
+
+                            <Style.Triggers>
+
+                                <DataTrigger
+                                    Binding="{Binding DialogKind}"
+                                    Value="{x:Static dialogs:MessageDialogKind.Information}">
+
+                                    <Setter
+                                        Property="BorderBrush"
+                                        Value="{StaticResource InformationBrush}" />
+
+                                </DataTrigger>
+
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </Border.Style>
 
                     <TextBlock
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         FontFamily="Segoe MDL2 Assets"
                         FontSize="21"
-                        Foreground="{StaticResource WarningBrush}"
-                        Text="&#xEA39;" />
+                        Text="{Binding IconGlyph}">
+
+                        <TextBlock.Style>
+
+                            <Style TargetType="{x:Type TextBlock}">
+
+                                <Setter
+                                    Property="Foreground"
+                                    Value="{StaticResource WarningBrush}" />
+
+                                <Style.Triggers>
+
+                                    <DataTrigger
+                                        Binding="{Binding DialogKind}"
+                                        Value="{x:Static dialogs:MessageDialogKind.Information}">
+
+                                        <Setter
+                                            Property="Foreground"
+                                            Value="{StaticResource InformationBrush}" />
+
+                                    </DataTrigger>
+
+                                </Style.Triggers>
+
+                            </Style>
+
+                        </TextBlock.Style>
+
+                    </TextBlock>
 
                 </Border>
 
@@ -68,7 +121,7 @@
                         Margin="0,6,0,0"
                         FontSize="13"
                         Foreground="{StaticResource TextSecondaryBrush}"
-                        Text="Der Vorgang konnte nicht abgeschlossen werden."
+                        Text="{Binding DialogStatusText}"
                         TextWrapping="Wrap" />
 
                 </StackPanel>
@@ -109,10 +162,12 @@
 
                 <TextBlock
                     Grid.Column="0"
+                    Margin="0,0,18,0"
                     VerticalAlignment="Center"
                     FontSize="12"
                     Foreground="{StaticResource TextMutedBrush}"
-                    Text="Es wurden keine neuen Scandaten übernommen." />
+                    Text="{Binding DialogFooterText}"
+                    TextWrapping="Wrap" />
 
                 <Button
                     Grid.Column="1"
