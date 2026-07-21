@@ -113,7 +113,8 @@ public sealed class CleanupActionPlanBuilder :
                     actionDefinition.RiskLevel,
 
                 RequiresAdministrator =
-                    actionDefinition.RequiresAdministrator,
+                    selectedCategories.Any(
+                        RequiresAdministrator),
 
                 MayRequireRestart =
                     actionDefinition.MayRequireRestart,
@@ -372,14 +373,42 @@ public sealed class CleanupActionPlanBuilder :
                 "Für diese Aufgabe ist keine kontrollierte "
                 + "Bereinigungsaktion freigegeben.");
         }
+    }
 
-        if (!definition.RequiresAdministrator)
+    private static bool RequiresAdministrator(
+        CleanupActionCategory category)
+    {
+        if (!category.Category.HasValue)
         {
             throw new InvalidOperationException(
-                "Die zentrale Aktionsdefinition enthält "
-                + "nicht die erforderliche "
-                + "Administratoranforderung.");
+                "Die Rechteanforderung einer unbekannten "
+                + "Bereinigungskategorie kann nicht "
+                + "sicher bestimmt werden.");
         }
+
+        return category.Category.Value switch
+        {
+            CleanupCategoryType.UserTemporaryFiles =>
+                false,
+
+            CleanupCategoryType.WindowsTemporaryFiles =>
+                true,
+
+            CleanupCategoryType.DirectXShaderCache =>
+                false,
+
+            CleanupCategoryType.ThumbnailCache =>
+                false,
+
+            CleanupCategoryType.BrowserCache =>
+                false,
+
+            _ =>
+                throw new InvalidOperationException(
+                    "Für die Bereinigungskategorie ist "
+                    + "keine eindeutige Rechteanforderung "
+                    + "definiert.")
+        };
     }
 
     private static string BuildTargetDescription(

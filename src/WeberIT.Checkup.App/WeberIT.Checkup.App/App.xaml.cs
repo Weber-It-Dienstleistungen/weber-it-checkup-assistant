@@ -79,6 +79,10 @@ public partial class App : Application
                     ProgramUpdateActionExecutor>();
 
                 services.AddSingleton<
+                    ICleanupActionExecutor,
+                    CleanupActionExecutor>();
+
+                services.AddSingleton<
                     ISystemFileChecker,
                     SystemFileChecker>();
 
