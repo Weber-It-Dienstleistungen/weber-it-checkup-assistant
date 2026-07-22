@@ -216,7 +216,8 @@ public sealed class CleanupActionPlanBuilder :
         }
 
         return category.Category
-                   == CleanupCategoryType.UserTemporaryFiles
+                   is CleanupCategoryType.UserTemporaryFiles
+                   or CleanupCategoryType.WindowsTemporaryFiles
                && category.MeasurementStatus
                    == CleanupMeasurementStatus.PartiallyMeasured;
     }
@@ -325,7 +326,7 @@ public sealed class CleanupActionPlanBuilder :
             throw new InvalidOperationException(
                 $"Die Kategorie "
                 + $"„{GetCategoryTitle(category)}“ "
-                + "ist für eine automatische "
+                + "ist für eine kontrollierte "
                 + "Bereinigung nicht freigegeben.");
         }
 
@@ -449,7 +450,8 @@ public sealed class CleanupActionPlanBuilder :
 
         builder.Append(':');
 
-        foreach (var category in categories)
+        foreach (var category
+                 in categories)
         {
             builder.AppendLine();
             builder.Append("• ");
@@ -461,7 +463,8 @@ public sealed class CleanupActionPlanBuilder :
             builder.Append(category.TargetAreaDescription);
         }
 
-        return builder.ToString();
+        return builder
+            .ToString();
     }
 
     private static string BuildExpectedEffect(
@@ -480,21 +483,45 @@ public sealed class CleanupActionPlanBuilder :
                   + "freigegebene Bereiche sind nicht Bestandteil "
                   + "des Plans.";
 
-        if (!categories.Any(
-                category =>
-                    category.MeasurementStatus
-                    == CleanupMeasurementStatus.PartiallyMeasured))
+        var partiallyMeasuredCategories =
+            categories
+                .Where(
+                    category =>
+                        category.MeasurementStatus
+                        == CleanupMeasurementStatus.PartiallyMeasured)
+                .Select(
+                    category =>
+                        category.Title)
+                .Distinct(
+                    StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+        if (partiallyMeasuredCategories.Count == 0)
         {
             return expectedEffect;
         }
 
+        var measurementSubject =
+            partiallyMeasuredCategories.Count == 1
+                ? "Die gespeicherte Messung der Kategorie „"
+                  + partiallyMeasuredCategories[0]
+                  + "“ ist"
+                : "Die gespeicherten Messungen der Kategorien "
+                  + string.Join(
+                      ", ",
+                      partiallyMeasuredCategories.Select(
+                          title =>
+                              "„" + title + "“"))
+                  + " sind";
+
         return expectedEffect
-               + " Die gespeicherte Messung der "
-               + "Benutzertemporärdateien ist unvollständig. "
-               + "Die angezeigte Größe und Dateianzahl sind daher "
-               + "Mindestwerte. Gesperrte oder nicht zugängliche "
-               + "Einträge werden nicht gelöscht und im technischen "
-               + "Ergebnis berücksichtigt.";
+               + " "
+               + measurementSubject
+               + " unvollständig. Die angezeigten Größen und "
+               + "Dateianzahlen sind daher Mindestwerte. "
+               + "Gesperrte oder nicht zugängliche Einträge "
+               + "werden nicht erzwungen gelöscht und im "
+               + "technischen Ergebnis berücksichtigt.";
     }
 
     private static string GetCategoryTitle(
@@ -534,10 +561,11 @@ public sealed class CleanupActionPlanBuilder :
                 + "selbst bleibt bestehen.",
 
             CleanupCategoryType.WindowsTemporaryFiles =>
-                "Inhalte des Windows-Temp-Ordners "
-                + "einschließlich seiner Unterordner. "
-                + "Der Windows-Temp-Stammordner selbst "
-                + "bleibt bestehen.",
+                "Ausschließlich Inhalte des lokalen "
+                + "Windows-Temp-Ordners einschließlich seiner "
+                + "Unterordner. Der Windows-Temp-Stammordner "
+                + "selbst bleibt bestehen. Umleitungen und "
+                + "Verknüpfungspunkte werden nicht verfolgt.",
 
             CleanupCategoryType.DirectXShaderCache =>
                 "Inhalte des DirectX-Shadercacheordners "

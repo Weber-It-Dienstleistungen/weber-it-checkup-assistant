@@ -88,6 +88,9 @@ public partial class App : Application
                     BrowserCacheCleanupExecutor>();
 
                 services.AddSingleton<
+                    WindowsTemporaryFilesCleanupExecutor>();
+
+                services.AddSingleton<
                     ICleanupActionExecutor,
                     ControlledCleanupActionExecutor>();
 

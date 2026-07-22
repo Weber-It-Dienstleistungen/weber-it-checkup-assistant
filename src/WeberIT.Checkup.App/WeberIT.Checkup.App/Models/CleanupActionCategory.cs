@@ -111,7 +111,7 @@ public sealed class CleanupActionCategory
         {
             throw new InvalidOperationException(
                 "Die Bereinigungskategorie ist nicht "
-                + "für eine automatische Aktion freigegeben.");
+                + "für eine kontrollierte Aktion freigegeben.");
         }
 
         if (Classification
@@ -161,6 +161,7 @@ public sealed class CleanupActionCategory
     {
         return category
             is CleanupCategoryType.UserTemporaryFiles
+            or CleanupCategoryType.WindowsTemporaryFiles
             or CleanupCategoryType.DirectXShaderCache
             or CleanupCategoryType.ThumbnailCache
             or CleanupCategoryType.BrowserCache;
@@ -177,7 +178,8 @@ public sealed class CleanupActionCategory
         }
 
         return category
-                   == CleanupCategoryType.UserTemporaryFiles
+                   is CleanupCategoryType.UserTemporaryFiles
+                   or CleanupCategoryType.WindowsTemporaryFiles
                && measurementStatus
                    == CleanupMeasurementStatus.PartiallyMeasured;
     }

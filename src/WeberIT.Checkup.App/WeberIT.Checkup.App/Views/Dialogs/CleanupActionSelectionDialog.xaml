@@ -151,14 +151,14 @@
                 <TextBlock
                     Margin="0,6,0,0"
                     Foreground="{StaticResource TextSecondaryBrush}"
-                    Text="Angezeigt werden sicher freigegebene Kategorien mit einem belastbaren Messergebnis. Benutzertemporärdateien dürfen auch bei einer Teilmessung ausgewählt werden; die angezeigten Werte sind dann Mindestwerte."
+                    Text="Angezeigt werden sicher freigegebene Kategorien mit einem belastbaren Messergebnis. Benutzer- und Windows-Temporärdateien dürfen auch bei einer Teilmessung ausgewählt werden; die angezeigten Werte sind dann Mindestwerte."
                     TextWrapping="Wrap" />
 
                 <TextBlock
                     Margin="0,6,0,0"
                     FontSize="11"
                     Foreground="{StaticResource WarningBrush}"
-                    Text="Die Auswahl selbst löscht noch nichts. Der Benutzer-Temp-Plan kann erst nach vollständiger Vorschau, Checkbox und ausdrücklicher Bestätigung ausgeführt werden. Andere Kategorien bleiben reine Planvorschauen."
+                    Text="Die Auswahl selbst löscht noch nichts. Jede ausführbare Kategorie wird einzeln in einer vollständigen Planvorschau geprüft und ausdrücklich bestätigt. Browsercache erfordert vollständig beendete Browser; Windows-Temp zusätzlich Administratorrechte. Mehrfachauswahlen bleiben reine Vorschauen."
                     TextWrapping="Wrap" />
 
             </StackPanel>

@@ -20,6 +20,9 @@ public partial class CleanupActionPlanPreviewDialog : Window
     private readonly bool
         _isBrowserCachePlan;
 
+    private readonly bool
+        _isWindowsTemporaryFilesPlan;
+
     public CleanupActionPlanPreviewDialog(
         CheckupTaskActionPlan plan)
     {
@@ -64,13 +67,18 @@ public partial class CleanupActionPlanPreviewDialog : Window
             && plan.CleanupCategories[0].Category
                 == CleanupCategoryType.BrowserCache;
 
+        _isWindowsTemporaryFilesPlan =
+            plan.CleanupCategories.Count == 1
+            && plan.CleanupCategories[0].Category
+                == CleanupCategoryType.WindowsTemporaryFiles;
+
         InitializeComponent();
 
         DataContext =
             plan;
 
         ApplyExecutionAvailability();
-        AddBrowserCacheWarning();
+        AddCategorySpecificWarning();
     }
 
     public CheckupTaskActionPlan?
@@ -103,8 +111,11 @@ public partial class CleanupActionPlanPreviewDialog : Window
                 _isBrowserCachePlan
                     ? "Ausführung nur bei vollständig "
                       + "beendeten Browsern möglich"
-                    : "Ausführung erst nach ausdrücklicher "
-                      + "Bestätigung möglich";
+                    : _isWindowsTemporaryFilesPlan
+                        ? "Separate Administratorbestätigung "
+                          + "beim Start erforderlich"
+                        : "Ausführung erst nach ausdrücklicher "
+                          + "Bestätigung möglich";
 
             CloseButton.Content =
                 "Zurück";
@@ -134,11 +145,43 @@ public partial class CleanupActionPlanPreviewDialog : Window
             "Planvorschau schließen";
     }
 
-    private void AddBrowserCacheWarning()
+    private void AddCategorySpecificWarning()
     {
-        if (!_isBrowserCachePlan
-            || ExecutionAvailableNotice.Child
-                is not StackPanel noticePanel)
+        if (_isBrowserCachePlan)
+        {
+            AddExecutionWarning(
+                "Browser vor dem Start vollständig schließen",
+                "Microsoft Edge, Google Chrome und Mozilla "
+                + "Firefox müssen einschließlich möglicher "
+                + "Hintergrundprozesse beendet sein. Das "
+                + "Checkup-Tool beendet keine Browser und "
+                + "erzwingt keinen Prozessabbruch. Laufende "
+                + "Browser blockieren die Ausführung vor "
+                + "dem ersten Dateizugriff.");
+
+            return;
+        }
+
+        if (_isWindowsTemporaryFilesPlan)
+        {
+            AddExecutionWarning(
+                "Administratorbestätigung erforderlich",
+                "Windows fordert beim Start der Bereinigung "
+                + "eine separate UAC-Bestätigung an. "
+                + "Verarbeitet werden ausschließlich Inhalte "
+                + "des lokalen Windows-Temp-Ordners. Der "
+                + "Stammordner bleibt bestehen, Verknüpfungen "
+                + "werden nicht verfolgt und gesperrte Dateien "
+                + "werden nicht gewaltsam entfernt.");
+        }
+    }
+
+    private void AddExecutionWarning(
+        string title,
+        string text)
+    {
+        if (ExecutionAvailableNotice.Child
+            is not StackPanel noticePanel)
         {
             return;
         }
@@ -157,7 +200,7 @@ public partial class CleanupActionPlanPreviewDialog : Window
                     FontWeights.SemiBold,
 
                 Text =
-                    "Browser vor dem Start vollständig schließen",
+                    title,
 
                 TextWrapping =
                     TextWrapping.Wrap
@@ -181,13 +224,7 @@ public partial class CleanupActionPlanPreviewDialog : Window
                         0),
 
                 Text =
-                    "Microsoft Edge, Google Chrome und Mozilla "
-                    + "Firefox müssen einschließlich möglicher "
-                    + "Hintergrundprozesse beendet sein. Das "
-                    + "Checkup-Tool beendet keine Browser und "
-                    + "erzwingt keinen Prozessabbruch. Laufende "
-                    + "Browser blockieren die Ausführung vor "
-                    + "dem ersten Dateizugriff.",
+                    text,
 
                 TextWrapping =
                     TextWrapping.Wrap

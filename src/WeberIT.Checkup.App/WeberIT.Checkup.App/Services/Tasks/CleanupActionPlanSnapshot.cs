@@ -97,10 +97,19 @@ internal static class CleanupActionPlanSnapshot
         ArgumentNullException.ThrowIfNull(
             plan);
 
-        return plan.CleanupCategories.Count == 1
-               && IsExecutableCategory(
-                   plan.CleanupCategories[0])
-               && !plan.RequiresAdministrator
+        if (plan.CleanupCategories.Count != 1)
+        {
+            return false;
+        }
+
+        var category =
+            plan.CleanupCategories[0];
+
+        return IsExecutableCategory(
+                   category)
+               && HasMatchingAdministratorRequirement(
+                   plan,
+                   category)
                && !plan.MayRequireRestart;
     }
 
@@ -129,16 +138,18 @@ internal static class CleanupActionPlanSnapshot
                 "Die Kategorie „"
                 + category.Title
                 + "“ kann bereits geprüft werden, ist jedoch "
-                + "noch nicht zur automatischen Ausführung "
+                + "noch nicht zur technischen Ausführung "
                 + "freigegeben.";
         }
 
-        if (plan.RequiresAdministrator)
+        if (!HasMatchingAdministratorRequirement(
+                plan,
+                category))
         {
             return
-                "Dieser Bereinigungsplan benötigt "
-                + "Administratorrechte und ist in dieser "
-                + "Ausbaustufe noch nicht ausführbar.";
+                "Die Rechteanforderung des Bereinigungsplans "
+                + "stimmt nicht mit der ausgewählten Kategorie "
+                + "überein. Der Plan ist nicht ausführbar.";
         }
 
         if (plan.MayRequireRestart)
@@ -146,7 +157,7 @@ internal static class CleanupActionPlanSnapshot
             return
                 "Dieser Bereinigungsplan kann einen Neustart "
                 + "erfordern und ist in dieser Ausbaustufe "
-                + "noch nicht ausführbar.";
+                + "nicht ausführbar.";
         }
 
         if (category.Category
@@ -159,6 +170,17 @@ internal static class CleanupActionPlanSnapshot
                 + "Edge, Google Chrome und Mozilla Firefox "
                 + "müssen vor dem Start vollständig beendet "
                 + "sein. Das Tool beendet keine Prozesse selbst.";
+        }
+
+        if (category.Category
+            == CleanupCategoryType.WindowsTemporaryFiles)
+        {
+            return
+                "Windows-Temp kann nach vollständiger Prüfung "
+                + "und ausdrücklicher Bestätigung erhöht "
+                + "bereinigt werden. Windows fordert hierfür "
+                + "eine separate Administratorbestätigung an. "
+                + "Der Temp-Stammordner bleibt bestehen.";
         }
 
         return
@@ -236,14 +258,17 @@ internal static class CleanupActionPlanSnapshot
         {
             throw new InvalidOperationException(
                 "Die ausgewählte Bereinigungskategorie ist noch "
-                + "nicht zur automatischen Ausführung freigegeben.");
+                + "nicht zur technischen Ausführung freigegeben.");
         }
 
-        if (plan.RequiresAdministrator)
+        if (!HasMatchingAdministratorRequirement(
+                plan,
+                category))
         {
             throw new InvalidOperationException(
-                "Der freigegebene Bereinigungsplan darf keine "
-                + "Administratorrechte anfordern.");
+                "Die Rechteanforderung des bestätigten Plans "
+                + "stimmt nicht mit der ausgewählten "
+                + "Bereinigungskategorie überein.");
         }
 
         if (plan.MayRequireRestart)
@@ -259,9 +284,22 @@ internal static class CleanupActionPlanSnapshot
     {
         return category.Category
             is CleanupCategoryType.UserTemporaryFiles
+            or CleanupCategoryType.WindowsTemporaryFiles
             or CleanupCategoryType.DirectXShaderCache
             or CleanupCategoryType.ThumbnailCache
             or CleanupCategoryType.BrowserCache;
+    }
+
+    private static bool HasMatchingAdministratorRequirement(
+        CheckupTaskActionPlan plan,
+        CleanupActionCategory category)
+    {
+        var expectedAdministratorRequirement =
+            category.Category
+            == CleanupCategoryType.WindowsTemporaryFiles;
+
+        return plan.RequiresAdministrator
+               == expectedAdministratorRequirement;
     }
 
     private static CleanupActionCategory CloneCategory(

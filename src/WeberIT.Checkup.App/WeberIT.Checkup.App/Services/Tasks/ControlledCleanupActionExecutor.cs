@@ -12,9 +12,14 @@ public sealed class ControlledCleanupActionExecutor :
     private readonly BrowserCacheCleanupExecutor
         _browserCacheCleanupExecutor;
 
+    private readonly WindowsTemporaryFilesCleanupExecutor
+        _windowsTemporaryFilesCleanupExecutor;
+
     public ControlledCleanupActionExecutor(
         CleanupActionExecutor standardCleanupExecutor,
-        BrowserCacheCleanupExecutor browserCacheCleanupExecutor)
+        BrowserCacheCleanupExecutor browserCacheCleanupExecutor,
+        WindowsTemporaryFilesCleanupExecutor
+            windowsTemporaryFilesCleanupExecutor)
     {
         ArgumentNullException.ThrowIfNull(
             standardCleanupExecutor);
@@ -22,11 +27,17 @@ public sealed class ControlledCleanupActionExecutor :
         ArgumentNullException.ThrowIfNull(
             browserCacheCleanupExecutor);
 
+        ArgumentNullException.ThrowIfNull(
+            windowsTemporaryFilesCleanupExecutor);
+
         _standardCleanupExecutor =
             standardCleanupExecutor;
 
         _browserCacheCleanupExecutor =
             browserCacheCleanupExecutor;
+
+        _windowsTemporaryFilesCleanupExecutor =
+            windowsTemporaryFilesCleanupExecutor;
     }
 
     public Task<CleanupActionExecutionResult>
@@ -37,14 +48,28 @@ public sealed class ControlledCleanupActionExecutor :
         ArgumentNullException.ThrowIfNull(
             plan);
 
-        if (plan.CleanupCategories.Count == 1
-            && plan.CleanupCategories[0].Category
-                == CleanupCategoryType.BrowserCache)
+        if (plan.CleanupCategories.Count == 1)
         {
-            return _browserCacheCleanupExecutor
-                .ExecuteAsync(
-                    plan,
-                    cancellationToken);
+            var selectedCategory =
+                plan.CleanupCategories[0].Category;
+
+            if (selectedCategory
+                == CleanupCategoryType.BrowserCache)
+            {
+                return _browserCacheCleanupExecutor
+                    .ExecuteAsync(
+                        plan,
+                        cancellationToken);
+            }
+
+            if (selectedCategory
+                == CleanupCategoryType.WindowsTemporaryFiles)
+            {
+                return _windowsTemporaryFilesCleanupExecutor
+                    .ExecuteAsync(
+                        plan,
+                        cancellationToken);
+            }
         }
 
         return _standardCleanupExecutor
