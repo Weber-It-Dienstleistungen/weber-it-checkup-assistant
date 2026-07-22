@@ -200,6 +200,21 @@ public sealed class GuidedTaskActionLauncher :
                 systemDirectory,
                 "devmgmt.msc");
 
+        var systemInformationPath =
+            Path.Combine(
+                systemDirectory,
+                "msinfo32.exe");
+
+        var tpmManagementPath =
+            Path.Combine(
+                systemDirectory,
+                "tpm.msc");
+
+        var diskManagementPath =
+            Path.Combine(
+                systemDirectory,
+                "diskmgmt.msc");
+
         return new Dictionary<
             string,
             GuidedLaunchTarget>(
@@ -239,6 +254,34 @@ public sealed class GuidedTaskActionLauncher :
                     string.Empty,
                     "Windows-Diensteverwaltung",
                     IsUri: false),
+
+            ["action.security.drive-encryption-review"] =
+                new GuidedLaunchTarget(
+                    controlPanelPath,
+                    "/name Microsoft.BitLockerDriveEncryption",
+                    "BitLocker-Laufwerkverschlüsselung",
+                    IsUri: false),
+
+            ["action.security.secure-boot-review"] =
+                new GuidedLaunchTarget(
+                    systemInformationPath,
+                    string.Empty,
+                    "Windows-Systeminformationen",
+                    IsUri: false),
+
+            ["action.security.tpm-review"] =
+                new GuidedLaunchTarget(
+                    tpmManagementPath,
+                    string.Empty,
+                    "Lokale TPM-Verwaltung",
+                    IsUri: false),
+
+            ["action.operating-system.version-review"] =
+                new GuidedLaunchTarget(
+                    "ms-settings:about",
+                    string.Empty,
+                    "Windows-Systeminformationen",
+                    IsUri: true),
 
             ["action.windows-update.guided-review"] =
                 new GuidedLaunchTarget(
@@ -280,6 +323,34 @@ public sealed class GuidedTaskActionLauncher :
                     deviceManagerPath,
                     string.Empty,
                     "Windows-Geräte-Manager",
+                    IsUri: false),
+
+            ["action.storage.disk-management-review"] =
+                new GuidedLaunchTarget(
+                    diskManagementPath,
+                    string.Empty,
+                    "Windows-Datenträgerverwaltung",
+                    IsUri: false),
+
+            ["action.hardware.storage-review"] =
+                new GuidedLaunchTarget(
+                    diskManagementPath,
+                    string.Empty,
+                    "Windows-Datenträgerverwaltung",
+                    IsUri: false),
+
+            ["action.hardware.memory-review"] =
+                new GuidedLaunchTarget(
+                    systemInformationPath,
+                    string.Empty,
+                    "Windows-Systeminformationen",
+                    IsUri: false),
+
+            ["action.hardware.tpm-review"] =
+                new GuidedLaunchTarget(
+                    tpmManagementPath,
+                    string.Empty,
+                    "Lokale TPM-Verwaltung",
                     IsUri: false)
         };
     }

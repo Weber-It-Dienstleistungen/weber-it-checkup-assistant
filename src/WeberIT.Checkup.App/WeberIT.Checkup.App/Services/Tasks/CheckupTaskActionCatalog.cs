@@ -100,6 +100,36 @@ public static class CheckupTaskActionCatalog
                     + "Gerätefunktionen benötigt werden.",
                     CheckupTaskActionRiskLevel.Medium),
 
+            "task.operating-system.replace-unsupported" =>
+                CreateGuidedDefinition(
+                    taskCode,
+                    "action.operating-system.version-review",
+                    "Windows-Version geführt prüfen",
+                    "Die Windows-Systeminformationen können geöffnet "
+                    + "und mit dem im Checkup erkannten Versions- und "
+                    + "Supportstatus abgeglichen werden. Eine Installation "
+                    + "oder Migration wird nicht gestartet.",
+                    "Der Austausch oder die Aktualisierung eines "
+                    + "Betriebssystems kann Programme, Treiber, "
+                    + "Benutzerdaten und Gerätekonfigurationen betreffen.",
+                    CheckupTaskActionRiskLevel.High,
+                    mayRequireRestart: true),
+
+            "task.operating-system.windows-10-support" =>
+                CreateGuidedDefinition(
+                    taskCode,
+                    "action.operating-system.version-review",
+                    "Windows-10-Supportstatus geführt prüfen",
+                    "Die installierte Windows-Edition, Version und "
+                    + "Systemausgabe können geöffnet und mit der "
+                    + "Checkup-Bewertung abgeglichen werden. Es erfolgt "
+                    + "keine automatische Upgradeentscheidung.",
+                    "Ein ungeprüftes Funktionsupgrade oder ein Wechsel "
+                    + "der Windows-Ausgabe kann Kompatibilitätsprobleme "
+                    + "oder zusätzlichen Lizenzbedarf verursachen.",
+                    CheckupTaskActionRiskLevel.High,
+                    mayRequireRestart: true),
+
             "task.windows-update.recent-failures" =>
                 CreateGuidedDefinition(
                     taskCode,
@@ -194,6 +224,53 @@ public static class CheckupTaskActionCatalog
                     + "beeinträchtigen.",
                     CheckupTaskActionRiskLevel.High),
 
+            "task.security.drive-encryption" =>
+                CreateGuidedDefinition(
+                    taskCode,
+                    "action.security.drive-encryption-review",
+                    "Laufwerksverschlüsselung geführt prüfen",
+                    "Die BitLocker-Laufwerksübersicht kann geöffnet und "
+                    + "mit den im Checkup erkannten Laufwerken "
+                    + "abgeglichen werden. Verschlüsselung, Entschlüsselung "
+                    + "und Wiederherstellungsschlüssel werden nicht "
+                    + "automatisch verändert.",
+                    "Ungeprüfte Änderungen an einer "
+                    + "Laufwerksverschlüsselung können den Zugriff auf "
+                    + "Daten erschweren oder einen "
+                    + "Wiederherstellungsschlüssel erforderlich machen.",
+                    CheckupTaskActionRiskLevel.High,
+                    mayRequireRestart: true),
+
+            "task.security.secure-boot" =>
+                CreateGuidedDefinition(
+                    taskCode,
+                    "action.security.secure-boot-review",
+                    "Secure-Boot-Status geführt prüfen",
+                    "Die Windows-Systeminformationen können geöffnet "
+                    + "werden, um den erkannten Secure-Boot-Zustand "
+                    + "zusätzlich einzuordnen. Firmwareeinstellungen "
+                    + "werden nicht verändert.",
+                    "Ungeeignete Änderungen an UEFI-, Start- oder "
+                    + "Secure-Boot-Einstellungen können den Windows-Start "
+                    + "oder andere Betriebssysteme beeinträchtigen.",
+                    CheckupTaskActionRiskLevel.High,
+                    mayRequireRestart: true),
+
+            "task.security.tpm-configuration" =>
+                CreateGuidedDefinition(
+                    taskCode,
+                    "action.security.tpm-review",
+                    "TPM-Konfiguration geführt prüfen",
+                    "Die lokale TPM-Verwaltung kann geöffnet und der "
+                    + "erkannte Zustand mit dem Checkup abgeglichen "
+                    + "werden. Das TPM wird weder initialisiert noch "
+                    + "gelöscht.",
+                    "Das Löschen oder ungezielte Neukonfigurieren des TPM "
+                    + "kann BitLocker-, Anmelde- oder "
+                    + "Sicherheitsfunktionen beeinträchtigen.",
+                    CheckupTaskActionRiskLevel.High,
+                    mayRequireRestart: true),
+
             "task.devices.missing-driver" =>
                 CreateGuidedDefinition(
                     taskCode,
@@ -216,8 +293,9 @@ public static class CheckupTaskActionCatalog
                     "Das betroffene Gerät und der Windows-Fehlercode "
                     + "werden erläutert. Es wird nicht automatisch "
                     + "angenommen, dass ein Treiber die Ursache ist.",
-                    "Ungezielte Treiber- oder Gerätekonfigurationsänderungen "
-                    + "können das Problem verschärfen.",
+                    "Ungezielte Treiber- oder "
+                    + "Gerätekonfigurationsänderungen können das Problem "
+                    + "verschärfen.",
                     CheckupTaskActionRiskLevel.High,
                     mayRequireRestart: true),
 
@@ -230,6 +308,79 @@ public static class CheckupTaskActionCatalog
                     + "für eine manuelle Herstellerprüfung angezeigt.",
                     "Ein ungeprüfter Austausch kann zu Geräteausfällen, "
                     + "Startproblemen oder Sicherheitsrisiken führen.",
+                    CheckupTaskActionRiskLevel.High,
+                    mayRequireRestart: true),
+
+            "task.storage.physical-health" =>
+                CreateGuidedDefinition(
+                    taskCode,
+                    "action.storage.disk-management-review",
+                    "Betroffenen Datenträger geführt zuordnen",
+                    "Die Windows-Datenträgerverwaltung kann zur "
+                    + "eindeutigen Zuordnung von Datenträgern, Partitionen "
+                    + "und Volumes geöffnet werden. Die technische "
+                    + "Gesundheitsbewertung stammt weiterhin aus dem "
+                    + "Checkup.",
+                    "Änderungen an Partitionen, Volumes oder "
+                    + "Datenträgerinitialisierungen können zu Datenverlust "
+                    + "führen. Die Prüfansicht führt selbst keine Änderung "
+                    + "aus.",
+                    CheckupTaskActionRiskLevel.High,
+                    mayRequireRestart: true),
+
+            "task.storage.additional-volume-capacity" =>
+                CreateGuidedDefinition(
+                    taskCode,
+                    "action.storage.disk-management-review",
+                    "Datenvolume geführt prüfen",
+                    "Die Datenträgerverwaltung kann geöffnet werden, um "
+                    + "das betroffene Volume, seine Partitionierung und "
+                    + "verfügbaren Speicherbereiche einzuordnen. Es wird "
+                    + "keine Partition verändert.",
+                    "Verkleinern, Erweitern, Formatieren oder Löschen eines "
+                    + "Volumes kann Programme und gespeicherte Daten "
+                    + "beeinträchtigen.",
+                    CheckupTaskActionRiskLevel.High),
+
+            "task.hardware.storage-technology" =>
+                CreateGuidedDefinition(
+                    taskCode,
+                    "action.hardware.storage-review",
+                    "Datenträgertechnologie geführt einordnen",
+                    "Die Datenträgerverwaltung kann zur Zuordnung des "
+                    + "betroffenen Laufwerks geöffnet werden. Eine "
+                    + "SSD-Aufrüstung bleibt eine manuell zu planende "
+                    + "Hardwaremaßnahme.",
+                    "Ein Datenträgertausch erfordert eine belastbare "
+                    + "Datensicherung und gegebenenfalls eine "
+                    + "Systemmigration.",
+                    CheckupTaskActionRiskLevel.High,
+                    mayRequireRestart: true),
+
+            "task.hardware.memory-capacity" =>
+                CreateGuidedDefinition(
+                    taskCode,
+                    "action.hardware.memory-review",
+                    "Arbeitsspeicher geführt einordnen",
+                    "Die Windows-Systeminformationen können geöffnet und "
+                    + "die installierte Arbeitsspeichermenge mit der "
+                    + "Checkup-Bewertung abgeglichen werden. Es erfolgt "
+                    + "keine automatische Hardwareänderung.",
+                    "Eine Arbeitsspeichererweiterung muss zu Mainboard, "
+                    + "Prozessor, vorhandenen Modulen und Firmware passen.",
+                    CheckupTaskActionRiskLevel.Medium,
+                    mayRequireRestart: true),
+
+            "task.hardware.tpm-capability" =>
+                CreateGuidedDefinition(
+                    taskCode,
+                    "action.hardware.tpm-review",
+                    "TPM-Fähigkeit geführt einordnen",
+                    "Die lokale TPM-Verwaltung kann geöffnet werden, um "
+                    + "Verfügbarkeit und Versionsinformationen zusätzlich "
+                    + "einzuordnen. Das TPM wird nicht verändert.",
+                    "TPM-Änderungen können Laufwerksverschlüsselung und "
+                    + "Windows-Sicherheitsfunktionen beeinflussen.",
                     CheckupTaskActionRiskLevel.High,
                     mayRequireRestart: true),
 
