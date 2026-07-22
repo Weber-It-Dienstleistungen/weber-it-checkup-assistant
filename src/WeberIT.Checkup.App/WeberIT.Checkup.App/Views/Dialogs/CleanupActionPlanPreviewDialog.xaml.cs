@@ -1,5 +1,7 @@
 ﻿using System.Windows;
+using System.Windows.Controls;
 using WeberIT.Checkup.App.Models;
+using WeberIT.Checkup.App.Services.Cleanup;
 using WeberIT.Checkup.App.Services.Tasks;
 
 namespace WeberIT.Checkup.App.Views.Dialogs;
@@ -14,6 +16,9 @@ public partial class CleanupActionPlanPreviewDialog : Window
 
     private readonly bool
         _executionIsAvailable;
+
+    private readonly bool
+        _isBrowserCachePlan;
 
     public CleanupActionPlanPreviewDialog(
         CheckupTaskActionPlan plan)
@@ -54,12 +59,18 @@ public partial class CleanupActionPlanPreviewDialog : Window
             CleanupActionPlanSnapshot.CanExecute(
                 plan);
 
+        _isBrowserCachePlan =
+            plan.CleanupCategories.Count == 1
+            && plan.CleanupCategories[0].Category
+                == CleanupCategoryType.BrowserCache;
+
         InitializeComponent();
 
         DataContext =
             plan;
 
         ApplyExecutionAvailability();
+        AddBrowserCacheWarning();
     }
 
     public CheckupTaskActionPlan?
@@ -89,7 +100,11 @@ public partial class CleanupActionPlanPreviewDialog : Window
                 false;
 
             FooterStatusTextBlock.Text =
-                "Ausführung erst nach ausdrücklicher Bestätigung möglich";
+                _isBrowserCachePlan
+                    ? "Ausführung nur bei vollständig "
+                      + "beendeten Browsern möglich"
+                    : "Ausführung erst nach ausdrücklicher "
+                      + "Bestätigung möglich";
 
             CloseButton.Content =
                 "Zurück";
@@ -119,6 +134,73 @@ public partial class CleanupActionPlanPreviewDialog : Window
             "Planvorschau schließen";
     }
 
+    private void AddBrowserCacheWarning()
+    {
+        if (!_isBrowserCachePlan
+            || ExecutionAvailableNotice.Child
+                is not StackPanel noticePanel)
+        {
+            return;
+        }
+
+        var warningTitle =
+            new TextBlock
+            {
+                Margin =
+                    new Thickness(
+                        0,
+                        12,
+                        0,
+                        0),
+
+                FontWeight =
+                    FontWeights.SemiBold,
+
+                Text =
+                    "Browser vor dem Start vollständig schließen",
+
+                TextWrapping =
+                    TextWrapping.Wrap
+            };
+
+        warningTitle.SetResourceReference(
+            TextBlock.ForegroundProperty,
+            "WarningBrush");
+
+        noticePanel.Children.Add(
+            warningTitle);
+
+        var warningText =
+            new TextBlock
+            {
+                Margin =
+                    new Thickness(
+                        0,
+                        6,
+                        0,
+                        0),
+
+                Text =
+                    "Microsoft Edge, Google Chrome und Mozilla "
+                    + "Firefox müssen einschließlich möglicher "
+                    + "Hintergrundprozesse beendet sein. Das "
+                    + "Checkup-Tool beendet keine Browser und "
+                    + "erzwingt keinen Prozessabbruch. Laufende "
+                    + "Browser blockieren die Ausführung vor "
+                    + "dem ersten Dateizugriff.",
+
+                TextWrapping =
+                    TextWrapping.Wrap
+            };
+
+        warningText.SetResourceReference(
+            TextBlock.ForegroundProperty,
+            "TextSecondaryBrush");
+
+        noticePanel.Children.Add(
+            warningText);
+    }
+
     private void ExecutionConfirmationCheckBox_OnChanged(
         object sender,
         RoutedEventArgs e)
@@ -136,6 +218,12 @@ public partial class CleanupActionPlanPreviewDialog : Window
         if (!_executionIsAvailable
             || ExecutionConfirmationCheckBox.IsChecked
                 != true)
+        {
+            return;
+        }
+
+        if (_isBrowserCachePlan
+            && !ConfirmBrowserCacheReadiness())
         {
             return;
         }
@@ -171,6 +259,41 @@ public partial class CleanupActionPlanPreviewDialog : Window
 
             dialog.ShowDialog();
         }
+    }
+
+    private bool ConfirmBrowserCacheReadiness()
+    {
+        var processState =
+            BrowserCacheRuntimeGuard.Evaluate();
+
+        if (processState.CanProceed)
+        {
+            FooterStatusTextBlock.Text =
+                "Browserprüfung erfolgreich – "
+                + "Ausführung wird vorbereitet";
+
+            return true;
+        }
+
+        FooterStatusTextBlock.Text =
+            "Browsercache-Ausführung blockiert";
+
+        var dialog =
+            new MessageDialog(
+                "Browsercache noch gesperrt",
+                string.IsNullOrWhiteSpace(
+                    processState.BlockingMessage)
+                    ? "Die Browsercache-Bereinigung kann "
+                      + "derzeit nicht sicher gestartet werden."
+                    : processState.BlockingMessage)
+            {
+                Owner =
+                    this
+            };
+
+        dialog.ShowDialog();
+
+        return false;
     }
 
     private void CloseButton_OnClick(

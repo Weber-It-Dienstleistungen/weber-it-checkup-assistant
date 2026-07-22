@@ -82,9 +82,14 @@ public partial class App : Application
                     IProgramUpdateActionExecutor,
                     ProgramUpdateActionExecutor>();
 
+                services.AddSingleton<CleanupActionExecutor>();
+
+                services.AddSingleton<
+                    BrowserCacheCleanupExecutor>();
+
                 services.AddSingleton<
                     ICleanupActionExecutor,
-                    CleanupActionExecutor>();
+                    ControlledCleanupActionExecutor>();
 
                 services.AddSingleton<
                     ISystemFileChecker,

@@ -162,7 +162,8 @@ public sealed class CleanupActionCategory
         return category
             is CleanupCategoryType.UserTemporaryFiles
             or CleanupCategoryType.DirectXShaderCache
-            or CleanupCategoryType.ThumbnailCache;
+            or CleanupCategoryType.ThumbnailCache
+            or CleanupCategoryType.BrowserCache;
     }
 
     private static bool HasSupportedMeasurement(

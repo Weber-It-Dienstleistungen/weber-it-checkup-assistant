@@ -113,10 +113,10 @@ internal static class CleanupActionPlanSnapshot
         if (plan.CleanupCategories.Count != 1)
         {
             return
-                "In dieser Ausbaustufe wird jede sichere "
-                + "Bereinigungskategorie einzeln bestätigt und "
-                + "ausgeführt. Der dargestellte Mehrfachplan dient "
-                + "daher ausschließlich als Vorschau.";
+                "Jede sichere Bereinigungskategorie wird "
+                + "einzeln bestätigt und ausgeführt. Der "
+                + "dargestellte Mehrfachplan dient daher "
+                + "ausschließlich als Vorschau.";
         }
 
         var category =
@@ -128,8 +128,9 @@ internal static class CleanupActionPlanSnapshot
             return
                 "Die Kategorie „"
                 + category.Title
-                + "“ kann bereits geprüft werden, ist jedoch noch "
-                + "nicht zur automatischen Ausführung freigegeben.";
+                + "“ kann bereits geprüft werden, ist jedoch "
+                + "noch nicht zur automatischen Ausführung "
+                + "freigegeben.";
         }
 
         if (plan.RequiresAdministrator)
@@ -148,11 +149,23 @@ internal static class CleanupActionPlanSnapshot
                 + "noch nicht ausführbar.";
         }
 
+        if (category.Category
+            == CleanupCategoryType.BrowserCache)
+        {
+            return
+                "Der Browsercache kann nach vollständiger "
+                + "Prüfung und ausdrücklicher Bestätigung "
+                + "kontrolliert bereinigt werden. Microsoft "
+                + "Edge, Google Chrome und Mozilla Firefox "
+                + "müssen vor dem Start vollständig beendet "
+                + "sein. Das Tool beendet keine Prozesse selbst.";
+        }
+
         return
             "Dieser Plan enthält genau eine sicher freigegebene "
             + "Bereinigungskategorie und kann nach vollständiger "
-            + "Prüfung und ausdrücklicher Bestätigung kontrolliert "
-            + "ausgeführt werden.";
+            + "Prüfung und ausdrücklicher Bestätigung "
+            + "kontrolliert ausgeführt werden.";
     }
 
     private static void ValidateCleanupPlan(
@@ -247,7 +260,8 @@ internal static class CleanupActionPlanSnapshot
         return category.Category
             is CleanupCategoryType.UserTemporaryFiles
             or CleanupCategoryType.DirectXShaderCache
-            or CleanupCategoryType.ThumbnailCache;
+            or CleanupCategoryType.ThumbnailCache
+            or CleanupCategoryType.BrowserCache;
     }
 
     private static CleanupActionCategory CloneCategory(
