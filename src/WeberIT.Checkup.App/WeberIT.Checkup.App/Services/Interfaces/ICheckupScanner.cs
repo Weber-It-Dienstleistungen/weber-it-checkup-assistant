@@ -4,5 +4,6 @@ namespace WeberIT.Checkup.App.Services.Interfaces;
 
 public interface ICheckupScanner
 {
-    CheckupSession Scan();
+    CheckupSession Scan(
+        IProgress<CheckupScanProgress>? progress = null);
 }

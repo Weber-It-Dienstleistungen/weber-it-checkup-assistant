@@ -41,16 +41,53 @@ public class CheckupScanner : ICheckupScanner
     public CheckupScanner(
         IDeviceInformationScanner deviceInformationScanner,
         IHardwareInformationScanner hardwareInformationScanner,
-        IOperatingSystemInformationScanner operatingSystemInformationScanner,
+        IOperatingSystemInformationScanner
+            operatingSystemInformationScanner,
         IStorageInformationScanner storageInformationScanner,
         ICleanupPotentialScanner cleanupPotentialScanner,
         IStartupInformationScanner startupInformationScanner,
-        IDeviceDriverInformationScanner deviceDriverInformationScanner,
+        IDeviceDriverInformationScanner
+            deviceDriverInformationScanner,
         ISecurityInformationScanner securityInformationScanner,
-        IWindowsUpdateInformationScanner windowsUpdateInformationScanner,
-        IProgramUpdateInformationScanner programUpdateInformationScanner,
+        IWindowsUpdateInformationScanner
+            windowsUpdateInformationScanner,
+        IProgramUpdateInformationScanner
+            programUpdateInformationScanner,
         IRestartInformationScanner restartInformationScanner)
     {
+        ArgumentNullException.ThrowIfNull(
+            deviceInformationScanner);
+
+        ArgumentNullException.ThrowIfNull(
+            hardwareInformationScanner);
+
+        ArgumentNullException.ThrowIfNull(
+            operatingSystemInformationScanner);
+
+        ArgumentNullException.ThrowIfNull(
+            storageInformationScanner);
+
+        ArgumentNullException.ThrowIfNull(
+            cleanupPotentialScanner);
+
+        ArgumentNullException.ThrowIfNull(
+            startupInformationScanner);
+
+        ArgumentNullException.ThrowIfNull(
+            deviceDriverInformationScanner);
+
+        ArgumentNullException.ThrowIfNull(
+            securityInformationScanner);
+
+        ArgumentNullException.ThrowIfNull(
+            windowsUpdateInformationScanner);
+
+        ArgumentNullException.ThrowIfNull(
+            programUpdateInformationScanner);
+
+        ArgumentNullException.ThrowIfNull(
+            restartInformationScanner);
+
         _deviceInformationScanner =
             deviceInformationScanner;
 
@@ -85,45 +122,94 @@ public class CheckupScanner : ICheckupScanner
             restartInformationScanner;
     }
 
-    public CheckupSession Scan()
+    public CheckupSession Scan(
+        IProgress<CheckupScanProgress>? progress = null)
     {
         var deviceInformationResult =
-            _deviceInformationScanner.Scan();
+            ExecuteStep(
+                CheckupScanStepCatalog.DeviceInformation,
+                () =>
+                    _deviceInformationScanner.Scan(),
+                progress);
 
         var hardwareInformationResult =
-            _hardwareInformationScanner.Scan();
+            ExecuteStep(
+                CheckupScanStepCatalog.HardwareInformation,
+                () =>
+                    _hardwareInformationScanner.Scan(),
+                progress);
 
         var operatingSystemInformationResult =
-            _operatingSystemInformationScanner.Scan();
+            ExecuteStep(
+                CheckupScanStepCatalog
+                    .OperatingSystemInformation,
+                () =>
+                    _operatingSystemInformationScanner.Scan(),
+                progress);
 
         var storageInformationResult =
-            _storageInformationScanner.Scan();
+            ExecuteStep(
+                CheckupScanStepCatalog.StorageInformation,
+                () =>
+                    _storageInformationScanner.Scan(),
+                progress);
 
         var storageInformation =
             storageInformationResult.Data
             ?? new StorageInformation();
 
         var cleanupPotentialResult =
-            _cleanupPotentialScanner.Scan(
-                storageInformation);
+            ExecuteStep(
+                CheckupScanStepCatalog.CleanupPotential,
+                () =>
+                    _cleanupPotentialScanner.Scan(
+                        storageInformation),
+                progress,
+                result =>
+                    result.Data?.AnalysisStatus
+                    == CleanupMeasurementStatus.PartiallyMeasured);
 
         var startupInformationResult =
-            _startupInformationScanner.Scan();
+            ExecuteStep(
+                CheckupScanStepCatalog.StartupInformation,
+                () =>
+                    _startupInformationScanner.Scan(),
+                progress);
 
         var deviceDriverInformationResult =
-            _deviceDriverInformationScanner.Scan();
+            ExecuteStep(
+                CheckupScanStepCatalog.DeviceDriverInformation,
+                () =>
+                    _deviceDriverInformationScanner.Scan(),
+                progress);
 
         var securityInformationResult =
-            _securityInformationScanner.Scan();
+            ExecuteStep(
+                CheckupScanStepCatalog.SecurityInformation,
+                () =>
+                    _securityInformationScanner.Scan(),
+                progress);
 
         var windowsUpdateInformationResult =
-            _windowsUpdateInformationScanner.Scan();
+            ExecuteStep(
+                CheckupScanStepCatalog.WindowsUpdateInformation,
+                () =>
+                    _windowsUpdateInformationScanner.Scan(),
+                progress);
 
         var programUpdateInformationResult =
-            _programUpdateInformationScanner.Scan();
+            ExecuteStep(
+                CheckupScanStepCatalog.ProgramUpdateInformation,
+                () =>
+                    _programUpdateInformationScanner.Scan(),
+                progress);
 
         var restartInformationResult =
-            _restartInformationScanner.Scan();
+            ExecuteStep(
+                CheckupScanStepCatalog.RestartInformation,
+                () =>
+                    _restartInformationScanner.Scan(),
+                progress);
 
         return new CheckupSession
         {
@@ -173,5 +259,105 @@ public class CheckupScanner : ICheckupScanner
                 restartInformationResult.Data
                 ?? new RestartInformation()
         };
+    }
+
+    private static ScanResult<T> ExecuteStep<T>(
+        CheckupScanStepDefinition definition,
+        Func<ScanResult<T>> scanAction,
+        IProgress<CheckupScanProgress>? progress,
+        Func<ScanResult<T>, bool>? warningEvaluator = null)
+    {
+        ArgumentNullException.ThrowIfNull(
+            definition);
+
+        ArgumentNullException.ThrowIfNull(
+            scanAction);
+
+        progress?.Report(
+            CheckupScanProgress.CreateRunning(
+                definition));
+
+        try
+        {
+            var result =
+                scanAction();
+
+            if (result is null)
+            {
+                throw new InvalidOperationException(
+                    "Der Scanbereich lieferte kein "
+                    + "technisches Ergebnis.");
+            }
+
+            var hasWarning =
+                !result.IsSuccessful
+                || (warningEvaluator?.Invoke(
+                        result)
+                    ?? false);
+
+            if (hasWarning)
+            {
+                progress?.Report(
+                    CheckupScanProgress.CreateWarning(
+                        definition,
+                        BuildWarningMessage(
+                            result.Message)));
+            }
+            else
+            {
+                progress?.Report(
+                    CheckupScanProgress.CreateSuccessful(
+                        definition));
+            }
+
+            return result;
+        }
+        catch (Exception exception)
+        {
+            var errorMessage =
+                BuildFailureMessage(
+                    exception);
+
+            progress?.Report(
+                CheckupScanProgress.CreateFailed(
+                    definition,
+                    errorMessage));
+
+            throw new InvalidOperationException(
+                "Der Scanbereich „"
+                + definition.Title
+                + "“ konnte nicht abgeschlossen werden. "
+                + errorMessage,
+                exception);
+        }
+    }
+
+    private static string BuildWarningMessage(
+        string? message)
+    {
+        if (!string.IsNullOrWhiteSpace(
+                message))
+        {
+            return message.Trim();
+        }
+
+        return
+            "Der Scanbereich konnte nicht vollständig "
+            + "ausgewertet werden. Der Systemscan wird "
+            + "mit den verfügbaren Daten fortgesetzt.";
+    }
+
+    private static string BuildFailureMessage(
+        Exception exception)
+    {
+        if (!string.IsNullOrWhiteSpace(
+                exception.Message))
+        {
+            return exception.Message.Trim();
+        }
+
+        return
+            "Keine weiteren technischen Fehlerdetails "
+            + "sind verfügbar.";
     }
 }
