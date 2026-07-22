@@ -61,6 +61,10 @@ public partial class App : Application
                     CheckupTaskActionExecutionCoordinator>();
 
                 services.AddSingleton<
+                    IGuidedTaskActionLauncher,
+                    GuidedTaskActionLauncher>();
+
+                services.AddSingleton<
                     IDeviceIdentityService,
                     DeviceIdentityService>();
 
@@ -308,6 +312,7 @@ public partial class App : Application
                  """);
 
             Shutdown(-1);
+
             return;
         }
 
@@ -325,6 +330,7 @@ public partial class App : Application
         ExitEventArgs e)
     {
         await _host.StopAsync();
+
         _host.Dispose();
 
         base.OnExit(e);

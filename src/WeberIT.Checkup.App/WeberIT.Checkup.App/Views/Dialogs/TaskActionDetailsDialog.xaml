@@ -4,9 +4,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Aktionsdetails"
     Width="720"
-    Height="620"
+    Height="650"
     MinWidth="620"
-    MinHeight="520"
+    MinHeight="540"
     WindowStartupLocation="CenterOwner"
     ResizeMode="CanResize"
     ShowInTaskbar="False"
@@ -195,6 +195,7 @@
                 </Grid>
 
                 <Border
+                    x:Name="PreparationOnlyNotice"
                     Margin="0,16,0,0"
                     Padding="14"
                     Background="{StaticResource SurfaceSecondaryBrush}"
@@ -206,6 +207,41 @@
                         Foreground="{StaticResource TextSecondaryBrush}"
                         Text="Diese Ansicht dient ausschließlich der Vorbereitung. Es wird kein Befehl gestartet, keine Einstellung verändert und kein Aktionsergebnis gespeichert."
                         TextWrapping="Wrap" />
+
+                </Border>
+
+                <Border
+                    x:Name="GuidedSupportNotice"
+                    Margin="0,16,0,0"
+                    Padding="14"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderBrush="{StaticResource InformationBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="Collapsed">
+
+                    <StackPanel>
+
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource InformationBrush}"
+                            Text="Geführte Prüfung"
+                            TextWrapping="Wrap" />
+
+                        <TextBlock
+                            Margin="0,6,0,0"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Die geführte Unterstützung öffnet ausschließlich eine passende Windows-Prüfansicht. Dort erfolgt keine automatische Änderung. Das Öffnen gilt nicht als Behebung und wird nicht als technisches Aktionsergebnis gespeichert."
+                            TextWrapping="Wrap" />
+
+                        <TextBlock
+                            x:Name="GuidedTargetDescriptionTextBlock"
+                            Margin="0,7,0,0"
+                            FontSize="11"
+                            Foreground="{StaticResource TextMutedBrush}"
+                            TextWrapping="Wrap" />
+
+                    </StackPanel>
 
                 </Border>
 
@@ -225,9 +261,12 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock
+                    x:Name="FooterStatusTextBlock"
                     Grid.Column="0"
                     VerticalAlignment="Center"
                     FontSize="12"
@@ -236,7 +275,17 @@
                     TextWrapping="Wrap" />
 
                 <Button
+                    x:Name="OpenGuidedViewButton"
                     Grid.Column="1"
+                    MinWidth="190"
+                    Height="40"
+                    Content="Prüfansicht öffnen"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Visibility="Collapsed"
+                    Click="OpenGuidedViewButton_OnClick" />
+
+                <Button
+                    Grid.Column="3"
                     Width="120"
                     Height="40"
                     Content="Schließen"
