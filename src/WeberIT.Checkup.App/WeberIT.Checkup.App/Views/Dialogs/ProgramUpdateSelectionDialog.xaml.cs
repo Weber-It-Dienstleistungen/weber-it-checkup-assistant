@@ -24,6 +24,9 @@ public partial class ProgramUpdateSelectionDialog :
 
     private readonly CheckupTaskList _taskList;
 
+    private readonly IRestartInformationProvider
+        _restartInformationProvider;
+
     private string _selectionStatusText =
         "Noch kein Programmupdate ausgewählt.";
 
@@ -49,6 +52,9 @@ public partial class ProgramUpdateSelectionDialog :
 
         _taskList =
             taskList;
+
+        _restartInformationProvider =
+            ResolveRestartInformationProvider();
 
         AvailableUpdates =
             programUpdateInformation
@@ -97,6 +103,24 @@ public partial class ProgramUpdateSelectionDialog :
 
             OnPropertyChanged();
         }
+    }
+
+    private static IRestartInformationProvider
+        ResolveRestartInformationProvider()
+    {
+        var application =
+            Application.Current as App;
+
+        if (application is null)
+        {
+            throw new InvalidOperationException(
+                "Der zentrale Anwendungsdienst ist für die "
+                + "Neustartprüfung nicht verfügbar.");
+        }
+
+        return application.Services
+            .GetRequiredService<
+                IRestartInformationProvider>();
     }
 
     private void SelectAllButton_OnClick(
@@ -268,10 +292,15 @@ public partial class ProgramUpdateSelectionDialog :
         CheckupTaskActionPlan plan,
         ProgramUpdateActionExecutionResult executionResult)
     {
+        var restartEvaluation =
+            EvaluateRestartRequirement(
+                executionResult);
+
         var actionResult =
             CreateTaskActionResult(
                 plan,
-                executionResult);
+                executionResult,
+                restartEvaluation);
 
         try
         {
@@ -298,10 +327,175 @@ public partial class ProgramUpdateSelectionDialog :
         }
     }
 
+    private ProgramUpdateRestartEvaluation
+        EvaluateRestartRequirement(
+            ProgramUpdateActionExecutionResult executionResult)
+    {
+        if (!executionResult.WasStarted)
+        {
+            return ProgramUpdateRestartEvaluation
+                .NotConclusive(
+                    "Der Neustartstatus wurde nicht erneut "
+                    + "geprüft, weil kein WinGet-Prozess "
+                    + "technisch gestartet wurde.");
+        }
+
+        try
+        {
+            var restartInformation =
+                _restartInformationProvider
+                    .GetRestartInformation();
+
+            var details =
+                BuildRestartEvaluationDetails(
+                    restartInformation);
+
+            if (restartInformation.IsAnalysisPerformed
+                && restartInformation.IsAnalysisConclusive
+                && restartInformation.IsRestartRequired.HasValue)
+            {
+                return ProgramUpdateRestartEvaluation
+                    .Conclusive(
+                        restartInformation
+                            .IsRestartRequired.Value,
+                        details);
+            }
+
+            return ProgramUpdateRestartEvaluation
+                .NotConclusive(
+                    details);
+        }
+        catch (Exception exception)
+        {
+            return ProgramUpdateRestartEvaluation
+                .NotConclusive(
+                    "Die zentrale Neustartanalyse konnte nach "
+                    + "der Programmupdateaktion nicht sicher "
+                    + "ausgeführt werden."
+                    + Environment.NewLine
+                    + Environment.NewLine
+                    + "Technische Ursache: "
+                    + (string.IsNullOrWhiteSpace(
+                        exception.Message)
+                        ? "Keine weiteren Fehlerdetails verfügbar."
+                        : exception.Message));
+        }
+    }
+
+    private static string BuildRestartEvaluationDetails(
+        RestartInformation restartInformation)
+    {
+        ArgumentNullException.ThrowIfNull(
+            restartInformation);
+
+        var builder =
+            new StringBuilder();
+
+        builder.Append("Neustartanalyse durchgeführt: ");
+        builder.AppendLine(
+            restartInformation.IsAnalysisPerformed
+                ? "Ja"
+                : "Nein");
+
+        builder.Append("Gesamtergebnis belastbar: ");
+        builder.AppendLine(
+            restartInformation.IsAnalysisConclusive
+                ? "Ja"
+                : "Nein");
+
+        builder.Append("Ausstehender Neustart: ");
+
+        builder.AppendLine(
+            restartInformation.IsRestartRequired switch
+            {
+                true =>
+                    "Ja",
+
+                false =>
+                    "Nein",
+
+                _ =>
+                    "Nicht eindeutig"
+            });
+
+        if (restartInformation.AnalysisDate.HasValue)
+        {
+            builder.Append("Analysezeitpunkt: ");
+
+            builder.AppendLine(
+                restartInformation.AnalysisDate.Value
+                    .ToString(
+                        "dd.MM.yyyy HH:mm")
+                + " Uhr");
+        }
+
+        if (restartInformation.Sources.Count == 0)
+        {
+            builder.AppendLine(
+                "Es wurden keine einzelnen "
+                + "Neustartquellen protokolliert.");
+
+            return builder
+                .ToString()
+                .Trim();
+        }
+
+        builder.AppendLine();
+        builder.AppendLine(
+            "Ausgewertete Neustartquellen:");
+
+        foreach (var source
+                 in restartInformation.Sources)
+        {
+            builder.Append("• ");
+            builder.Append(
+                string.IsNullOrWhiteSpace(
+                    source.DisplayName)
+                    ? "Unbenannte Neustartquelle"
+                    : source.DisplayName.Trim());
+
+            builder.Append(": ");
+
+            if (!source.IsCheckSuccessful)
+            {
+                builder.AppendLine(
+                    "nicht zuverlässig auswertbar");
+            }
+            else
+            {
+                builder.AppendLine(
+                    source.IsRestartRequired switch
+                    {
+                        true =>
+                            "Neustarthinweis erkannt",
+
+                        false =>
+                            "kein Neustarthinweis erkannt",
+
+                        _ =>
+                            "Ergebnis nicht eindeutig"
+                    });
+            }
+
+            if (!string.IsNullOrWhiteSpace(
+                    source.Details))
+            {
+                builder.Append("  ");
+                builder.AppendLine(
+                    source.Details.Trim());
+            }
+        }
+
+        return builder
+            .ToString()
+            .Trim();
+    }
+
     private static CheckupTaskActionResult
         CreateTaskActionResult(
             CheckupTaskActionPlan plan,
-            ProgramUpdateActionExecutionResult executionResult)
+            ProgramUpdateActionExecutionResult executionResult,
+            ProgramUpdateRestartEvaluation restartEvaluation)
     {
         var lastProcessResult =
             executionResult.CommandResults
@@ -324,18 +518,23 @@ public partial class ProgramUpdateSelectionDialog :
 
             Summary =
                 BuildResultSummary(
-                    executionResult),
+                    executionResult,
+                    restartEvaluation),
 
             Details =
                 BuildTechnicalDetails(
                     plan,
-                    executionResult),
+                    executionResult,
+                    restartEvaluation),
 
             ExitCode =
                 lastProcessResult?.ExitCode,
 
             RestartRequired =
-                false,
+                restartEvaluation.RestartRequired,
+
+            RestartStatusWasConclusive =
+                restartEvaluation.IsConclusive,
 
             StartedAt =
                 executionResult.StartedAt,
@@ -366,18 +565,25 @@ public partial class ProgramUpdateSelectionDialog :
     }
 
     private static string BuildResultSummary(
-        ProgramUpdateActionExecutionResult executionResult)
+        ProgramUpdateActionExecutionResult executionResult,
+        ProgramUpdateRestartEvaluation restartEvaluation)
     {
+        string baseSummary;
+
         if (executionResult.IsSuccessful)
         {
-            return executionResult.CompletedCommandCount == 1
-                ? "Ein ausgewähltes Programmupdate wurde "
-                  + "technisch erfolgreich verarbeitet. "
-                  + "Die Abschlusskontrolle steht aus."
-                : $"{executionResult.CompletedCommandCount} "
-                  + "ausgewählte Programmupdates wurden "
-                  + "technisch erfolgreich verarbeitet. "
-                  + "Die Abschlusskontrolle steht aus.";
+            baseSummary =
+                executionResult.CompletedCommandCount == 1
+                    ? "Ein ausgewähltes Programmupdate wurde "
+                      + "technisch erfolgreich verarbeitet."
+                    : $"{executionResult.CompletedCommandCount} "
+                      + "ausgewählte Programmupdates wurden "
+                      + "technisch erfolgreich verarbeitet.";
+
+            return AppendRestartSummary(
+                baseSummary,
+                restartEvaluation,
+                executionWasStarted: true);
         }
 
         if (!executionResult.WasStarted
@@ -385,17 +591,63 @@ public partial class ProgramUpdateSelectionDialog :
                 result =>
                     result.ElevationWasCancelled))
         {
-            return "Die technische Aktion wurde vor dem "
-                   + "Prozessstart abgebrochen.";
+            baseSummary =
+                "Die technische Aktion wurde vor dem "
+                + "Prozessstart abgebrochen.";
+
+            return AppendRestartSummary(
+                baseSummary,
+                restartEvaluation,
+                executionWasStarted: false);
         }
 
-        return "Die Programmupdateaktion wurde nicht "
-               + "vollständig technisch erfolgreich beendet.";
+        baseSummary =
+            "Die Programmupdateaktion wurde nicht "
+            + "vollständig technisch erfolgreich beendet.";
+
+        return AppendRestartSummary(
+            baseSummary,
+            restartEvaluation,
+            executionResult.WasStarted);
+    }
+
+    private static string AppendRestartSummary(
+        string baseSummary,
+        ProgramUpdateRestartEvaluation restartEvaluation,
+        bool executionWasStarted)
+    {
+        if (!executionWasStarted)
+        {
+            return baseSummary;
+        }
+
+        if (restartEvaluation.IsConclusive)
+        {
+            if (restartEvaluation.RestartRequired)
+            {
+                return baseSummary
+                       + " Windows meldet nach der Ausführung "
+                       + "einen ausstehenden Neustart. Die "
+                       + "Abschlusskontrolle sollte nach dem "
+                       + "Neustart durchgeführt werden.";
+            }
+
+            return baseSummary
+                   + " Windows meldet nach der Ausführung "
+                   + "keinen bestätigten Neustartbedarf. "
+                   + "Die Abschlusskontrolle steht aus.";
+        }
+
+        return baseSummary
+               + " Der Neustartstatus konnte nach der "
+               + "Ausführung nicht eindeutig bestimmt werden. "
+               + "Die Abschlusskontrolle steht aus.";
     }
 
     private static string BuildTechnicalDetails(
         CheckupTaskActionPlan plan,
-        ProgramUpdateActionExecutionResult executionResult)
+        ProgramUpdateActionExecutionResult executionResult,
+        ProgramUpdateRestartEvaluation restartEvaluation)
     {
         var builder =
             new StringBuilder();
@@ -461,6 +713,30 @@ public partial class ProgramUpdateSelectionDialog :
             }
         }
 
+        if (builder.Length > 0)
+        {
+            builder.AppendLine();
+        }
+
+        builder.AppendLine(
+            "Neustartstatus nach der Programmupdateaktion:");
+
+        builder.AppendLine(
+            restartEvaluation.IsConclusive
+                ? restartEvaluation.RestartRequired
+                    ? "Neustart erforderlich"
+                    : "Kein bestätigter Neustartbedarf"
+                : "Nicht eindeutig bestimmbar");
+
+        if (!string.IsNullOrWhiteSpace(
+                restartEvaluation.Details))
+        {
+            builder.AppendLine();
+            builder.AppendLine(
+                LimitOutput(
+                    restartEvaluation.Details));
+        }
+
         return builder
             .ToString()
             .Trim();
@@ -479,6 +755,7 @@ public partial class ProgramUpdateSelectionDialog :
 
         builder.Append(heading);
         builder.AppendLine(":");
+
         builder.AppendLine(
             LimitOutput(
                 output));
@@ -532,5 +809,50 @@ public partial class ProgramUpdateSelectionDialog :
             this,
             new PropertyChangedEventArgs(
                 propertyName));
+    }
+
+    private sealed class ProgramUpdateRestartEvaluation
+    {
+        public bool RestartRequired { get; init; }
+
+        public bool IsConclusive { get; init; }
+
+        public string Details { get; init; } =
+            string.Empty;
+
+        public static ProgramUpdateRestartEvaluation
+            Conclusive(
+                bool restartRequired,
+                string details)
+        {
+            return new ProgramUpdateRestartEvaluation
+            {
+                RestartRequired =
+                    restartRequired,
+
+                IsConclusive =
+                    true,
+
+                Details =
+                    details
+            };
+        }
+
+        public static ProgramUpdateRestartEvaluation
+            NotConclusive(
+                string details)
+        {
+            return new ProgramUpdateRestartEvaluation
+            {
+                RestartRequired =
+                    false,
+
+                IsConclusive =
+                    false,
+
+                Details =
+                    details
+            };
+        }
     }
 }

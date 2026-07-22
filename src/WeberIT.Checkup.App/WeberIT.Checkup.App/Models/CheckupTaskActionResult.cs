@@ -29,6 +29,9 @@ public class CheckupTaskActionResult
 
     public bool RestartRequired { get; set; }
 
+    public bool RestartStatusWasConclusive { get; set; } =
+        true;
+
     public DateTimeOffset? StartedAt { get; set; }
 
     public DateTimeOffset? FinishedAt { get; set; }
@@ -59,10 +62,21 @@ public class CheckupTaskActionResult
         };
 
     [JsonIgnore]
-    public string RestartRequirementText =>
-        RestartRequired
-            ? "Neustart erforderlich"
-            : "Kein Neustartbedarf gemeldet";
+    public string RestartRequirementText
+    {
+        get
+        {
+            if (!RestartStatusWasConclusive)
+            {
+                return
+                    "Neustartstatus nicht eindeutig";
+            }
+
+            return RestartRequired
+                ? "Neustart erforderlich"
+                : "Kein Neustartbedarf gemeldet";
+        }
+    }
 
     [JsonIgnore]
     public string StartedAtText =>
