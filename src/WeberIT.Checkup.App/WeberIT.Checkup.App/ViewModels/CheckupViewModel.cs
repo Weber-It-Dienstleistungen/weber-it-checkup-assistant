@@ -707,6 +707,9 @@ public class CheckupViewModel : BaseViewModel
 
         IsScanRunning =
             false;
+
+        HasScanProgress =
+            false;
     }
 
     private void FailScanProgress(
