@@ -23,41 +23,156 @@ public class StartupInformation
 
     [JsonIgnore]
     public int TotalEntryCount =>
-        Entries.Count;
+        GetAvailableEntries().Count();
 
     [JsonIgnore]
     public int EnabledEntryCount =>
-        Entries.Count(
+        GetAvailableEntries().Count(
             entry =>
-                entry.State == StartupEntryState.Enabled);
+                entry.State
+                == StartupEntryState.Enabled);
 
     [JsonIgnore]
     public int DisabledEntryCount =>
-        Entries.Count(
+        GetAvailableEntries().Count(
             entry =>
-                entry.State == StartupEntryState.Disabled);
+                entry.State
+                == StartupEntryState.Disabled);
 
     [JsonIgnore]
     public int UnknownStateEntryCount =>
-        Entries.Count(
+        GetAvailableEntries().Count(
             entry =>
-                entry.State == StartupEntryState.Unknown);
+                entry.State
+                == StartupEntryState.Unknown);
+
+    [JsonIgnore]
+    public int ActiveNotEvaluableEntryCount =>
+        GetAvailableEntries().Count(
+            entry =>
+                entry.State
+                    == StartupEntryState.Enabled
+                && entry.Classification
+                    == StartupClassification.NotEvaluable);
 
     [JsonIgnore]
     public int OptionalReviewEntryCount =>
-        Entries.Count(
+        GetAvailableEntries().Count(
             entry =>
-                entry.State == StartupEntryState.Enabled
+                entry.State
+                    == StartupEntryState.Enabled
                 && entry.Classification
                     == StartupClassification.OptionalReview);
 
     [JsonIgnore]
     public int ConspicuousEntryCount =>
-        Entries.Count(
+        GetAvailableEntries().Count(
             entry =>
-                entry.State == StartupEntryState.Enabled
+                entry.State
+                    == StartupEntryState.Enabled
                 && entry.Classification
                     == StartupClassification.Conspicuous);
+
+    [JsonIgnore]
+    public IReadOnlyList<StartupEntryInformation>
+        ActiveEntries =>
+            GetAvailableEntries()
+                .Where(
+                    entry =>
+                        entry.State
+                            == StartupEntryState.Enabled
+                        && entry.Classification
+                            != StartupClassification.NotEvaluable)
+                .OrderByDescending(
+                    entry =>
+                        GetActiveEntryPriority(
+                            entry.Classification))
+                .ThenBy(
+                    entry =>
+                        entry.DisplayNameText,
+                    StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+    [JsonIgnore]
+    public int DisplayedActiveEntryCount =>
+        ActiveEntries.Count;
+
+    [JsonIgnore]
+    public int HiddenEntryCount =>
+        Math.Max(
+            0,
+            TotalEntryCount
+            - DisplayedActiveEntryCount);
+
+    [JsonIgnore]
+    public bool HasActiveEntries =>
+        DisplayedActiveEntryCount > 0;
+
+    [JsonIgnore]
+    public string ActiveEntriesOverviewText
+    {
+        get
+        {
+            var visibleText =
+                DisplayedActiveEntryCount switch
+                {
+                    0 =>
+                        "Keine auswertbaren aktiven "
+                        + "Autostarteinträge werden angezeigt",
+
+                    1 =>
+                        "1 aktiver und auswertbarer, potenziell "
+                        + "startrelevanter Eintrag wird angezeigt",
+
+                    _ =>
+                        $"{DisplayedActiveEntryCount} aktive und "
+                        + "auswertbare, potenziell startrelevante "
+                        + "Einträge werden angezeigt"
+                };
+
+            var hiddenParts =
+                new List<string>();
+
+            if (DisabledEntryCount > 0)
+            {
+                hiddenParts.Add(
+                    DisabledEntryCount == 1
+                        ? "1 deaktivierter Eintrag"
+                        : $"{DisabledEntryCount} deaktivierte Einträge");
+            }
+
+            if (UnknownStateEntryCount > 0)
+            {
+                hiddenParts.Add(
+                    UnknownStateEntryCount == 1
+                        ? "1 Eintrag mit unklarem Status"
+                        : $"{UnknownStateEntryCount} Einträge "
+                          + "mit unklarem Status");
+            }
+
+            if (ActiveNotEvaluableEntryCount > 0)
+            {
+                hiddenParts.Add(
+                    ActiveNotEvaluableEntryCount == 1
+                        ? "1 aktiver, nicht auswertbarer Eintrag"
+                        : $"{ActiveNotEvaluableEntryCount} aktive, "
+                          + "nicht auswertbare Einträge");
+            }
+
+            if (hiddenParts.Count == 0)
+            {
+                return visibleText
+                       + ".";
+            }
+
+            return visibleText
+                   + ". Ausgeblendet: "
+                   + string.Join(
+                       ", ",
+                       hiddenParts)
+                   + ".";
+        }
+    }
 
     [JsonIgnore]
     public bool HasFailedOrIncompleteAnalysis =>
@@ -101,8 +216,10 @@ public class StartupInformation
             }
 
             return HasAnalysis
-                ? "Es sind keine weiteren Angaben zur Autostartanalyse verfügbar."
-                : "Dieser gespeicherte Checkup wurde vor Einführung der Autostartanalyse erstellt.";
+                ? "Es sind keine weiteren Angaben zur "
+                  + "Autostartanalyse verfügbar."
+                : "Dieser gespeicherte Checkup wurde vor "
+                  + "Einführung der Autostartanalyse erstellt.";
         }
     }
 
@@ -129,7 +246,41 @@ public class StartupInformation
 
             return duration.TotalSeconds >= 1
                 ? $"{duration.TotalSeconds:0.##} Sekunden"
-                : $"{Math.Max(0, duration.TotalMilliseconds):0} ms";
+                : $"{Math.Max(
+                    0,
+                    duration.TotalMilliseconds):0} ms";
         }
+    }
+
+    private IEnumerable<StartupEntryInformation>
+        GetAvailableEntries()
+    {
+        return Entries
+               ?? Enumerable.Empty<StartupEntryInformation>();
+    }
+
+    private static int GetActiveEntryPriority(
+        StartupClassification classification)
+    {
+        return classification switch
+        {
+            StartupClassification.Conspicuous =>
+                5,
+
+            StartupClassification.OptionalReview =>
+                4,
+
+            StartupClassification.Unknown =>
+                3,
+
+            StartupClassification.ProbablyUseful =>
+                2,
+
+            StartupClassification.SystemOrDriverRelated =>
+                1,
+
+            _ =>
+                0
+        };
     }
 }

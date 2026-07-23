@@ -24,7 +24,7 @@
                     <TextBlock
                         Margin="0,6,0,0"
                         Foreground="{StaticResource TextSecondaryBrush}"
-                        Text="Rein lesende Analyse unterstützter lokaler Autostartquellen."
+                        Text="Angezeigt werden aktive und auswertbare, potenziell startrelevante Einträge aus den unterstützten lokalen Autostartquellen."
                         TextWrapping="Wrap" />
 
                 </StackPanel>
@@ -124,7 +124,7 @@
                         <TextBlock
                             FontSize="11"
                             Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Insgesamt" />
+                            Text="Insgesamt erfasst" />
 
                         <TextBlock
                             Margin="0,5,0,0"
@@ -149,13 +149,13 @@
                         <TextBlock
                             FontSize="11"
                             Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Aktiv" />
+                            Text="Aktiv angezeigt" />
 
                         <TextBlock
                             Margin="0,5,0,0"
                             FontSize="20"
                             FontWeight="SemiBold"
-                            Text="{Binding EnabledEntryCount}" />
+                            Text="{Binding DisplayedActiveEntryCount}" />
 
                     </StackPanel>
 
@@ -174,13 +174,14 @@
                         <TextBlock
                             FontSize="11"
                             Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Deaktiviert" />
+                            Text="Ausgeblendet"
+                            TextWrapping="Wrap" />
 
                         <TextBlock
                             Margin="0,5,0,0"
                             FontSize="20"
                             FontWeight="SemiBold"
-                            Text="{Binding DisabledEntryCount}" />
+                            Text="{Binding HiddenEntryCount}" />
 
                     </StackPanel>
 
@@ -260,11 +261,112 @@
                 FontSize="16"
                 FontWeight="SemiBold"
                 Foreground="{StaticResource TextPrimaryBrush}"
-                Text="Erkannte Autostarteinträge" />
+                Text="Auswertbare aktive Autostarteinträge" />
+
+            <TextBlock
+                Margin="0,6,0,0"
+                FontSize="12"
+                Foreground="{StaticResource TextSecondaryBrush}"
+                Text="{Binding ActiveEntriesOverviewText}"
+                TextWrapping="Wrap" />
+
+            <Border
+                Margin="0,12,0,0"
+                Padding="14"
+                Background="{StaticResource BackgroundBrush}"
+                BorderBrush="{StaticResource SuccessBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+
+                <Border.Style>
+
+                    <Style TargetType="Border">
+
+                        <Setter
+                            Property="Visibility"
+                            Value="Collapsed" />
+
+                        <Style.Triggers>
+
+                            <DataTrigger
+                                Binding="{Binding HasActiveEntries}"
+                                Value="False">
+
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Visible" />
+
+                            </DataTrigger>
+
+                        </Style.Triggers>
+
+                    </Style>
+
+                </Border.Style>
+
+                <Grid>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="36" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock
+                        Grid.Column="0"
+                        VerticalAlignment="Top"
+                        FontSize="18"
+                        Foreground="{StaticResource SuccessBrush}"
+                        Text="✓" />
+
+                    <StackPanel Grid.Column="1">
+
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Text="Keine auswertbaren aktiven Autostarteinträge"
+                            TextWrapping="Wrap" />
+
+                        <TextBlock
+                            Margin="0,5,0,0"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="Aus den unterstützten Quellen wurde derzeit kein aktiver Eintrag ermittelt, der in dieser Arbeitsansicht zuverlässig bewertet werden kann."
+                            TextWrapping="Wrap" />
+
+                    </StackPanel>
+
+                </Grid>
+
+            </Border>
 
             <ItemsControl
                 Margin="0,10,0,0"
-                ItemsSource="{Binding Entries}">
+                ItemsSource="{Binding ActiveEntries}">
+
+                <ItemsControl.Style>
+
+                    <Style TargetType="ItemsControl">
+
+                        <Setter
+                            Property="Visibility"
+                            Value="Visible" />
+
+                        <Style.Triggers>
+
+                            <DataTrigger
+                                Binding="{Binding HasActiveEntries}"
+                                Value="False">
+
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Collapsed" />
+
+                            </DataTrigger>
+
+                        </Style.Triggers>
+
+                    </Style>
+
+                </ItemsControl.Style>
 
                 <ItemsControl.ItemTemplate>
 
@@ -274,7 +376,6 @@
                             Margin="0,0,0,10"
                             Padding="14"
                             Background="{StaticResource BackgroundBrush}"
-                            BorderBrush="{StaticResource BorderBrush}"
                             BorderThickness="1"
                             CornerRadius="8">
 
@@ -295,16 +396,6 @@
                                             <Setter
                                                 Property="BorderBrush"
                                                 Value="{StaticResource WarningBrush}" />
-
-                                        </DataTrigger>
-
-                                        <DataTrigger
-                                            Binding="{Binding State}"
-                                            Value="{x:Static models:StartupEntryState.Disabled}">
-
-                                            <Setter
-                                                Property="Opacity"
-                                                Value="0.72" />
 
                                         </DataTrigger>
 
@@ -452,7 +543,7 @@
                 Margin="0,10,0,0"
                 FontSize="11"
                 Foreground="{StaticResource TextMutedBrush}"
-                Text="Untersucht wurden Run- und RunOnce-Schlüssel sowie die Autostartordner des aktuellen und aller Benutzer. Geplante Aufgaben und Windows-Dienste sind nicht Bestandteil dieser Analyse. Es wurde kein Eintrag gestartet, deaktiviert, verändert oder gelöscht."
+                Text="Untersucht wurden Run- und RunOnce-Schlüssel sowie die Autostartordner des aktuellen und aller Benutzer. In dieser Arbeitsansicht werden nur aktive und auswertbare Einträge dargestellt. Deaktivierte, statusunklare und nicht auswertbare Einträge bleiben Bestandteil der gespeicherten Scandaten. Geplante Aufgaben und Windows-Dienste sind nicht Bestandteil dieser Analyse. Es wurde kein Eintrag gestartet, deaktiviert, verändert oder gelöscht."
                 TextWrapping="Wrap" />
 
         </StackPanel>
