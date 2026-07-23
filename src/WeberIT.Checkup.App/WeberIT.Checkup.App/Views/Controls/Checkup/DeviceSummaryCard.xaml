@@ -18,66 +18,88 @@
             <Border
                 Grid.Column="0"
                 Padding="24"
-                Background="{StaticResource PrimaryBrush}"
+                Background="{StaticResource SurfaceSecondaryBrush}"
+                BorderBrush="{StaticResource AccentBrush}"
+                BorderThickness="1"
                 CornerRadius="10">
 
-                <StackPanel>
+                <Grid>
 
-                    <Border
-                        Width="56"
-                        Height="56"
-                        HorizontalAlignment="Left"
-                        Background="{StaticResource SecondaryBrush}"
-                        CornerRadius="12">
+                    <StackPanel VerticalAlignment="Center">
 
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontFamily="Segoe UI Emoji"
-                            FontSize="28"
-                            Foreground="{StaticResource SurfaceBrush}"
-                            Text="🖥" />
+                        <Border
+                            Width="68"
+                            Height="68"
+                            HorizontalAlignment="Left"
+                            Background="{StaticResource AccentBrush}"
+                            CornerRadius="14">
 
-                    </Border>
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="Segoe UI Emoji"
+                                FontSize="30"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="🖥" />
 
-                    <TextBlock
-                        Margin="0,24,0,0"
-                        FontSize="13"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource BorderBrush}"
-                        Text="GERÄT"
-                        TextWrapping="Wrap" />
-
-                    <TextBlock
-                        Margin="0,8,0,0"
-                        FontSize="26"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource SurfaceBrush}"
-                        Text="{Binding DeviceInformation.Name}"
-                        TextWrapping="Wrap" />
-
-                    <TextBlock
-                        Margin="0,8,0,0"
-                        FontSize="15"
-                        Foreground="{StaticResource BorderBrush}"
-                        Text="{Binding DeviceInformation.DeviceType}"
-                        TextWrapping="Wrap" />
-
-                    <Border
-                        Margin="0,24,0,0"
-                        Padding="12,8"
-                        HorizontalAlignment="Left"
-                        Background="{StaticResource SecondaryBrush}"
-                        CornerRadius="8">
+                        </Border>
 
                         <TextBlock
-                            Foreground="{StaticResource SurfaceBrush}"
-                            Text="{Binding OperatingSystemInformation.Name}"
+                            Margin="0,24,0,0"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource AccentBrush}"
+                            Text="GERÄTEPROFIL"
                             TextWrapping="Wrap" />
 
-                    </Border>
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            FontSize="24"
+                            FontWeight="Bold"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Text="{Binding DeviceInformation.Name}"
+                            TextWrapping="Wrap" />
 
-                </StackPanel>
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="{Binding DeviceInformation.DeviceType}"
+                            TextWrapping="Wrap" />
+
+                        <Border
+                            Margin="0,24,0,0"
+                            Padding="12,10"
+                            Background="{StaticResource BackgroundBrush}"
+                            BorderBrush="{StaticResource BorderStrongBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+
+                            <StackPanel>
+
+                                <TextBlock
+                                    FontSize="11"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    Text="BETRIEBSSYSTEM"
+                                    TextWrapping="Wrap" />
+
+                                <TextBlock
+                                    Margin="0,5,0,0"
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Text="{Binding OperatingSystemInformation.Name}"
+                                    TextWrapping="Wrap" />
+
+                            </StackPanel>
+
+                        </Border>
+
+                    </StackPanel>
+
+                </Grid>
 
             </Border>
 
