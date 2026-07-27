@@ -1,4 +1,6 @@
-﻿namespace WeberIT.Checkup.App.Models;
+﻿using System.Text.Json.Serialization;
+
+namespace WeberIT.Checkup.App.Models;
 
 public class CheckupSession
 {
@@ -74,5 +76,66 @@ public class CheckupSession
             _customerCheckupVisits =
                 value
                 ?? new List<CustomerCheckupVisit>();
+    }
+
+    [JsonIgnore]
+    public CustomerCheckupVisit?
+        CurrentCustomerCheckupVisit =>
+            CustomerCheckupVisits
+                .Where(
+                    visit =>
+                        visit.IsInProgress)
+                .OrderByDescending(
+                    visit =>
+                        visit.StartedAt)
+                .FirstOrDefault();
+
+    [JsonIgnore]
+    public bool HasInProgressCustomerCheckupVisit =>
+        CurrentCustomerCheckupVisit is not null;
+
+    [JsonIgnore]
+    public int CustomerCheckupVisitCount =>
+        CustomerCheckupVisits.Count;
+
+    [JsonIgnore]
+    public string CurrentCheckupTitle =>
+        HasInProgressCustomerCheckupVisit
+            ? "Eingangsscan des laufenden Kundencheckups"
+            : "Gespeicherter Systemcheck";
+
+    [JsonIgnore]
+    public string CurrentCheckupDescription =>
+        HasInProgressCustomerCheckupVisit
+            ? "Dieser Scan ist der aktuelle Arbeitsstand. "
+              + "Für den laufenden Vorgang wurde eine "
+              + "unabhängige Kopie als unveränderlicher "
+              + "Vorher-Zustand gesichert."
+            : "Vollständiger Stand des zuletzt "
+              + "gespeicherten Scans.";
+
+    [JsonIgnore]
+    public string CustomerCheckupWorkflowText
+    {
+        get
+        {
+            var currentVisit =
+                CurrentCustomerCheckupVisit;
+
+            if (currentVisit is null)
+            {
+                return
+                    "Für dieses Gerät läuft derzeit "
+                    + "kein Kundencheckup.";
+            }
+
+            return
+                $"Der Eingangsscan vom "
+                + $"{currentVisit.StartedAtText} wurde als "
+                + "unveränderlicher Vorher-Zustand gesichert. "
+                + "Bearbeiten Sie jetzt die erkannten Aufgaben. "
+                + "Der Nachher-Zustand wird mit der späteren "
+                + "Abschlusskontrolle erfasst.";
+        }
     }
 }

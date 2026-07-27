@@ -209,6 +209,16 @@ public sealed class CheckupTaskActionPlan
                 + "enthalten.");
         }
 
+        if (HasCleanupCategories
+            && CleanupCategories.Count != 1)
+        {
+            throw new InvalidOperationException(
+                "Ein kontrollierter Bereinigungsplan muss "
+                + "genau eine Bereinigungskategorie enthalten. "
+                + "Mehrere Kategorien werden aus "
+                + "Sicherheitsgründen nacheinander ausgeführt.");
+        }
+
         foreach (var command in Commands)
         {
             if (command is null)

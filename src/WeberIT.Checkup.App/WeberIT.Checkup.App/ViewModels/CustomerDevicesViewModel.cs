@@ -8,8 +8,13 @@ public class CustomerDevicesViewModel : BaseViewModel
 {
     private readonly ICustomerService _customerService;
     private readonly ICheckupScanner _checkupScanner;
-    private readonly ICheckupAssessmentService _checkupAssessmentService;
-    private readonly IDeviceIdentityService _deviceIdentityService;
+
+    private readonly ICheckupAssessmentService
+        _checkupAssessmentService;
+
+    private readonly IDeviceIdentityService
+        _deviceIdentityService;
+
     private readonly IDialogService _dialogService;
 
     private Customer? _selectedCustomer;
@@ -23,6 +28,21 @@ public class CustomerDevicesViewModel : BaseViewModel
         IDeviceIdentityService deviceIdentityService,
         IDialogService dialogService)
     {
+        ArgumentNullException.ThrowIfNull(
+            customerService);
+
+        ArgumentNullException.ThrowIfNull(
+            checkupScanner);
+
+        ArgumentNullException.ThrowIfNull(
+            checkupAssessmentService);
+
+        ArgumentNullException.ThrowIfNull(
+            deviceIdentityService);
+
+        ArgumentNullException.ThrowIfNull(
+            dialogService);
+
         _customerService =
             customerService;
 
@@ -40,20 +60,27 @@ public class CustomerDevicesViewModel : BaseViewModel
 
         AddDeviceCommand =
             new RelayCommand(
-                _ => AddDevice(),
-                _ => SelectedCustomer is not null);
+                _ =>
+                    AddDevice(),
+                _ =>
+                    SelectedCustomer is not null);
 
         RescanDeviceCommand =
             new RelayCommand(
-                _ => RescanDevice(),
-                _ => SelectedCustomer is not null
-                     && SelectedDevice is not null);
+                _ =>
+                    ExecuteCustomerCheckupAction(),
+                _ =>
+                    SelectedCustomer is not null
+                    && SelectedDevice is not null);
 
         DeleteDeviceCommand =
             new RelayCommand(
-                _ => DeleteDevice(),
-                _ => SelectedCustomer is not null
-                     && SelectedDevice is not null);
+                _ =>
+                    DeleteDevice(),
+                _ =>
+                    SelectedCustomer is not null
+                    && SelectedDevice is not null
+                    && !HasSelectedDeviceInProgressCheckup);
     }
 
     public RelayCommand AddDeviceCommand { get; }
@@ -64,7 +91,9 @@ public class CustomerDevicesViewModel : BaseViewModel
 
     public Customer? SelectedCustomer
     {
-        get => _selectedCustomer;
+        get =>
+            _selectedCustomer;
+
         set
         {
             if (_selectedCustomer == value)
@@ -79,8 +108,18 @@ public class CustomerDevicesViewModel : BaseViewModel
                 value;
 
             OnPropertyChanged();
-            OnPropertyChanged(nameof(Devices));
-            OnPropertyChanged(nameof(DeviceCountText));
+
+            OnPropertyChanged(
+                nameof(Devices));
+
+            OnPropertyChanged(
+                nameof(DeviceCountText));
+
+            OnPropertyChanged(
+                nameof(HasSelectedDeviceInProgressCheckup));
+
+            OnPropertyChanged(
+                nameof(RescanDeviceButtonText));
 
             AddDeviceCommand
                 .RaiseCanExecuteChanged();
@@ -95,7 +134,9 @@ public class CustomerDevicesViewModel : BaseViewModel
 
     public CustomerDevice? SelectedDevice
     {
-        get => _selectedDevice;
+        get =>
+            _selectedDevice;
+
         set
         {
             if (_selectedDevice == value)
@@ -111,6 +152,12 @@ public class CustomerDevicesViewModel : BaseViewModel
             SubscribeToSelectedTaskList();
 
             OnPropertyChanged();
+
+            OnPropertyChanged(
+                nameof(HasSelectedDeviceInProgressCheckup));
+
+            OnPropertyChanged(
+                nameof(RescanDeviceButtonText));
 
             RescanDeviceCommand
                 .RaiseCanExecuteChanged();
@@ -138,6 +185,17 @@ public class CustomerDevicesViewModel : BaseViewModel
         }
     }
 
+    public bool HasSelectedDeviceInProgressCheckup =>
+        SelectedDevice?
+            .CheckupSession
+            .HasInProgressCustomerCheckupVisit
+        ?? false;
+
+    public string RescanDeviceButtonText =>
+        HasSelectedDeviceInProgressCheckup
+            ? "Abschlusskontrolle"
+            : "Checkup starten";
+
     private void AddDevice()
     {
         if (SelectedCustomer is null)
@@ -160,7 +218,7 @@ public class CustomerDevicesViewModel : BaseViewModel
 
         if (matchingDevice is not null)
         {
-            UpdateMatchingDevice(
+            StartCheckupForMatchingDevice(
                 matchingDevice,
                 checkupSession);
 
@@ -171,7 +229,7 @@ public class CustomerDevicesViewModel : BaseViewModel
             checkupSession);
     }
 
-    private void UpdateMatchingDevice(
+    private void StartCheckupForMatchingDevice(
         CustomerDevice matchingDevice,
         CheckupSession checkupSession)
     {
@@ -180,20 +238,36 @@ public class CustomerDevicesViewModel : BaseViewModel
             return;
         }
 
+        if (matchingDevice
+            .CheckupSession
+            .HasInProgressCustomerCheckupVisit)
+        {
+            ShowActiveCheckupError(
+                matchingDevice);
+
+            return;
+        }
+
         var confirmed =
             _dialogService.Confirm(
                 "Gerät bereits vorhanden",
                 $"Das Gerät \"{matchingDevice.DisplayName}\" "
-                + "ist diesem Kunden bereits zugeordnet. "
-                + "Soll der vorhandene Systemcheck durch "
-                + "den neuen Scan ersetzt werden?");
+                + "ist diesem Kunden bereits zugeordnet."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Soll für dieses Gerät ein neuer "
+                + "Kundencheckup gestartet werden?"
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Der neue Scan wird als unveränderlicher "
+                + "Vorher-Zustand des Vorgangs gesichert.");
 
         if (!confirmed)
         {
             return;
         }
 
-        ApplyCheckupToDevice(
+        StartCustomerCheckupOnDevice(
             matchingDevice,
             checkupSession);
     }
@@ -210,7 +284,8 @@ public class CustomerDevicesViewModel : BaseViewModel
             !string.IsNullOrWhiteSpace(
                 checkupSession.DeviceInformation.Name)
                 ? checkupSession.DeviceInformation.Name
-                : $"Gerät {SelectedCustomer.Devices.Count + 1}";
+                : $"Gerät "
+                  + $"{SelectedCustomer.Devices.Count + 1}";
 
         var device =
             new CustomerDevice
@@ -257,7 +332,25 @@ public class CustomerDevicesViewModel : BaseViewModel
         RefreshDeviceDisplay();
     }
 
-    private void RescanDevice()
+    private void ExecuteCustomerCheckupAction()
+    {
+        if (SelectedCustomer is null
+            || SelectedDevice is null)
+        {
+            return;
+        }
+
+        if (HasSelectedDeviceInProgressCheckup)
+        {
+            CompleteCustomerCheckup();
+
+            return;
+        }
+
+        StartCustomerCheckup();
+    }
+
+    private void StartCustomerCheckup()
     {
         if (SelectedCustomer is null
             || SelectedDevice is null)
@@ -267,6 +360,16 @@ public class CustomerDevicesViewModel : BaseViewModel
 
         var selectedDevice =
             SelectedDevice;
+
+        if (selectedDevice
+            .CheckupSession
+            .HasInProgressCustomerCheckupVisit)
+        {
+            ShowActiveCheckupError(
+                selectedDevice);
+
+            return;
+        }
 
         var checkupSession =
             TryCreateCheckupSession();
@@ -288,20 +391,22 @@ public class CustomerDevicesViewModel : BaseViewModel
             var confirmed =
                 _dialogService.Confirm(
                     "Anderes Gerät erkannt",
-                    $"Der neue Scan gehört nicht zum "
+                    $"Der Eingangsscan gehört nicht zum "
                     + $"ausgewählten Gerät "
                     + $"\"{selectedDevice.DisplayName}\", "
                     + $"sondern zum bereits gespeicherten "
-                    + $"Gerät \"{matchingDevice.DisplayName}\". "
-                    + "Soll stattdessen dieses erkannte "
-                    + "Gerät aktualisiert werden?");
+                    + $"Gerät \"{matchingDevice.DisplayName}\"."
+                    + Environment.NewLine
+                    + Environment.NewLine
+                    + "Soll der Kundencheckup stattdessen "
+                    + "für das erkannte Gerät gestartet werden?");
 
             if (!confirmed)
             {
                 return;
             }
 
-            ApplyCheckupToDevice(
+            StartCustomerCheckupOnDevice(
                 matchingDevice,
                 checkupSession);
 
@@ -313,12 +418,14 @@ public class CustomerDevicesViewModel : BaseViewModel
             var confirmed =
                 _dialogService.Confirm(
                     "Gerät nicht eindeutig erkannt",
-                    $"Der neue Scan konnte dem ausgewählten "
+                    $"Der Eingangsscan konnte dem ausgewählten "
                     + $"Gerät \"{selectedDevice.DisplayName}\" "
-                    + "nicht eindeutig zugeordnet werden. "
-                    + "Soll der gespeicherte Systemcheck "
-                    + "trotzdem durch die neuen Daten "
-                    + "ersetzt werden?");
+                    + "nicht eindeutig zugeordnet werden."
+                    + Environment.NewLine
+                    + Environment.NewLine
+                    + "Soll der Kundencheckup trotzdem für "
+                    + "dieses Gerät gestartet und der Scan "
+                    + "als Vorher-Zustand gesichert werden?");
 
             if (!confirmed)
             {
@@ -326,17 +433,130 @@ public class CustomerDevicesViewModel : BaseViewModel
             }
         }
 
-        ApplyCheckupToDevice(
+        StartCustomerCheckupOnDevice(
             selectedDevice,
             checkupSession);
     }
 
-    private void ApplyCheckupToDevice(
+    private void CompleteCustomerCheckup()
+    {
+        if (SelectedCustomer is null
+            || SelectedDevice is null)
+        {
+            return;
+        }
+
+        var selectedDevice =
+            SelectedDevice;
+
+        var currentVisit =
+            selectedDevice
+                .CheckupSession
+                .CurrentCustomerCheckupVisit;
+
+        if (currentVisit is null)
+        {
+            RefreshDeviceDisplay();
+
+            return;
+        }
+
+        var confirmed =
+            _dialogService.Confirm(
+                "Abschlusskontrolle starten",
+                $"Für das Gerät \"{selectedDevice.DisplayName}\" "
+                + "wird jetzt ein vollständiger Kontrollscan "
+                + "durchgeführt."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Der vorhandene Eingangsscan bleibt als "
+                + "Vorher-Zustand erhalten. Der neue Scan wird "
+                + "als Nachher-Zustand des Kundencheckups "
+                + "gespeichert."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Soll die Abschlusskontrolle jetzt starten?");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        var afterCheckup =
+            TryCreateCheckupSession();
+
+        if (afterCheckup is null)
+        {
+            return;
+        }
+
+        var matchingDevice =
+            _deviceIdentityService.FindMatchingDevice(
+                SelectedCustomer.Devices,
+                afterCheckup.DeviceInformation);
+
+        if (matchingDevice is not null
+            && matchingDevice.Id
+                != selectedDevice.Id)
+        {
+            _dialogService.ShowError(
+                "Falsches Gerät erkannt",
+                $"Der Kontrollscan gehört nicht zum "
+                + $"ausgewählten Gerät "
+                + $"\"{selectedDevice.DisplayName}\", "
+                + $"sondern zum gespeicherten Gerät "
+                + $"\"{matchingDevice.DisplayName}\"."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Der laufende Kundencheckup wurde nicht "
+                + "verändert. Schließen Sie das richtige "
+                + "Gerät an und starten Sie die "
+                + "Abschlusskontrolle erneut.");
+
+            return;
+        }
+
+        if (matchingDevice is null)
+        {
+            var continueDespiteUnclearIdentity =
+                _dialogService.Confirm(
+                    "Gerät nicht eindeutig erkannt",
+                    $"Der Kontrollscan konnte dem Gerät "
+                    + $"\"{selectedDevice.DisplayName}\" "
+                    + "nicht eindeutig zugeordnet werden."
+                    + Environment.NewLine
+                    + Environment.NewLine
+                    + "Soll der Scan trotzdem als "
+                    + "Nachher-Zustand dieses Kundencheckups "
+                    + "gespeichert werden?");
+
+            if (!continueDespiteUnclearIdentity)
+            {
+                return;
+            }
+        }
+
+        CompleteCustomerCheckupOnDevice(
+            selectedDevice,
+            afterCheckup);
+    }
+
+    private void StartCustomerCheckupOnDevice(
         CustomerDevice device,
-        CheckupSession checkupSession)
+        CheckupSession entranceCheckup)
     {
         if (SelectedCustomer is null)
         {
+            return;
+        }
+
+        if (device
+            .CheckupSession
+            .HasInProgressCustomerCheckupVisit)
+        {
+            ShowActiveCheckupError(
+                device);
+
             return;
         }
 
@@ -349,8 +569,35 @@ public class CustomerDevicesViewModel : BaseViewModel
         var previousUpdatedAt =
             device.UpdatedAt;
 
+        CustomerCheckupVisit customerCheckupVisit;
+
+        try
+        {
+            customerCheckupVisit =
+                CustomerCheckupVisit.Start(
+                    entranceCheckup);
+        }
+        catch (Exception exception)
+        {
+            ShowPersistenceError(
+                "Kundencheckup konnte nicht gestartet werden",
+                exception.Message);
+
+            return;
+        }
+
+        entranceCheckup.CustomerCheckupVisits =
+            previousCheckupSession
+                .CustomerCheckupVisits
+                .ToList();
+
+        entranceCheckup.CustomerCheckupVisits.Add(
+            customerCheckupVisit);
+
         var scannedComputerName =
-            checkupSession.DeviceInformation.Name;
+            entranceCheckup
+                .DeviceInformation
+                .Name;
 
         if (!string.IsNullOrWhiteSpace(
                 scannedComputerName))
@@ -360,7 +607,7 @@ public class CustomerDevicesViewModel : BaseViewModel
         }
 
         device.CheckupSession =
-            checkupSession;
+            entranceCheckup;
 
         device.UpdatedAt =
             DateTime.Now;
@@ -381,7 +628,7 @@ public class CustomerDevicesViewModel : BaseViewModel
                     previousUpdatedAt);
 
                 ShowPersistenceError(
-                    "Gerät konnte nicht aktualisiert werden",
+                    "Kundencheckup konnte nicht gestartet werden",
                     "Das Gerät oder der zugehörige Kunde "
                     + "ist in der Datenbank nicht mehr vorhanden.");
 
@@ -397,7 +644,137 @@ public class CustomerDevicesViewModel : BaseViewModel
                 previousUpdatedAt);
 
             ShowPersistenceError(
-                "Gerät konnte nicht aktualisiert werden",
+                "Kundencheckup konnte nicht gestartet werden",
+                exception.Message);
+
+            return;
+        }
+
+        SelectedDevice =
+            device;
+
+        RefreshTaskListSubscription();
+        RefreshDeviceDisplay();
+    }
+
+    private void CompleteCustomerCheckupOnDevice(
+        CustomerDevice device,
+        CheckupSession afterCheckup)
+    {
+        if (SelectedCustomer is null)
+        {
+            return;
+        }
+
+        var previousDisplayName =
+            device.DisplayName;
+
+        var previousCheckupSession =
+            device.CheckupSession;
+
+        var previousUpdatedAt =
+            device.UpdatedAt;
+
+        var currentVisit =
+            previousCheckupSession
+                .CurrentCustomerCheckupVisit;
+
+        if (currentVisit is null)
+        {
+            _dialogService.ShowError(
+                "Kein laufender Kundencheckup",
+                "Für das ausgewählte Gerät wurde kein "
+                + "laufender Kundencheckup gefunden. "
+                + "Die Abschlusskontrolle wurde nicht "
+                + "gespeichert.");
+
+            return;
+        }
+
+        CustomerCheckupVisit completedVisit;
+
+        try
+        {
+            completedVisit =
+                CreateIndependentVisitCopy(
+                    currentVisit);
+
+            completedVisit.Complete(
+                afterCheckup,
+                currentVisit.TechnicianSummary,
+                currentVisit.NextSteps,
+                currentVisit.NextCheckupDate);
+        }
+        catch (Exception exception)
+        {
+            ShowPersistenceError(
+                "Kundencheckup konnte nicht abgeschlossen werden",
+                exception.Message);
+
+            return;
+        }
+
+        afterCheckup.CustomerCheckupVisits =
+            previousCheckupSession
+                .CustomerCheckupVisits
+                .Select(
+                    visit =>
+                        visit.Id == currentVisit.Id
+                            ? completedVisit
+                            : visit)
+                .ToList();
+
+        var scannedComputerName =
+            afterCheckup
+                .DeviceInformation
+                .Name;
+
+        if (!string.IsNullOrWhiteSpace(
+                scannedComputerName))
+        {
+            device.DisplayName =
+                scannedComputerName;
+        }
+
+        device.CheckupSession =
+            afterCheckup;
+
+        device.UpdatedAt =
+            DateTime.Now;
+
+        try
+        {
+            var wasUpdated =
+                _customerService.UpdateCustomerDevice(
+                    SelectedCustomer.Id,
+                    device);
+
+            if (!wasUpdated)
+            {
+                RestoreDevice(
+                    device,
+                    previousDisplayName,
+                    previousCheckupSession,
+                    previousUpdatedAt);
+
+                ShowPersistenceError(
+                    "Kundencheckup konnte nicht abgeschlossen werden",
+                    "Das Gerät oder der zugehörige Kunde "
+                    + "ist in der Datenbank nicht mehr vorhanden.");
+
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            RestoreDevice(
+                device,
+                previousDisplayName,
+                previousCheckupSession,
+                previousUpdatedAt);
+
+            ShowPersistenceError(
+                "Kundencheckup konnte nicht abgeschlossen werden",
                 exception.Message);
 
             return;
@@ -420,6 +797,16 @@ public class CustomerDevicesViewModel : BaseViewModel
 
         var device =
             SelectedDevice;
+
+        if (device
+            .CheckupSession
+            .HasInProgressCustomerCheckupVisit)
+        {
+            ShowActiveCheckupError(
+                device);
+
+            return;
+        }
 
         var confirmed =
             _dialogService.Confirm(
@@ -598,6 +985,44 @@ public class CustomerDevicesViewModel : BaseViewModel
 
         OnPropertyChanged(
             nameof(SelectedDevice));
+
+        OnPropertyChanged(
+            nameof(HasSelectedDeviceInProgressCheckup));
+
+        OnPropertyChanged(
+            nameof(RescanDeviceButtonText));
+
+        RescanDeviceCommand
+            .RaiseCanExecuteChanged();
+
+        DeleteDeviceCommand
+            .RaiseCanExecuteChanged();
+    }
+
+    private void ShowActiveCheckupError(
+        CustomerDevice device)
+    {
+        var currentVisit =
+            device
+                .CheckupSession
+                .CurrentCustomerCheckupVisit;
+
+        var startedAtText =
+            currentVisit?.StartedAtText
+            ?? "unbekanntem Zeitpunkt";
+
+        _dialogService.ShowError(
+            "Kundencheckup bereits aktiv",
+            $"Für das Gerät \"{device.DisplayName}\" "
+            + "läuft bereits ein Kundencheckup."
+            + Environment.NewLine
+            + Environment.NewLine
+            + $"Der Eingangsscan vom {startedAtText} "
+            + "ist als Vorher-Zustand gesichert."
+            + Environment.NewLine
+            + Environment.NewLine
+            + "Führen Sie über den Button "
+            + "\"Abschlusskontrolle\" den Nachher-Scan durch.");
     }
 
     private void ShowTaskPersistenceError(
@@ -640,6 +1065,50 @@ public class CustomerDevicesViewModel : BaseViewModel
             + $"Technische Details: {details}");
     }
 
+    private static CustomerCheckupVisit
+        CreateIndependentVisitCopy(
+            CustomerCheckupVisit source)
+    {
+        ArgumentNullException.ThrowIfNull(
+            source);
+
+        return new CustomerCheckupVisit
+        {
+            VisitModelVersion =
+                source.VisitModelVersion,
+
+            Id =
+                source.Id,
+
+            StartedAt =
+                source.StartedAt,
+
+            CompletedAt =
+                source.CompletedAt,
+
+            Status =
+                source.Status,
+
+            BeforeCheckup =
+                source.BeforeCheckup,
+
+            AfterCheckup =
+                source.AfterCheckup,
+
+            TechnicianSummary =
+                source.TechnicianSummary,
+
+            NextSteps =
+                source.NextSteps,
+
+            NextCheckupDate =
+                source.NextCheckupDate,
+
+            CancellationReason =
+                source.CancellationReason
+        };
+    }
+
     private static void RestoreDevice(
         CustomerDevice device,
         string displayName,
@@ -668,8 +1137,8 @@ public class CustomerDevicesViewModel : BaseViewModel
         return
             "Die Systeminformationen konnten nicht "
             + "vollständig ausgelesen oder bewertet werden. "
-            + "Es wurde kein Gerät angelegt und kein "
-            + "vorhandener Systemcheck überschrieben."
+            + "Der gespeicherte Gerätestand und ein eventuell "
+            + "laufender Kundencheckup bleiben unverändert."
             + Environment.NewLine
             + Environment.NewLine
             + $"Technische Details: {errorDetails}";
