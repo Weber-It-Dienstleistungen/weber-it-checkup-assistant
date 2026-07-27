@@ -1,4 +1,5 @@
-﻿using System.Windows.Input;
+﻿using System.IO;
+using System.Windows.Input;
 using WeberIT.Checkup.App.Infrastructure.Commands;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
@@ -22,11 +23,20 @@ public class CheckupViewModel : BaseViewModel
     private readonly IDialogService
         _dialogService;
 
+    private readonly IFileDialogService
+        _fileDialogService;
+
+    private readonly IDiagnosticPdfReportService
+        _diagnosticPdfReportService;
+
     private readonly AsyncRelayCommand
         _readSystemCommand;
 
     private readonly RelayCommand
         _saveCheckupCommand;
+
+    private readonly AsyncRelayCommand
+        _exportDiagnosticPdfCommand;
 
     private Customer?
         _selectedCustomer;
@@ -50,6 +60,9 @@ public class CheckupViewModel : BaseViewModel
     private bool
         _hasScanProgress;
 
+    private bool
+        _currentCheckupIsDiagnosticScan;
+
     private int
         _scanProgressPercentage;
 
@@ -65,6 +78,10 @@ public class CheckupViewModel : BaseViewModel
         _scanProgressSummaryText =
             "0 von 12 Bereichen verarbeitet.";
 
+    private string
+        _diagnosticPdfExportStatusText =
+            string.Empty;
+
     private IReadOnlyList<CheckupScanProgress>
         _scanSteps =
             CreatePendingScanSteps();
@@ -74,7 +91,9 @@ public class CheckupViewModel : BaseViewModel
         ICheckupAssessmentService checkupAssessmentService,
         ICustomerService customerService,
         IDeviceIdentityService deviceIdentityService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IFileDialogService fileDialogService,
+        IDiagnosticPdfReportService diagnosticPdfReportService)
     {
         ArgumentNullException.ThrowIfNull(
             checkupScanner);
@@ -91,6 +110,12 @@ public class CheckupViewModel : BaseViewModel
         ArgumentNullException.ThrowIfNull(
             dialogService);
 
+        ArgumentNullException.ThrowIfNull(
+            fileDialogService);
+
+        ArgumentNullException.ThrowIfNull(
+            diagnosticPdfReportService);
+
         _checkupScanner =
             checkupScanner;
 
@@ -105,6 +130,12 @@ public class CheckupViewModel : BaseViewModel
 
         _dialogService =
             dialogService;
+
+        _fileDialogService =
+            fileDialogService;
+
+        _diagnosticPdfReportService =
+            diagnosticPdfReportService;
 
         SubscribeToTaskList(
             _currentCheckup.TaskList);
@@ -125,6 +156,15 @@ public class CheckupViewModel : BaseViewModel
 
         SaveCheckupCommand =
             _saveCheckupCommand;
+
+        _exportDiagnosticPdfCommand =
+            new AsyncRelayCommand(
+                ExportDiagnosticPdfAsync,
+                () =>
+                    CanExportDiagnosticPdf);
+
+        ExportDiagnosticPdfCommand =
+            _exportDiagnosticPdfCommand;
     }
 
     public string Title =>
@@ -164,9 +204,18 @@ public class CheckupViewModel : BaseViewModel
                 nameof(CanSaveCheckup));
 
             OnPropertyChanged(
+                nameof(CanExportDiagnosticPdf));
+
+            OnPropertyChanged(
+                nameof(ShouldShowDiagnosticPdfExport));
+
+            OnPropertyChanged(
                 nameof(PersistenceStatusText));
 
             _saveCheckupCommand
+                .RaiseCanExecuteChanged();
+
+            _exportDiagnosticPdfCommand
                 .RaiseCanExecuteChanged();
         }
     }
@@ -234,12 +283,24 @@ public class CheckupViewModel : BaseViewModel
                 nameof(CanSaveCheckup));
 
             OnPropertyChanged(
+                nameof(IsCurrentCheckupDiagnosticScan));
+
+            OnPropertyChanged(
+                nameof(CanExportDiagnosticPdf));
+
+            OnPropertyChanged(
+                nameof(ShouldShowDiagnosticPdfExport));
+
+            OnPropertyChanged(
                 nameof(ScanStatusText));
 
             OnPropertyChanged(
                 nameof(PersistenceStatusText));
 
             _saveCheckupCommand
+                .RaiseCanExecuteChanged();
+
+            _exportDiagnosticPdfCommand
                 .RaiseCanExecuteChanged();
         }
     }
@@ -278,6 +339,18 @@ public class CheckupViewModel : BaseViewModel
         && !IsCurrentCheckupSaved
         && !IsScanRunning;
 
+    public bool IsCurrentCheckupDiagnosticScan =>
+        _currentCheckupIsDiagnosticScan;
+
+    public bool CanExportDiagnosticPdf =>
+        HasCurrentCheckup
+        && IsCurrentCheckupDiagnosticScan
+        && SelectedCustomer is null
+        && !IsScanRunning;
+
+    public bool ShouldShowDiagnosticPdfExport =>
+        CanExportDiagnosticPdf;
+
     public bool IsScanRunning
     {
         get =>
@@ -302,12 +375,21 @@ public class CheckupViewModel : BaseViewModel
                 nameof(CanSaveCheckup));
 
             OnPropertyChanged(
+                nameof(CanExportDiagnosticPdf));
+
+            OnPropertyChanged(
+                nameof(ShouldShowDiagnosticPdfExport));
+
+            OnPropertyChanged(
                 nameof(ScanStatusText));
 
             OnPropertyChanged(
                 nameof(PersistenceStatusText));
 
             _saveCheckupCommand
+                .RaiseCanExecuteChanged();
+
+            _exportDiagnosticPdfCommand
                 .RaiseCanExecuteChanged();
         }
     }
@@ -454,6 +536,28 @@ public class CheckupViewModel : BaseViewModel
         }
     }
 
+    public string DiagnosticPdfExportStatusText
+    {
+        get =>
+            _diagnosticPdfExportStatusText;
+
+        private set
+        {
+            if (string.Equals(
+                    _diagnosticPdfExportStatusText,
+                    value,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _diagnosticPdfExportStatusText =
+                value;
+
+            OnPropertyChanged();
+        }
+    }
+
     public string ReadSystemButtonText =>
         IsScanRunning
             ? "Systemscan läuft …"
@@ -523,6 +627,8 @@ public class CheckupViewModel : BaseViewModel
 
     public ICommand SaveCheckupCommand { get; }
 
+    public ICommand ExportDiagnosticPdfCommand { get; }
+
     public void SetCustomer(
         Customer? customer)
     {
@@ -532,6 +638,9 @@ public class CheckupViewModel : BaseViewModel
 
     private async Task ReadSystemAsync()
     {
+        var scanIsDiagnostic =
+            SelectedCustomer is null;
+
         BeginScanProgress();
 
         IProgress<CheckupScanProgress> progress =
@@ -588,6 +697,9 @@ public class CheckupViewModel : BaseViewModel
             _lastSaveUpdatedExistingDevice =
                 false;
 
+            _currentCheckupIsDiagnosticScan =
+                scanIsDiagnostic;
+
             CurrentCheckup =
                 checkupSession;
 
@@ -610,8 +722,68 @@ public class CheckupViewModel : BaseViewModel
         }
     }
 
+    private async Task ExportDiagnosticPdfAsync()
+    {
+        if (!CanExportDiagnosticPdf)
+        {
+            return;
+        }
+
+        var suggestedFileName =
+            BuildSuggestedDiagnosticPdfFileName(
+                CurrentCheckup);
+
+        var filePath =
+            _fileDialogService.SelectPdfSavePath(
+                suggestedFileName);
+
+        if (string.IsNullOrWhiteSpace(
+                filePath))
+        {
+            return;
+        }
+
+        var checkupSession =
+            CurrentCheckup;
+
+        DiagnosticPdfExportStatusText =
+            "PDF-Bericht wird erstellt …";
+
+        try
+        {
+            await Task.Run(
+                () =>
+                    _diagnosticPdfReportService.Export(
+                        checkupSession,
+                        filePath));
+
+            DiagnosticPdfExportStatusText =
+                $"PDF-Bericht gespeichert: {filePath}";
+        }
+        catch (Exception exception)
+        {
+            var errorDetails =
+                BuildProgressErrorMessage(
+                    exception);
+
+            DiagnosticPdfExportStatusText =
+                "Der PDF-Bericht konnte nicht erstellt werden.";
+
+            _dialogService.ShowError(
+                "PDF-Export fehlgeschlagen",
+                "Der kundenunspezifische Diagnosebericht "
+                + "konnte nicht erstellt oder gespeichert werden."
+                + Environment.NewLine
+                + Environment.NewLine
+                + $"Technische Details: {errorDetails}");
+        }
+    }
+
     private void BeginScanProgress()
     {
+        DiagnosticPdfExportStatusText =
+            string.Empty;
+
         ScanSteps =
             CreatePendingScanSteps();
 
@@ -1192,6 +1364,60 @@ public class CheckupViewModel : BaseViewModel
 
         device.UpdatedAt =
             updatedAt;
+    }
+
+    private static string BuildSuggestedDiagnosticPdfFileName(
+        CheckupSession checkupSession)
+    {
+        var deviceName =
+            SanitizeFileNamePart(
+                checkupSession
+                    .DeviceInformation
+                    .Name);
+
+        var scanDate =
+            checkupSession.ScanDate
+            ?? DateTime.Now;
+
+        return
+            $"Weber-IT-Diagnose_{deviceName}_"
+            + $"{scanDate:yyyyMMdd-HHmm}.pdf";
+    }
+
+    private static string SanitizeFileNamePart(
+        string? value)
+    {
+        var normalizedValue =
+            string.IsNullOrWhiteSpace(
+                value)
+                ? "Windows-PC"
+                : value.Trim();
+
+        var invalidCharacters =
+            Path.GetInvalidFileNameChars();
+
+        var sanitizedCharacters =
+            normalizedValue
+                .Select(
+                    character =>
+                        invalidCharacters.Contains(
+                            character)
+                            ? '_'
+                            : character)
+                .ToArray();
+
+        var sanitizedValue =
+            new string(
+                sanitizedCharacters)
+                .Trim(
+                    ' ',
+                    '.',
+                    '_');
+
+        return string.IsNullOrWhiteSpace(
+            sanitizedValue)
+                ? "Windows-PC"
+                : sanitizedValue;
     }
 
     private static string BuildProgressErrorMessage(

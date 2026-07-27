@@ -11,6 +11,7 @@ using WeberIT.Checkup.App.Services.Devices;
 using WeberIT.Checkup.App.Services.Hardware;
 using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.Services.Maintenance;
+using WeberIT.Checkup.App.Services.Reports;
 using WeberIT.Checkup.App.Services.Scanners;
 using WeberIT.Checkup.App.Services.Security;
 using WeberIT.Checkup.App.Services.Startup;
@@ -29,257 +30,267 @@ public partial class App : Application
 
     public App()
     {
-        _host = Host.CreateDefaultBuilder()
-            .ConfigureServices((context, services) =>
-            {
-                services.AddSingleton<DatabasePaths>();
-                services.AddSingleton<DatabaseConnectionFactory>();
-                services.AddSingleton<DatabaseInitializer>();
+        _host =
+            Host.CreateDefaultBuilder()
+                .ConfigureServices(
+                    (context, services) =>
+                    {
+                        services.AddSingleton<DatabasePaths>();
+                        services.AddSingleton<DatabaseConnectionFactory>();
+                        services.AddSingleton<DatabaseInitializer>();
 
-                services.AddSingleton<MainViewModel>();
-                services.AddSingleton<MainWindow>();
+                        services.AddSingleton<MainViewModel>();
+                        services.AddSingleton<MainWindow>();
 
-                services.AddSingleton<DashboardViewModel>();
-                services.AddSingleton<DashboardView>();
+                        services.AddSingleton<DashboardViewModel>();
+                        services.AddSingleton<DashboardView>();
 
-                services.AddSingleton<CheckupViewModel>();
-                services.AddSingleton<CheckupView>();
+                        services.AddSingleton<CheckupViewModel>();
+                        services.AddSingleton<CheckupView>();
 
-                services.AddSingleton<MaintenanceViewModel>();
-                services.AddSingleton<MaintenanceView>();
+                        services.AddSingleton<MaintenanceViewModel>();
+                        services.AddSingleton<MaintenanceView>();
 
-                services.AddSingleton<
-                    INavigationService,
-                    NavigationService>();
+                        services.AddSingleton<
+                            INavigationService,
+                            NavigationService>();
 
-                services.AddSingleton<
-                    IDialogService,
-                    DialogService>();
+                        services.AddSingleton<
+                            IDialogService,
+                            DialogService>();
 
-                services.AddSingleton<
-                    ICheckupTaskActionExecutionCoordinator,
-                    CheckupTaskActionExecutionCoordinator>();
+                        services.AddSingleton<
+                            IFileDialogService,
+                            FileDialogService>();
 
-                services.AddSingleton<
-                    IGuidedTaskActionLauncher,
-                    GuidedTaskActionLauncher>();
+                        services.AddSingleton<
+                            IDiagnosticPdfReportService,
+                            DiagnosticPdfReportService>();
 
-                services.AddSingleton<
-                    IDeviceIdentityService,
-                    DeviceIdentityService>();
+                        services.AddSingleton<
+                            ICheckupTaskActionExecutionCoordinator,
+                            CheckupTaskActionExecutionCoordinator>();
 
-                services.AddSingleton<CustomerDevicesViewModel>();
-                services.AddSingleton<CustomersViewModel>();
-                services.AddSingleton<CustomersView>();
+                        services.AddSingleton<
+                            IGuidedTaskActionLauncher,
+                            GuidedTaskActionLauncher>();
 
-                services.AddTransient<CustomerEditViewModel>();
+                        services.AddSingleton<
+                            IDeviceIdentityService,
+                            DeviceIdentityService>();
 
-                services.AddSingleton<
-                    IMaintenanceProcessRunner,
-                    MaintenanceProcessRunner>();
+                        services.AddSingleton<CustomerDevicesViewModel>();
+                        services.AddSingleton<CustomersViewModel>();
+                        services.AddSingleton<CustomersView>();
 
-                services.AddSingleton<
-                    IProgramUpdateActionExecutor,
-                    ProgramUpdateActionExecutor>();
+                        services.AddTransient<CustomerEditViewModel>();
 
-                services.AddSingleton<CleanupActionExecutor>();
+                        services.AddSingleton<
+                            IMaintenanceProcessRunner,
+                            MaintenanceProcessRunner>();
 
-                services.AddSingleton<
-                    BrowserCacheCleanupExecutor>();
+                        services.AddSingleton<
+                            IProgramUpdateActionExecutor,
+                            ProgramUpdateActionExecutor>();
 
-                services.AddSingleton<
-                    WindowsTemporaryFilesCleanupExecutor>();
+                        services.AddSingleton<CleanupActionExecutor>();
 
-                services.AddSingleton<
-                    ICleanupActionExecutor,
-                    ControlledCleanupActionExecutor>();
+                        services.AddSingleton<
+                            BrowserCacheCleanupExecutor>();
 
-                services.AddSingleton<
-                    ISystemFileChecker,
-                    SystemFileChecker>();
+                        services.AddSingleton<
+                            WindowsTemporaryFilesCleanupExecutor>();
 
-                services.AddSingleton<
-                    IWindowsImageRepairService,
-                    WindowsImageRepairService>();
+                        services.AddSingleton<
+                            ICleanupActionExecutor,
+                            ControlledCleanupActionExecutor>();
 
-                services.AddSingleton<
-                    ICustomerRepository,
-                    SQLiteCustomerRepository>();
+                        services.AddSingleton<
+                            ISystemFileChecker,
+                            SystemFileChecker>();
 
-                services.AddSingleton<
-                    ICustomerService,
-                    CustomerService>();
+                        services.AddSingleton<
+                            IWindowsImageRepairService,
+                            WindowsImageRepairService>();
 
-                services.AddSingleton<
-                    IWindowsInformationProvider,
-                    WindowsInformationProvider>();
+                        services.AddSingleton<
+                            ICustomerRepository,
+                            SQLiteCustomerRepository>();
 
-                services.AddSingleton<
-                    IHardwareInformationProvider,
-                    HardwareInformationProvider>();
+                        services.AddSingleton<
+                            ICustomerService,
+                            CustomerService>();
 
-                services.AddSingleton<
-                    IStorageInformationProvider,
-                    StorageInformationProvider>();
+                        services.AddSingleton<
+                            IWindowsInformationProvider,
+                            WindowsInformationProvider>();
 
-                services.AddSingleton<
-                    ICleanupPotentialProvider,
-                    CleanupPotentialProvider>();
+                        services.AddSingleton<
+                            IHardwareInformationProvider,
+                            HardwareInformationProvider>();
 
-                services.AddSingleton<StartupCommandAnalyzer>();
-                services.AddSingleton<ShellLinkTargetReader>();
-                services.AddSingleton<StartupRegistrySourceReader>();
-                services.AddSingleton<StartupFolderSourceReader>();
+                        services.AddSingleton<
+                            IStorageInformationProvider,
+                            StorageInformationProvider>();
 
-                services.AddSingleton<
-                    IStartupInformationProvider,
-                    StartupInformationProvider>();
+                        services.AddSingleton<
+                            ICleanupPotentialProvider,
+                            CleanupPotentialProvider>();
 
-                services.AddSingleton<
-                    IDeviceDriverInformationProvider,
-                    DeviceDriverInformationProvider>();
+                        services.AddSingleton<StartupCommandAnalyzer>();
+                        services.AddSingleton<ShellLinkTargetReader>();
+                        services.AddSingleton<StartupRegistrySourceReader>();
+                        services.AddSingleton<StartupFolderSourceReader>();
 
-                services.AddSingleton<
-                    ISecurityInformationProvider,
-                    SecurityInformationProvider>();
+                        services.AddSingleton<
+                            IStartupInformationProvider,
+                            StartupInformationProvider>();
 
-                services.AddSingleton<
-                    IWindowsUpdateInformationProvider,
-                    WindowsUpdateInformationProvider>();
+                        services.AddSingleton<
+                            IDeviceDriverInformationProvider,
+                            DeviceDriverInformationProvider>();
 
-                services.AddSingleton<
-                    IProgramUpdateInformationProvider,
-                    ProgramUpdateInformationProvider>();
+                        services.AddSingleton<
+                            ISecurityInformationProvider,
+                            SecurityInformationProvider>();
 
-                services.AddSingleton<
-                    IRestartInformationProvider,
-                    RestartInformationProvider>();
+                        services.AddSingleton<
+                            IWindowsUpdateInformationProvider,
+                            WindowsUpdateInformationProvider>();
 
-                services.AddSingleton<
-                    IDeviceInformationScanner,
-                    DeviceInformationScanner>();
+                        services.AddSingleton<
+                            IProgramUpdateInformationProvider,
+                            ProgramUpdateInformationProvider>();
 
-                services.AddSingleton<
-                    IHardwareInformationScanner,
-                    HardwareInformationScanner>();
+                        services.AddSingleton<
+                            IRestartInformationProvider,
+                            RestartInformationProvider>();
 
-                services.AddSingleton<
-                    IOperatingSystemInformationScanner,
-                    OperatingSystemInformationScanner>();
+                        services.AddSingleton<
+                            IDeviceInformationScanner,
+                            DeviceInformationScanner>();
 
-                services.AddSingleton<
-                    IStorageInformationScanner,
-                    StorageInformationScanner>();
+                        services.AddSingleton<
+                            IHardwareInformationScanner,
+                            HardwareInformationScanner>();
 
-                services.AddSingleton<
-                    ICleanupPotentialScanner,
-                    CleanupPotentialScanner>();
+                        services.AddSingleton<
+                            IOperatingSystemInformationScanner,
+                            OperatingSystemInformationScanner>();
 
-                services.AddSingleton<
-                    IStartupInformationScanner,
-                    StartupInformationScanner>();
+                        services.AddSingleton<
+                            IStorageInformationScanner,
+                            StorageInformationScanner>();
 
-                services.AddSingleton<
-                    IDeviceDriverInformationScanner,
-                    DeviceDriverInformationScanner>();
+                        services.AddSingleton<
+                            ICleanupPotentialScanner,
+                            CleanupPotentialScanner>();
 
-                services.AddSingleton<
-                    ISecurityInformationScanner,
-                    SecurityInformationScanner>();
+                        services.AddSingleton<
+                            IStartupInformationScanner,
+                            StartupInformationScanner>();
 
-                services.AddSingleton<
-                    IWindowsUpdateInformationScanner,
-                    WindowsUpdateInformationScanner>();
+                        services.AddSingleton<
+                            IDeviceDriverInformationScanner,
+                            DeviceDriverInformationScanner>();
 
-                services.AddSingleton<
-                    IProgramUpdateInformationScanner,
-                    ProgramUpdateInformationScanner>();
+                        services.AddSingleton<
+                            ISecurityInformationScanner,
+                            SecurityInformationScanner>();
 
-                services.AddSingleton<
-                    IRestartInformationScanner,
-                    RestartInformationScanner>();
+                        services.AddSingleton<
+                            IWindowsUpdateInformationScanner,
+                            WindowsUpdateInformationScanner>();
 
-                services.AddSingleton<
-                    ICheckupScanner,
-                    CheckupScanner>();
+                        services.AddSingleton<
+                            IProgramUpdateInformationScanner,
+                            ProgramUpdateInformationScanner>();
 
-                services.AddSingleton<
-                    ISystemConditionAssessmentService,
-                    SystemConditionAssessmentService>();
+                        services.AddSingleton<
+                            IRestartInformationScanner,
+                            RestartInformationScanner>();
 
-                services.AddSingleton<
-                    IHardwareConditionAssessmentService,
-                    HardwareConditionAssessmentService>();
+                        services.AddSingleton<
+                            ICheckupScanner,
+                            CheckupScanner>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentService,
-                    CheckupAssessmentService>();
+                        services.AddSingleton<
+                            ISystemConditionAssessmentService,
+                            SystemConditionAssessmentService>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    StorageAssessmentRule>();
+                        services.AddSingleton<
+                            IHardwareConditionAssessmentService,
+                            HardwareConditionAssessmentService>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    CleanupPotentialAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentService,
+                            CheckupAssessmentService>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    StartupAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            StorageAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    DeviceDriverAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            CleanupPotentialAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    MemoryAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            StartupAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    TpmAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            DeviceDriverAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    OperatingSystemAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            MemoryAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    AntivirusAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            TpmAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    FirewallAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            OperatingSystemAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    UserAccountControlAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            AntivirusAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    SecurityCenterAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            FirewallAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    DriveEncryptionAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            UserAccountControlAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    SecureBootAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            SecurityCenterAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    WindowsUpdateAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            DriveEncryptionAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    RestartAssessmentRule>();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            SecureBootAssessmentRule>();
 
-                services.AddSingleton<
-                    ICheckupAssessmentRule,
-                    ProgramUpdateAssessmentRule>();
-            })
-            .Build();
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            WindowsUpdateAssessmentRule>();
+
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            RestartAssessmentRule>();
+
+                        services.AddSingleton<
+                            ICheckupAssessmentRule,
+                            ProgramUpdateAssessmentRule>();
+                    })
+                .Build();
     }
 
     public IServiceProvider Services =>
@@ -319,7 +330,8 @@ public partial class App : Application
                  Die Anwendung wird beendet, damit keine Daten an einem falschen Speicherort angelegt werden.
                  """);
 
-            Shutdown(-1);
+            Shutdown(
+                -1);
 
             return;
         }
@@ -331,7 +343,8 @@ public partial class App : Application
 
         mainWindow.Show();
 
-        base.OnStartup(e);
+        base.OnStartup(
+            e);
     }
 
     protected override async void OnExit(
@@ -341,6 +354,7 @@ public partial class App : Application
 
         _host.Dispose();
 
-        base.OnExit(e);
+        base.OnExit(
+            e);
     }
 }

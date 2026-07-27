@@ -819,6 +819,106 @@
                         Margin="0,24,0,0"
                         DataContext="{Binding CurrentCheckup.ProgramUpdateInformation}" />
 
+                    <Border
+                        Margin="0,24,0,0"
+                        Padding="20"
+                        Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource AccentBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+
+                        <Border.Style>
+
+                            <Style TargetType="Border">
+
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Collapsed" />
+
+                                <Style.Triggers>
+
+                                    <DataTrigger
+                                        Binding="{Binding ShouldShowDiagnosticPdfExport}"
+                                        Value="True">
+
+                                        <Setter
+                                            Property="Visibility"
+                                            Value="Visible" />
+
+                                    </DataTrigger>
+
+                                </Style.Triggers>
+
+                            </Style>
+
+                        </Border.Style>
+
+                        <Grid>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="56" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border
+                                Grid.Column="0"
+                                Width="42"
+                                Height="42"
+                                VerticalAlignment="Top"
+                                Background="{StaticResource SurfaceSecondaryBrush}"
+                                CornerRadius="10">
+
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="20"
+                                    Foreground="{StaticResource AccentBrush}"
+                                    Text="&#xE8A5;" />
+
+                            </Border>
+
+                            <StackPanel
+                                Grid.Column="1"
+                                Margin="0,0,24,0"
+                                VerticalAlignment="Center">
+
+                                <TextBlock
+                                    FontSize="17"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Text="Diagnosebericht als PDF" />
+
+                                <TextBlock
+                                    Margin="0,5,0,0"
+                                    FontSize="12"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Text="Exportiert diesen kundenunspezifisch gestarteten Diagnosescan als eigenständigen technischen Bericht. Kundenspezifische Vorher-/Nachher-Berichte werden separat umgesetzt."
+                                    TextWrapping="Wrap" />
+
+                                <TextBlock
+                                    Margin="0,8,0,0"
+                                    FontSize="11"
+                                    Foreground="{StaticResource TextMutedBrush}"
+                                    Text="{Binding DiagnosticPdfExportStatusText}"
+                                    TextWrapping="Wrap" />
+
+                            </StackPanel>
+
+                            <Button
+                                Grid.Column="2"
+                                MinWidth="210"
+                                Height="42"
+                                VerticalAlignment="Center"
+                                Content="PDF-Bericht exportieren"
+                                Command="{Binding ExportDiagnosticPdfCommand}"
+                                Style="{StaticResource AccentButtonStyle}" />
+
+                        </Grid>
+
+                    </Border>
+
                 </StackPanel>
 
             </Grid>
