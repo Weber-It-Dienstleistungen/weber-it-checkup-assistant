@@ -2,6 +2,10 @@
 
 public class CheckupSession
 {
+    private List<CustomerCheckupVisit>
+        _customerCheckupVisits =
+            new();
+
     public DateTime? ScanDate { get; set; }
 
     public DeviceInformation DeviceInformation { get; set; } =
@@ -60,4 +64,15 @@ public class CheckupSession
 
     public CheckupTaskList TaskList { get; set; } =
         new();
+
+    public List<CustomerCheckupVisit> CustomerCheckupVisits
+    {
+        get =>
+            _customerCheckupVisits;
+
+        set =>
+            _customerCheckupVisits =
+                value
+                ?? new List<CustomerCheckupVisit>();
+    }
 }
