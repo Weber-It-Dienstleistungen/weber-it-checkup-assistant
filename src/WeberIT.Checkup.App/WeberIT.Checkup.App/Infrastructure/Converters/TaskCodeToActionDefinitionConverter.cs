@@ -4,7 +4,8 @@ using WeberIT.Checkup.App.Services.Tasks;
 
 namespace WeberIT.Checkup.App.Infrastructure.Converters;
 
-public class TaskCodeToActionDefinitionConverter : IValueConverter
+public class TaskCodeToActionDefinitionConverter :
+    IValueConverter
 {
     public object Convert(
         object value,
@@ -16,8 +17,14 @@ public class TaskCodeToActionDefinitionConverter : IValueConverter
             value as string
             ?? string.Empty;
 
-        return CheckupTaskActionCatalog.GetDefinition(
-            taskCode);
+        var maintenanceDefinition =
+            CheckupStandardTaskCatalog
+                .GetActionDefinition(
+                    taskCode);
+
+        return maintenanceDefinition
+               ?? CheckupTaskActionCatalog.GetDefinition(
+                   taskCode);
     }
 
     public object ConvertBack(

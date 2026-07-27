@@ -261,6 +261,107 @@ public class CheckupTaskList : INotifyPropertyChanged
             ? $"Aufgabenmodell Version {TaskListVersion}"
             : "Historischer Checkup ohne Aufgabenliste";
 
+    public bool EnsureTask(
+        CheckupTask task,
+        int minimumTaskListVersion)
+    {
+        ValidateTaskForAddition(
+            task);
+
+        if (minimumTaskListVersion < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(minimumTaskListVersion),
+                "Die Mindestversion der Aufgabenliste "
+                + "muss größer als null sein.");
+        }
+
+        var existingTask =
+            Tasks.FirstOrDefault(
+                currentTask =>
+                    string.Equals(
+                        currentTask.TaskCode,
+                        task.TaskCode,
+                        StringComparison.Ordinal));
+
+        if (existingTask is not null)
+        {
+            if (TaskListVersion
+                >= minimumTaskListVersion)
+            {
+                return false;
+            }
+
+            var previousVersion =
+                TaskListVersion;
+
+            TaskListVersion =
+                minimumTaskListVersion;
+
+            NotifyTaskCollectionChanged();
+
+            try
+            {
+                RequestPersistence();
+            }
+            catch
+            {
+                TaskListVersion =
+                    previousVersion;
+
+                NotifyTaskCollectionChanged();
+
+                throw;
+            }
+
+            return false;
+        }
+
+        if (Tasks.Any(
+                currentTask =>
+                    currentTask.Id
+                    == task.Id))
+        {
+            throw new InvalidOperationException(
+                "Die neue Aufgabe verwendet eine bereits "
+                + "vorhandene Aufgabenkennung.");
+        }
+
+        var previousTaskListVersion =
+            TaskListVersion;
+
+        Tasks.Add(
+            task);
+
+        TaskListVersion =
+            Math.Max(
+                TaskListVersion,
+                minimumTaskListVersion);
+
+        NotifyTaskCollectionChanged();
+        NotifySummaryChanged();
+
+        try
+        {
+            RequestPersistence();
+        }
+        catch
+        {
+            Tasks.Remove(
+                task);
+
+            TaskListVersion =
+                previousTaskListVersion;
+
+            NotifyTaskCollectionChanged();
+            NotifySummaryChanged();
+
+            throw;
+        }
+
+        return true;
+    }
+
     public void ChangeTaskStatus(
         CheckupTask task,
         CheckupTaskStatus status,
@@ -317,19 +418,8 @@ public class CheckupTaskList : INotifyPropertyChanged
         ValidateActionResult(
             actionResult);
 
-        if (Tasks
-            .SelectMany(
-                existingTask =>
-                    existingTask.ActionResults)
-            .Any(
-                existingResult =>
-                    existingResult.Id
-                    == actionResult.Id))
-        {
-            throw new InvalidOperationException(
-                "Das Aktionsergebnis ist bereits in "
-                + "dieser Aufgabenliste enthalten.");
-        }
+        EnsureActionResultIsUnique(
+            actionResult);
 
         task.AddActionResult(
             actionResult);
@@ -346,6 +436,131 @@ public class CheckupTaskList : INotifyPropertyChanged
                 actionResult.Id);
 
             NotifyActionSummaryChanged();
+
+            throw;
+        }
+    }
+
+    public void ApplyTaskActionOutcome(
+        CheckupTask task,
+        CheckupTaskActionResult actionResult,
+        CheckupTaskStatus resultingStatus,
+        string statusReason,
+        CheckupTask? followUpTask = null)
+    {
+        EnsureTaskBelongsToList(
+            task);
+
+        ValidateActionResult(
+            actionResult);
+
+        EnsureActionResultIsUnique(
+            actionResult);
+
+        if (string.IsNullOrWhiteSpace(
+                statusReason))
+        {
+            throw new ArgumentException(
+                "Für den abschließenden Aufgabenstatus "
+                + "ist eine Begründung erforderlich.",
+                nameof(statusReason));
+        }
+
+        if (followUpTask is not null)
+        {
+            ValidateTaskForAddition(
+                followUpTask);
+
+            if (Tasks.Any(
+                    existingTask =>
+                        existingTask.Id
+                        == followUpTask.Id
+                        && !string.Equals(
+                            existingTask.TaskCode,
+                            followUpTask.TaskCode,
+                            StringComparison.Ordinal)))
+            {
+                throw new InvalidOperationException(
+                    "Die Folgeaufgabe verwendet eine bereits "
+                    + "vorhandene Aufgabenkennung.");
+            }
+        }
+
+        var previousStatus =
+            task.Status;
+
+        var previousStatusChangedAt =
+            task.StatusChangedAt;
+
+        var previousStatusReason =
+            task.StatusReason;
+
+        var previousTechnicianNote =
+            task.TechnicianNote;
+
+        var followUpTaskWasAdded =
+            false;
+
+        task.AddActionResult(
+            actionResult);
+
+        task.ApplyStatus(
+            resultingStatus,
+            statusReason,
+            task.TechnicianNote);
+
+        if (followUpTask is not null
+            && !Tasks.Any(
+                existingTask =>
+                    string.Equals(
+                        existingTask.TaskCode,
+                        followUpTask.TaskCode,
+                        StringComparison.Ordinal)))
+        {
+            Tasks.Add(
+                followUpTask);
+
+            followUpTaskWasAdded =
+                true;
+        }
+
+        NotifyActionSummaryChanged();
+        NotifySummaryChanged();
+
+        if (followUpTaskWasAdded)
+        {
+            NotifyTaskCollectionChanged();
+        }
+
+        try
+        {
+            RequestPersistence();
+        }
+        catch
+        {
+            task.RemoveActionResult(
+                actionResult.Id);
+
+            task.RestoreStatus(
+                previousStatus,
+                previousStatusChangedAt,
+                previousStatusReason,
+                previousTechnicianNote);
+
+            if (followUpTaskWasAdded
+                && followUpTask is not null)
+            {
+                Tasks.Remove(
+                    followUpTask);
+            }
+
+            NotifyActionSummaryChanged();
+            NotifySummaryChanged();
+
+            if (followUpTaskWasAdded)
+            {
+                NotifyTaskCollectionChanged();
+            }
 
             throw;
         }
@@ -391,7 +606,8 @@ public class CheckupTaskList : INotifyPropertyChanged
         var previousCompletionCheckResult =
             LastCompletionCheckResult;
 
-        foreach (var mapping in taskMappings)
+        foreach (var mapping
+                 in taskMappings)
         {
             var status =
                 mapping.Result.FindingStillPresent
@@ -466,6 +682,24 @@ public class CheckupTaskList : INotifyPropertyChanged
             throw new InvalidOperationException(
                 "Die ausgewählte Aufgabe gehört nicht "
                 + "zu dieser Aufgabenliste.");
+        }
+    }
+
+    private void EnsureActionResultIsUnique(
+        CheckupTaskActionResult actionResult)
+    {
+        if (Tasks
+            .SelectMany(
+                existingTask =>
+                    existingTask.ActionResults)
+            .Any(
+                existingResult =>
+                    existingResult.Id
+                    == actionResult.Id))
+        {
+            throw new InvalidOperationException(
+                "Das Aktionsergebnis ist bereits in "
+                + "dieser Aufgabenliste enthalten.");
         }
     }
 
@@ -568,6 +802,87 @@ public class CheckupTaskList : INotifyPropertyChanged
                 "Die Aufgabenlage hat sich während des "
                 + "Kontrollscans verändert. Es wurde kein "
                 + "Status übernommen.");
+        }
+    }
+
+    private static void ValidateTaskForAddition(
+        CheckupTask task)
+    {
+        ArgumentNullException.ThrowIfNull(
+            task);
+
+        if (task.Id == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Die Aufgabe benötigt eine eindeutige Kennung.",
+                nameof(task));
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                task.TaskCode))
+        {
+            throw new ArgumentException(
+                "Die Aufgabe benötigt einen stabilen Aufgabencode.",
+                nameof(task));
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                task.Title))
+        {
+            throw new ArgumentException(
+                "Die Aufgabe benötigt eine verständliche Bezeichnung.",
+                nameof(task));
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                task.Description))
+        {
+            throw new ArgumentException(
+                "Die Aufgabe benötigt eine technische Beschreibung.",
+                nameof(task));
+        }
+
+        if (!Enum.IsDefined(
+                typeof(CheckupTaskPriority),
+                task.Priority))
+        {
+            throw new ArgumentException(
+                "Die Aufgabenpriorität ist ungültig.",
+                nameof(task));
+        }
+
+        if (!Enum.IsDefined(
+                typeof(CheckupTaskCategory),
+                task.Category))
+        {
+            throw new ArgumentException(
+                "Die Aufgabenkategorie ist ungültig.",
+                nameof(task));
+        }
+
+        if (!Enum.IsDefined(
+                typeof(CheckupTaskStatus),
+                task.Status))
+        {
+            throw new ArgumentException(
+                "Der Aufgabenstatus ist ungültig.",
+                nameof(task));
+        }
+
+        if (task.SourceFindingCodes is null)
+        {
+            throw new ArgumentException(
+                "Die Liste der zugrunde liegenden Befunde "
+                + "darf nicht fehlen.",
+                nameof(task));
+        }
+
+        if (task.ActionResults is null)
+        {
+            throw new ArgumentException(
+                "Die technische Aktionshistorie "
+                + "darf nicht fehlen.",
+                nameof(task));
         }
     }
 
@@ -748,6 +1063,33 @@ public class CheckupTaskList : INotifyPropertyChanged
         PersistenceRequested?.Invoke(
             this,
             EventArgs.Empty);
+    }
+
+    private void NotifyTaskCollectionChanged()
+    {
+        OnPropertyChanged(
+            nameof(Tasks));
+
+        OnPropertyChanged(
+            nameof(TaskListVersion));
+
+        OnPropertyChanged(
+            nameof(VersionText));
+
+        OnPropertyChanged(
+            nameof(IsAvailable));
+
+        OnPropertyChanged(
+            nameof(HasTasks));
+
+        OnPropertyChanged(
+            nameof(TotalTaskCount));
+
+        OnPropertyChanged(
+            nameof(AvailabilityText));
+
+        OnPropertyChanged(
+            nameof(ProgressText));
     }
 
     private void NotifySummaryChanged()

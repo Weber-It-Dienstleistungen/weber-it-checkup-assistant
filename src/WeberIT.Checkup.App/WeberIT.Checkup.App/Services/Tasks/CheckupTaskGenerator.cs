@@ -4,12 +4,12 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 
 public static class CheckupTaskGenerator
 {
-    private const int CurrentTaskListVersion =
-        2;
-
     public static CheckupTaskList Generate(
         IReadOnlyCollection<CheckupFinding> findings)
     {
+        ArgumentNullException.ThrowIfNull(
+            findings);
+
         var createdAt =
             DateTime.Now;
 
@@ -17,7 +17,8 @@ public static class CheckupTaskGenerator
             findings
                 .Select(
                     finding =>
-                        CreateCandidate(finding))
+                        CreateCandidate(
+                            finding))
                 .Where(
                     candidate =>
                         candidate is not null)
@@ -28,13 +29,37 @@ public static class CheckupTaskGenerator
             taskCandidates
                 .GroupBy(
                     candidate =>
-                        BuildGroupKey(candidate),
+                        BuildGroupKey(
+                            candidate),
                     StringComparer.OrdinalIgnoreCase)
                 .Select(
                     group =>
                         CreateTask(
                             group.ToList(),
                             createdAt))
+                .ToList();
+
+        foreach (var standardTask
+                 in CheckupStandardTaskCatalog
+                     .CreateStandardTasks(
+                         createdAt))
+        {
+            if (tasks.Any(
+                    existingTask =>
+                        string.Equals(
+                            existingTask.TaskCode,
+                            standardTask.TaskCode,
+                            StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            tasks.Add(
+                standardTask);
+        }
+
+        tasks =
+            tasks
                 .OrderByDescending(
                     task =>
                         GetPriorityOrder(
@@ -51,7 +76,8 @@ public static class CheckupTaskGenerator
         return new CheckupTaskList
         {
             TaskListVersion =
-                CurrentTaskListVersion,
+                CheckupStandardTaskCatalog
+                    .CurrentTaskListVersion,
 
             CreatedAt =
                 createdAt,
@@ -64,6 +90,9 @@ public static class CheckupTaskGenerator
     private static TaskCandidate? CreateCandidate(
         CheckupFinding finding)
     {
+        ArgumentNullException.ThrowIfNull(
+            finding);
+
         var template =
             GetTaskTemplate(
                 finding.Code);
@@ -351,7 +380,8 @@ public static class CheckupTaskGenerator
                         candidate.Finding.Code)
                 .Where(
                     code =>
-                        !string.IsNullOrWhiteSpace(code))
+                        !string.IsNullOrWhiteSpace(
+                            code))
                 .Distinct(
                     StringComparer.OrdinalIgnoreCase)
                 .OrderBy(
@@ -416,7 +446,10 @@ public static class CheckupTaskGenerator
             candidates
                 .Select(
                     candidate =>
-                        candidate.Finding.Description?.Trim())
+                        candidate
+                            .Finding
+                            .Description?
+                            .Trim())
                 .Where(
                     description =>
                         !string.IsNullOrWhiteSpace(
