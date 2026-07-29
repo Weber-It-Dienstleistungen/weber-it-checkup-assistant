@@ -4,11 +4,24 @@ namespace WeberIT.Checkup.App.Services.Interfaces;
 
 public interface IDialogService
 {
-    bool? ShowCustomerEditDialog(Customer customer, bool isNewCustomer);
+    bool? ShowCustomerEditDialog(
+        Customer customer,
+        bool isNewCustomer);
 
-    bool Confirm(string title, string message);
+    CustomerCheckupCompletionDraft?
+        ShowCustomerCheckupCompletionDialog(
+            string deviceDisplayName,
+            CustomerCheckupVisit customerCheckupVisit,
+            CustomerCheckupComparison comparison);
 
-    void ShowError(string title, string message);
+    bool Confirm(
+        string title,
+        string message);
 
-    void CloseDialog(bool? dialogResult);
+    void ShowError(
+        string title,
+        string message);
+
+    void CloseDialog(
+        bool? dialogResult);
 }

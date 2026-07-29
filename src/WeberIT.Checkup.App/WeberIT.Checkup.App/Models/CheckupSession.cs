@@ -99,20 +99,57 @@ public class CheckupSession
         CustomerCheckupVisits.Count;
 
     [JsonIgnore]
-    public string CurrentCheckupTitle =>
-        HasInProgressCustomerCheckupVisit
-            ? "Eingangsscan des laufenden Kundencheckups"
-            : "Gespeicherter Systemcheck";
+    public string CurrentCheckupTitle
+    {
+        get
+        {
+            var currentVisit =
+                CurrentCustomerCheckupVisit;
+
+            if (currentVisit is null)
+            {
+                return
+                    "Gespeicherter Systemcheck";
+            }
+
+            return currentVisit.IsCompletionPrepared
+                ? "Arbeitsstand mit vorbereitetem Abschluss"
+                : "Arbeitsstand des laufenden Kundencheckups";
+        }
+    }
 
     [JsonIgnore]
-    public string CurrentCheckupDescription =>
-        HasInProgressCustomerCheckupVisit
-            ? "Dieser Scan ist der aktuelle Arbeitsstand. "
-              + "Für den laufenden Vorgang wurde eine "
-              + "unabhängige Kopie als unveränderlicher "
-              + "Vorher-Zustand gesichert."
-            : "Vollständiger Stand des zuletzt "
-              + "gespeicherten Scans.";
+    public string CurrentCheckupDescription
+    {
+        get
+        {
+            var currentVisit =
+                CurrentCustomerCheckupVisit;
+
+            if (currentVisit is null)
+            {
+                return
+                    "Vollständiger Stand des zuletzt "
+                    + "gespeicherten Scans.";
+            }
+
+            if (currentVisit.IsCompletionPrepared)
+            {
+                return
+                    "Der bisherige Arbeitsstand bleibt für die "
+                    + "Aktionsdokumentation erhalten. Der Nachher-Scan, "
+                    + "der Vorher-/Nachher-Vergleich und die "
+                    + "Technikerangaben wurden bereits als "
+                    + "Abschlussentwurf im Vorgang gesichert.";
+            }
+
+            return
+                "Dieser Scan ist der aktuelle Arbeitsstand. "
+                + "Für den laufenden Vorgang wurde eine "
+                + "unabhängige Kopie als unveränderlicher "
+                + "Vorher-Zustand gesichert.";
+        }
+    }
 
     [JsonIgnore]
     public string CustomerCheckupWorkflowText
@@ -127,6 +164,28 @@ public class CheckupSession
                 return
                     "Für dieses Gerät läuft derzeit "
                     + "kein Kundencheckup.";
+            }
+
+            if (currentVisit.IsCompletionPrepared)
+            {
+                var afterScanDate =
+                    currentVisit.AfterCheckup?.ScanDate;
+
+                var afterScanText =
+                    afterScanDate.HasValue
+                        ? afterScanDate.Value
+                            .ToString(
+                                "dd.MM.yyyy HH:mm")
+                          + " Uhr"
+                        : "unbekanntem Zeitpunkt";
+
+                return
+                    $"Die Abschlusskontrolle vom {afterScanText} "
+                    + "wurde als Nachher-Zustand gesichert. "
+                    + "Vergleich und Technikerangaben liegen als "
+                    + "Entwurf vor. Der Kundencheckup bleibt bis "
+                    + "zur späteren Berichtserstellung und "
+                    + "endgültigen Bestätigung in Bearbeitung.";
             }
 
             return

@@ -4,8 +4,11 @@ namespace WeberIT.Checkup.App.Models;
 
 public sealed class CustomerCheckupVisit
 {
+    public const int CurrentVisitModelVersion =
+        3;
+
     public int VisitModelVersion { get; set; } =
-        2;
+        CurrentVisitModelVersion;
 
     public Guid Id { get; set; } =
         Guid.NewGuid();
@@ -60,6 +63,12 @@ public sealed class CustomerCheckupVisit
         Comparison is not null;
 
     [JsonIgnore]
+    public bool IsCompletionPrepared =>
+        IsInProgress
+        && HasAfterCheckup
+        && HasComparison;
+
+    [JsonIgnore]
     public string StatusText =>
         Status switch
         {
@@ -70,7 +79,9 @@ public sealed class CustomerCheckupVisit
                 "Abgebrochen",
 
             _ =>
-                "In Bearbeitung"
+                IsCompletionPrepared
+                    ? "Abschluss vorbereitet"
+                    : "In Bearbeitung"
         };
 
     [JsonIgnore]
@@ -128,37 +139,22 @@ public sealed class CustomerCheckupVisit
         ArgumentNullException.ThrowIfNull(
             comparison);
 
-        if (!IsInProgress)
-        {
-            throw new InvalidOperationException(
-                "Ein Vergleich kann nur für einen laufenden "
-                + "Kundencheckup gespeichert werden.");
-        }
+        EnsureInProgress();
 
-        if (comparison.CustomerCheckupVisitId
-            != Id)
-        {
-            throw new ArgumentException(
-                "Das Vergleichsergebnis gehört nicht zu diesem "
-                + "Kundencheckup.",
-                nameof(comparison));
-        }
+        ValidateComparison(
+            comparison,
+            null);
 
-        if (comparison.BeforeScanDate
-            != BeforeCheckup.ScanDate)
-        {
-            throw new ArgumentException(
-                "Das Vergleichsergebnis verwendet nicht den "
-                + "gesicherten Eingangsscan dieses Vorgangs.",
-                nameof(comparison));
-        }
+        VisitModelVersion =
+            CurrentVisitModelVersion;
 
         Comparison =
             comparison;
     }
 
-    public void Complete(
+    public void PrepareCompletion(
         CheckupSession afterCheckup,
+        CustomerCheckupComparison comparison,
         string technicianSummary,
         string nextSteps,
         DateTime? nextCheckupDate)
@@ -166,38 +162,115 @@ public sealed class CustomerCheckupVisit
         ArgumentNullException.ThrowIfNull(
             afterCheckup);
 
-        if (!IsInProgress)
-        {
-            throw new InvalidOperationException(
-                "Nur ein laufender Kundencheckup kann "
-                + "abgeschlossen werden.");
-        }
+        ArgumentNullException.ThrowIfNull(
+            comparison);
+
+        EnsureInProgress();
 
         if (!afterCheckup.ScanDate.HasValue)
         {
             throw new ArgumentException(
-                "Der Kundencheckup kann nur mit einem "
-                + "abgeschlossenen Kontrollscan beendet werden.",
+                "Der Abschlussentwurf benötigt einen "
+                + "abgeschlossenen Nachher-Scan.",
                 nameof(afterCheckup));
         }
+
+        ValidateComparison(
+            comparison,
+            afterCheckup.ScanDate.Value);
+
+        ValidateCompletionDetails(
+            technicianSummary,
+            nextSteps,
+            nextCheckupDate,
+            afterCheckup.ScanDate.Value);
+
+        VisitModelVersion =
+            CurrentVisitModelVersion;
 
         AfterCheckup =
             CheckupSnapshot.Capture(
                 afterCheckup);
 
-        TechnicianSummary =
-            technicianSummary?.Trim()
-            ?? string.Empty;
+        Comparison =
+            comparison;
 
-        NextSteps =
-            nextSteps?.Trim()
-            ?? string.Empty;
-
-        NextCheckupDate =
-            nextCheckupDate;
+        ApplyCompletionDetails(
+            technicianSummary,
+            nextSteps,
+            nextCheckupDate!.Value);
 
         CompletedAt =
-            afterCheckup.ScanDate.Value;
+            null;
+
+        CancellationReason =
+            string.Empty;
+
+        Status =
+            CustomerCheckupVisitStatus.InProgress;
+    }
+
+    public void UpdateCompletionDetails(
+        string technicianSummary,
+        string nextSteps,
+        DateTime? nextCheckupDate)
+    {
+        EnsureInProgress();
+
+        if (!IsCompletionPrepared
+            || AfterCheckup?.ScanDate is null)
+        {
+            throw new InvalidOperationException(
+                "Die Technikerangaben können erst geändert werden, "
+                + "wenn Nachher-Scan und Vergleich als "
+                + "Abschlussentwurf vorliegen.");
+        }
+
+        var afterScanDate =
+            AfterCheckup.ScanDate.Value;
+
+        ValidateCompletionDetails(
+            technicianSummary,
+            nextSteps,
+            nextCheckupDate,
+            afterScanDate);
+
+        VisitModelVersion =
+            CurrentVisitModelVersion;
+
+        ApplyCompletionDetails(
+            technicianSummary,
+            nextSteps,
+            nextCheckupDate!.Value);
+    }
+
+    public void CompletePrepared()
+    {
+        EnsureInProgress();
+
+        if (!IsCompletionPrepared
+            || AfterCheckup?.ScanDate is null)
+        {
+            throw new InvalidOperationException(
+                "Der Kundencheckup kann erst abgeschlossen werden, "
+                + "wenn Nachher-Scan und Vergleich vollständig "
+                + "vorbereitet wurden.");
+        }
+
+        var afterScanDate =
+            AfterCheckup.ScanDate.Value;
+
+        ValidateCompletionDetails(
+            TechnicianSummary,
+            NextSteps,
+            NextCheckupDate,
+            afterScanDate);
+
+        VisitModelVersion =
+            CurrentVisitModelVersion;
+
+        CompletedAt =
+            afterScanDate;
 
         CancellationReason =
             string.Empty;
@@ -209,12 +282,7 @@ public sealed class CustomerCheckupVisit
     public void Cancel(
         string reason)
     {
-        if (!IsInProgress)
-        {
-            throw new InvalidOperationException(
-                "Nur ein laufender Kundencheckup kann "
-                + "abgebrochen werden.");
-        }
+        EnsureInProgress();
 
         if (string.IsNullOrWhiteSpace(
                 reason))
@@ -233,5 +301,107 @@ public sealed class CustomerCheckupVisit
 
         Status =
             CustomerCheckupVisitStatus.Cancelled;
+    }
+
+    private void EnsureInProgress()
+    {
+        if (IsInProgress)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            "Nur ein laufender Kundencheckup kann "
+            + "bearbeitet werden.");
+    }
+
+    private void ValidateComparison(
+        CustomerCheckupComparison comparison,
+        DateTime? expectedAfterScanDate)
+    {
+        if (comparison.CustomerCheckupVisitId
+            != Id)
+        {
+            throw new ArgumentException(
+                "Das Vergleichsergebnis gehört nicht zu diesem "
+                + "Kundencheckup.",
+                nameof(comparison));
+        }
+
+        if (comparison.BeforeScanDate
+            != BeforeCheckup.ScanDate)
+        {
+            throw new ArgumentException(
+                "Das Vergleichsergebnis verwendet nicht den "
+                + "gesicherten Eingangsscan dieses Vorgangs.",
+                nameof(comparison));
+        }
+
+        if (expectedAfterScanDate.HasValue
+            && comparison.AfterScanDate
+                != expectedAfterScanDate)
+        {
+            throw new ArgumentException(
+                "Das Vergleichsergebnis gehört nicht zum "
+                + "übergebenen Nachher-Scan.",
+                nameof(comparison));
+        }
+    }
+
+    private static void ValidateCompletionDetails(
+        string technicianSummary,
+        string nextSteps,
+        DateTime? nextCheckupDate,
+        DateTime afterScanDate)
+    {
+        if (string.IsNullOrWhiteSpace(
+                technicianSummary))
+        {
+            throw new ArgumentException(
+                "Für den Abschlussentwurf ist eine "
+                + "Technikerzusammenfassung erforderlich.",
+                nameof(technicianSummary));
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                nextSteps))
+        {
+            throw new ArgumentException(
+                "Für den Abschlussentwurf müssen die nächsten "
+                + "Schritte dokumentiert werden.",
+                nameof(nextSteps));
+        }
+
+        if (!nextCheckupDate.HasValue)
+        {
+            throw new ArgumentException(
+                "Für den Abschlussentwurf muss der nächste "
+                + "Checkup-Termin festgelegt werden.",
+                nameof(nextCheckupDate));
+        }
+
+        if (nextCheckupDate.Value.Date
+            <= afterScanDate.Date)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(nextCheckupDate),
+                "Der nächste Checkup-Termin muss nach dem "
+                + "Nachher-Scan liegen.");
+        }
+    }
+
+    private void ApplyCompletionDetails(
+        string technicianSummary,
+        string nextSteps,
+        DateTime nextCheckupDate)
+    {
+        TechnicianSummary =
+            technicianSummary.Trim();
+
+        NextSteps =
+            nextSteps.Trim();
+
+        NextCheckupDate =
+            nextCheckupDate.Date;
     }
 }
