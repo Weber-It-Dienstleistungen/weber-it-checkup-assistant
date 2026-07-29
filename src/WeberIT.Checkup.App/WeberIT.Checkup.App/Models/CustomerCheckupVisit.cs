@@ -5,7 +5,7 @@ namespace WeberIT.Checkup.App.Models;
 public sealed class CustomerCheckupVisit
 {
     public int VisitModelVersion { get; set; } =
-        1;
+        2;
 
     public Guid Id { get; set; } =
         Guid.NewGuid();
@@ -22,6 +22,8 @@ public sealed class CustomerCheckupVisit
         new();
 
     public CheckupSnapshot? AfterCheckup { get; set; }
+
+    public CustomerCheckupComparison? Comparison { get; set; }
 
     public string TechnicianSummary { get; set; } =
         string.Empty;
@@ -52,6 +54,10 @@ public sealed class CustomerCheckupVisit
     [JsonIgnore]
     public bool HasAfterCheckup =>
         AfterCheckup is not null;
+
+    [JsonIgnore]
+    public bool HasComparison =>
+        Comparison is not null;
 
     [JsonIgnore]
     public string StatusText =>
@@ -114,6 +120,41 @@ public sealed class CustomerCheckupVisit
                 CheckupSnapshot.Capture(
                     beforeCheckup)
         };
+    }
+
+    public void StoreComparison(
+        CustomerCheckupComparison comparison)
+    {
+        ArgumentNullException.ThrowIfNull(
+            comparison);
+
+        if (!IsInProgress)
+        {
+            throw new InvalidOperationException(
+                "Ein Vergleich kann nur für einen laufenden "
+                + "Kundencheckup gespeichert werden.");
+        }
+
+        if (comparison.CustomerCheckupVisitId
+            != Id)
+        {
+            throw new ArgumentException(
+                "Das Vergleichsergebnis gehört nicht zu diesem "
+                + "Kundencheckup.",
+                nameof(comparison));
+        }
+
+        if (comparison.BeforeScanDate
+            != BeforeCheckup.ScanDate)
+        {
+            throw new ArgumentException(
+                "Das Vergleichsergebnis verwendet nicht den "
+                + "gesicherten Eingangsscan dieses Vorgangs.",
+                nameof(comparison));
+        }
+
+        Comparison =
+            comparison;
     }
 
     public void Complete(

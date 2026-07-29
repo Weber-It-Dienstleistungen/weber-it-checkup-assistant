@@ -7,6 +7,7 @@ using WeberIT.Checkup.App.Repositories.Interfaces;
 using WeberIT.Checkup.App.Services;
 using WeberIT.Checkup.App.Services.Assessment;
 using WeberIT.Checkup.App.Services.Cleanup;
+using WeberIT.Checkup.App.Services.Comparison;
 using WeberIT.Checkup.App.Services.Devices;
 using WeberIT.Checkup.App.Services.Hardware;
 using WeberIT.Checkup.App.Services.Interfaces;
@@ -66,6 +67,10 @@ public partial class App : Application
                         services.AddSingleton<
                             IDiagnosticPdfReportService,
                             DiagnosticPdfReportService>();
+
+                        services.AddSingleton<
+                            ICustomerCheckupComparisonService,
+                            CustomerCheckupComparisonService>();
 
                         services.AddSingleton<
                             ICheckupTaskActionExecutionCoordinator,
