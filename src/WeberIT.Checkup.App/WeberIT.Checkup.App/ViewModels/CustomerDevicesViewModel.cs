@@ -110,6 +110,15 @@ public class CustomerDevicesViewModel : BaseViewModel
                     && SelectedDevice is not null
                     && HasSelectedDevicePreparedCompletion);
 
+        CompleteCustomerCheckupCommand =
+            new RelayCommand(
+                _ =>
+                    CompletePreparedCustomerCheckup(),
+                _ =>
+                    SelectedCustomer is not null
+                    && SelectedDevice is not null
+                    && HasSelectedDevicePreparedCompletion);
+
         DeleteDeviceCommand =
             new RelayCommand(
                 _ =>
@@ -125,6 +134,11 @@ public class CustomerDevicesViewModel : BaseViewModel
     public RelayCommand RescanDeviceCommand { get; }
 
     public RelayCommand ExportCustomerCheckupReportCommand
+    {
+        get;
+    }
+
+    public RelayCommand CompleteCustomerCheckupCommand
     {
         get;
     }
@@ -150,19 +164,14 @@ public class CustomerDevicesViewModel : BaseViewModel
                 value;
 
             OnPropertyChanged();
-
             OnPropertyChanged(
                 nameof(Devices));
-
             OnPropertyChanged(
                 nameof(DeviceCountText));
-
             OnPropertyChanged(
                 nameof(HasSelectedDeviceInProgressCheckup));
-
             OnPropertyChanged(
                 nameof(HasSelectedDevicePreparedCompletion));
-
             OnPropertyChanged(
                 nameof(RescanDeviceButtonText));
 
@@ -173,6 +182,9 @@ public class CustomerDevicesViewModel : BaseViewModel
                 .RaiseCanExecuteChanged();
 
             ExportCustomerCheckupReportCommand
+                .RaiseCanExecuteChanged();
+
+            CompleteCustomerCheckupCommand
                 .RaiseCanExecuteChanged();
 
             DeleteDeviceCommand
@@ -200,13 +212,10 @@ public class CustomerDevicesViewModel : BaseViewModel
             SubscribeToSelectedTaskList();
 
             OnPropertyChanged();
-
             OnPropertyChanged(
                 nameof(HasSelectedDeviceInProgressCheckup));
-
             OnPropertyChanged(
                 nameof(HasSelectedDevicePreparedCompletion));
-
             OnPropertyChanged(
                 nameof(RescanDeviceButtonText));
 
@@ -214,6 +223,9 @@ public class CustomerDevicesViewModel : BaseViewModel
                 .RaiseCanExecuteChanged();
 
             ExportCustomerCheckupReportCommand
+                .RaiseCanExecuteChanged();
+
+            CompleteCustomerCheckupCommand
                 .RaiseCanExecuteChanged();
 
             DeleteDeviceCommand
@@ -490,6 +502,241 @@ public class CustomerDevicesViewModel : BaseViewModel
                 + BuildErrorDetails(
                     exception));
         }
+    }
+
+    private void CompletePreparedCustomerCheckup()
+    {
+        if (SelectedCustomer is null
+            || SelectedDevice is null)
+        {
+            return;
+        }
+
+        var customer =
+            SelectedCustomer;
+
+        var device =
+            SelectedDevice;
+
+        var currentVisit =
+            device
+                .CheckupSession
+                .CurrentCustomerCheckupVisit;
+
+        if (currentVisit is null
+            || !currentVisit.IsCompletionPrepared)
+        {
+            _dialogService.ShowError(
+                "Kein vollständiger Abschlussentwurf",
+                "Der Kundencheckup kann erst endgültig "
+                + "abgeschlossen werden, wenn Nachher-Scan, "
+                + "Vergleich und Technikerangaben vollständig "
+                + "gespeichert sind."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Der Kundencheckup wurde nicht verändert.");
+
+            RefreshDeviceDisplay();
+
+            return;
+        }
+
+        var confirmed =
+            _dialogService.Confirm(
+                "Kundencheckup endgültig abschließen",
+                $"Der Kundencheckup für das Gerät "
+                + $"\"{device.DisplayName}\" wird nach diesem "
+                + "Schritt unveränderlich als abgeschlossen "
+                + "gespeichert."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Aufgaben, Aktionsdokumentation und "
+                + "Technikerangaben können danach nicht mehr "
+                + "über den laufenden Vorgang geändert werden."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Vor dem Datenbankabschluss muss der "
+                + "Kundenbericht erfolgreich als PDF gespeichert "
+                + "werden."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Wird die Dateiauswahl abgebrochen oder tritt "
+                + "bei der PDF-Erstellung beziehungsweise beim "
+                + "Datenbankabschluss ein Fehler auf, bleibt der "
+                + "Kundencheckup in Bearbeitung."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Soll der Kundencheckup jetzt endgültig "
+                + "abgeschlossen werden?");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        var suggestedFileName =
+            BuildCustomerCheckupReportFileName(
+                customer,
+                device,
+                currentVisit);
+
+        var filePath =
+            _fileDialogService.SelectPdfSavePath(
+                suggestedFileName);
+
+        if (string.IsNullOrWhiteSpace(
+                filePath))
+        {
+            return;
+        }
+
+        try
+        {
+            _customerCheckupPdfReportService.Export(
+                customer,
+                device,
+                currentVisit,
+                filePath);
+        }
+        catch (Exception exception)
+        {
+            _dialogService.ShowError(
+                "Kundencheckup nicht abgeschlossen",
+                "Der Kundenbericht konnte nicht vollständig "
+                + "erzeugt oder gespeichert werden."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Der Datenbankabschluss wurde deshalb nicht "
+                + "gestartet. Der Abschlussentwurf und der "
+                + "laufende Kundencheckup bleiben unverändert."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Technische Ursache:"
+                + Environment.NewLine
+                + BuildErrorDetails(
+                    exception));
+
+            return;
+        }
+
+        var previousDisplayName =
+            device.DisplayName;
+
+        var previousCheckupSession =
+            device.CheckupSession;
+
+        var previousUpdatedAt =
+            device.UpdatedAt;
+
+        CustomerCheckupVisit completedVisit;
+        CheckupSession completedCheckup;
+
+        try
+        {
+            completedVisit =
+                CreateIndependentVisitCopy(
+                    currentVisit);
+
+            completedVisit.CompletePrepared();
+
+            var completedAfterCheckup =
+                completedVisit.AfterCheckup
+                ?? throw new InvalidOperationException(
+                    "Der vorbereitete Kundencheckup enthält "
+                    + "keinen vollständigen Nachher-Zustand.");
+
+            completedCheckup =
+                completedAfterCheckup.RestoreAsSession();
+
+            completedCheckup.CustomerCheckupVisits =
+                previousCheckupSession
+                    .CustomerCheckupVisits
+                    .Select(visit =>
+                        visit.Id == currentVisit.Id
+                            ? completedVisit
+                            : visit)
+                    .ToList();
+        }
+        catch (Exception exception)
+        {
+            ShowCustomerCheckupCompletionErrorAfterPdf(
+                "Kundencheckup konnte nicht vorbereitet werden",
+                filePath,
+                "Die Abschlussdaten konnten nach der erfolgreichen "
+                + "PDF-Erstellung nicht als unabhängiger "
+                + "abgeschlossener Vorgang vorbereitet werden.",
+                exception.Message);
+
+            return;
+        }
+
+        var completedComputerName =
+            completedCheckup
+                .DeviceInformation
+                .Name;
+
+        if (!string.IsNullOrWhiteSpace(
+                completedComputerName))
+        {
+            device.DisplayName =
+                completedComputerName;
+        }
+
+        device.CheckupSession =
+            completedCheckup;
+
+        device.UpdatedAt =
+            DateTime.Now;
+
+        try
+        {
+            var wasUpdated =
+                _customerService.UpdateCustomerDevice(
+                    customer.Id,
+                    device);
+
+            if (!wasUpdated)
+            {
+                RestoreDevice(
+                    device,
+                    previousDisplayName,
+                    previousCheckupSession,
+                    previousUpdatedAt);
+
+                ShowCustomerCheckupCompletionErrorAfterPdf(
+                    "Datenbankabschluss fehlgeschlagen",
+                    filePath,
+                    "Das Gerät oder der zugehörige Kunde "
+                    + "ist in der Datenbank nicht mehr vorhanden.",
+                    null);
+
+                RefreshDeviceDisplay();
+
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            RestoreDevice(
+                device,
+                previousDisplayName,
+                previousCheckupSession,
+                previousUpdatedAt);
+
+            ShowCustomerCheckupCompletionErrorAfterPdf(
+                "Datenbankabschluss fehlgeschlagen",
+                filePath,
+                "Der abgeschlossene Kundencheckup konnte nicht "
+                + "dauerhaft in der Datenbank gespeichert werden.",
+                exception.Message);
+
+            RefreshDeviceDisplay();
+
+            return;
+        }
+
+        RefreshTaskListSubscription();
+        RefreshDeviceDisplay();
     }
 
     private void StartCustomerCheckup()
@@ -1323,6 +1570,9 @@ public class CustomerDevicesViewModel : BaseViewModel
         ExportCustomerCheckupReportCommand
             .RaiseCanExecuteChanged();
 
+        CompleteCustomerCheckupCommand
+            .RaiseCanExecuteChanged();
+
         DeleteDeviceCommand
             .RaiseCanExecuteChanged();
     }
@@ -1399,6 +1649,48 @@ public class CustomerDevicesViewModel : BaseViewModel
             + Environment.NewLine
             + Environment.NewLine
             + $"Technische Details: {details}");
+    }
+
+    private void ShowCustomerCheckupCompletionErrorAfterPdf(
+        string title,
+        string filePath,
+        string errorMessage,
+        string? technicalDetails)
+    {
+        var details =
+            string.IsNullOrWhiteSpace(
+                technicalDetails)
+                ? "Keine weiteren Fehlerdetails verfügbar."
+                : technicalDetails;
+
+        _dialogService.ShowError(
+            title,
+            "Die PDF-Datei wurde zwar erfolgreich erzeugt, "
+            + "der Kundencheckup wurde jedoch nicht erfolgreich "
+            + "in der Datenbank abgeschlossen."
+            + Environment.NewLine
+            + Environment.NewLine
+            + errorMessage
+            + Environment.NewLine
+            + Environment.NewLine
+            + "Der ursprüngliche Abschlussentwurf wurde "
+            + "wiederhergestellt. Der Kundencheckup bleibt "
+            + "in Bearbeitung."
+            + Environment.NewLine
+            + Environment.NewLine
+            + "Die bereits erzeugte PDF-Datei darf deshalb "
+            + "nicht als Nachweis eines erfolgreich gespeicherten "
+            + "Abschlusses interpretiert werden."
+            + Environment.NewLine
+            + Environment.NewLine
+            + "PDF-Datei:"
+            + Environment.NewLine
+            + filePath
+            + Environment.NewLine
+            + Environment.NewLine
+            + "Technische Ursache:"
+            + Environment.NewLine
+            + details);
     }
 
     private static CustomerCheckupVisit
