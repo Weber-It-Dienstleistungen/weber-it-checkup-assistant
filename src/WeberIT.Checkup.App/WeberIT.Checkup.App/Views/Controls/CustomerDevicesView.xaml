@@ -31,6 +31,8 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0">
@@ -77,10 +79,48 @@
                     VerticalAlignment="Center"
                     Command="{Binding RescanDeviceCommand}"
                     Content="{Binding RescanDeviceButtonText}"
-                    ToolTip="Startet einen neuen Kundencheckup und sichert den Eingangsscan als Vorher-Zustand." />
+                    ToolTip="Startet oder setzt den Kundencheckup für das ausgewählte Gerät fort." />
 
                 <Button
                     Grid.Column="3"
+                    Width="180"
+                    VerticalAlignment="Center"
+                    Command="{Binding ExportCustomerCheckupReportCommand}"
+                    Content="Kundenbericht erstellen"
+                    ToolTip="Erzeugt den Kundencheckup-Bericht als PDF. Der Vorgang bleibt weiterhin in Bearbeitung.">
+
+                    <Button.Style>
+
+                        <Style
+                            TargetType="Button"
+                            BasedOn="{StaticResource {x:Type Button}}">
+
+                            <Setter
+                                Property="Visibility"
+                                Value="Collapsed" />
+
+                            <Style.Triggers>
+
+                                <DataTrigger
+                                    Binding="{Binding HasSelectedDevicePreparedCompletion}"
+                                    Value="True">
+
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Visible" />
+
+                                </DataTrigger>
+
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </Button.Style>
+
+                </Button>
+
+                <Button
+                    Grid.Column="5"
                     Width="105"
                     VerticalAlignment="Center"
                     Command="{Binding DeleteDeviceCommand}"
@@ -88,7 +128,7 @@
                     Foreground="{StaticResource DangerBrush}" />
 
                 <Button
-                    Grid.Column="5"
+                    Grid.Column="7"
                     Width="150"
                     VerticalAlignment="Center"
                     Command="{Binding AddDeviceCommand}"

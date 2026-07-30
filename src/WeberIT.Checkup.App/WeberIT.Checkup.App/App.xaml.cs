@@ -69,6 +69,10 @@ public partial class App : Application
                             DiagnosticPdfReportService>();
 
                         services.AddSingleton<
+                            ICustomerCheckupPdfReportService,
+                            CustomerCheckupPdfReportService>();
+
+                        services.AddSingleton<
                             ICustomerCheckupComparisonService,
                             CustomerCheckupComparisonService>();
 

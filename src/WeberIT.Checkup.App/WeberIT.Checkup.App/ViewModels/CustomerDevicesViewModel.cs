@@ -1,4 +1,5 @@
-﻿using WeberIT.Checkup.App.Infrastructure.Commands;
+﻿using System.IO;
+using WeberIT.Checkup.App.Infrastructure.Commands;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
@@ -8,15 +9,16 @@ public class CustomerDevicesViewModel : BaseViewModel
 {
     private readonly ICustomerService _customerService;
     private readonly ICheckupScanner _checkupScanner;
-
-    private readonly ICheckupAssessmentService
-        _checkupAssessmentService;
-
-    private readonly IDeviceIdentityService
-        _deviceIdentityService;
+    private readonly ICheckupAssessmentService _checkupAssessmentService;
+    private readonly IDeviceIdentityService _deviceIdentityService;
 
     private readonly ICustomerCheckupComparisonService
         _customerCheckupComparisonService;
+
+    private readonly IFileDialogService _fileDialogService;
+
+    private readonly ICustomerCheckupPdfReportService
+        _customerCheckupPdfReportService;
 
     private readonly IDialogService _dialogService;
 
@@ -31,6 +33,9 @@ public class CustomerDevicesViewModel : BaseViewModel
         IDeviceIdentityService deviceIdentityService,
         ICustomerCheckupComparisonService
             customerCheckupComparisonService,
+        IFileDialogService fileDialogService,
+        ICustomerCheckupPdfReportService
+            customerCheckupPdfReportService,
         IDialogService dialogService)
     {
         ArgumentNullException.ThrowIfNull(
@@ -47,6 +52,12 @@ public class CustomerDevicesViewModel : BaseViewModel
 
         ArgumentNullException.ThrowIfNull(
             customerCheckupComparisonService);
+
+        ArgumentNullException.ThrowIfNull(
+            fileDialogService);
+
+        ArgumentNullException.ThrowIfNull(
+            customerCheckupPdfReportService);
 
         ArgumentNullException.ThrowIfNull(
             dialogService);
@@ -66,6 +77,12 @@ public class CustomerDevicesViewModel : BaseViewModel
         _customerCheckupComparisonService =
             customerCheckupComparisonService;
 
+        _fileDialogService =
+            fileDialogService;
+
+        _customerCheckupPdfReportService =
+            customerCheckupPdfReportService;
+
         _dialogService =
             dialogService;
 
@@ -84,6 +101,15 @@ public class CustomerDevicesViewModel : BaseViewModel
                     SelectedCustomer is not null
                     && SelectedDevice is not null);
 
+        ExportCustomerCheckupReportCommand =
+            new RelayCommand(
+                _ =>
+                    ExportPreparedCustomerCheckupReport(),
+                _ =>
+                    SelectedCustomer is not null
+                    && SelectedDevice is not null
+                    && HasSelectedDevicePreparedCompletion);
+
         DeleteDeviceCommand =
             new RelayCommand(
                 _ =>
@@ -97,6 +123,11 @@ public class CustomerDevicesViewModel : BaseViewModel
     public RelayCommand AddDeviceCommand { get; }
 
     public RelayCommand RescanDeviceCommand { get; }
+
+    public RelayCommand ExportCustomerCheckupReportCommand
+    {
+        get;
+    }
 
     public RelayCommand DeleteDeviceCommand { get; }
 
@@ -119,14 +150,19 @@ public class CustomerDevicesViewModel : BaseViewModel
                 value;
 
             OnPropertyChanged();
+
             OnPropertyChanged(
                 nameof(Devices));
+
             OnPropertyChanged(
                 nameof(DeviceCountText));
+
             OnPropertyChanged(
                 nameof(HasSelectedDeviceInProgressCheckup));
+
             OnPropertyChanged(
                 nameof(HasSelectedDevicePreparedCompletion));
+
             OnPropertyChanged(
                 nameof(RescanDeviceButtonText));
 
@@ -134,6 +170,9 @@ public class CustomerDevicesViewModel : BaseViewModel
                 .RaiseCanExecuteChanged();
 
             RescanDeviceCommand
+                .RaiseCanExecuteChanged();
+
+            ExportCustomerCheckupReportCommand
                 .RaiseCanExecuteChanged();
 
             DeleteDeviceCommand
@@ -161,14 +200,20 @@ public class CustomerDevicesViewModel : BaseViewModel
             SubscribeToSelectedTaskList();
 
             OnPropertyChanged();
+
             OnPropertyChanged(
                 nameof(HasSelectedDeviceInProgressCheckup));
+
             OnPropertyChanged(
                 nameof(HasSelectedDevicePreparedCompletion));
+
             OnPropertyChanged(
                 nameof(RescanDeviceButtonText));
 
             RescanDeviceCommand
+                .RaiseCanExecuteChanged();
+
+            ExportCustomerCheckupReportCommand
                 .RaiseCanExecuteChanged();
 
             DeleteDeviceCommand
@@ -366,6 +411,85 @@ public class CustomerDevicesViewModel : BaseViewModel
         }
 
         StartCustomerCheckup();
+    }
+
+    private void ExportPreparedCustomerCheckupReport()
+    {
+        if (SelectedCustomer is null
+            || SelectedDevice is null)
+        {
+            return;
+        }
+
+        var customer =
+            SelectedCustomer;
+
+        var device =
+            SelectedDevice;
+
+        var currentVisit =
+            device
+                .CheckupSession
+                .CurrentCustomerCheckupVisit;
+
+        if (currentVisit is null
+            || !currentVisit.IsCompletionPrepared)
+        {
+            _dialogService.ShowError(
+                "Kein vollständiger Abschlussentwurf",
+                "Der Kundenbericht kann erst erstellt werden, "
+                + "wenn Nachher-Scan, Vergleich und "
+                + "Technikerangaben vollständig gespeichert sind."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Der Kundencheckup wurde nicht verändert.");
+
+            RefreshDeviceDisplay();
+
+            return;
+        }
+
+        var suggestedFileName =
+            BuildCustomerCheckupReportFileName(
+                customer,
+                device,
+                currentVisit);
+
+        var filePath =
+            _fileDialogService.SelectPdfSavePath(
+                suggestedFileName);
+
+        if (string.IsNullOrWhiteSpace(
+                filePath))
+        {
+            return;
+        }
+
+        try
+        {
+            _customerCheckupPdfReportService.Export(
+                customer,
+                device,
+                currentVisit,
+                filePath);
+        }
+        catch (Exception exception)
+        {
+            _dialogService.ShowError(
+                "Kundenbericht konnte nicht erstellt werden",
+                "Die PDF-Datei konnte nicht vollständig "
+                + "erzeugt oder gespeichert werden."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Der Abschlussentwurf und der laufende "
+                + "Kundencheckup bleiben unverändert."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Technische Ursache:"
+                + Environment.NewLine
+                + BuildErrorDetails(
+                    exception));
+        }
     }
 
     private void StartCustomerCheckup()
@@ -1196,6 +1320,9 @@ public class CustomerDevicesViewModel : BaseViewModel
         RescanDeviceCommand
             .RaiseCanExecuteChanged();
 
+        ExportCustomerCheckupReportCommand
+            .RaiseCanExecuteChanged();
+
         DeleteDeviceCommand
             .RaiseCanExecuteChanged();
     }
@@ -1348,6 +1475,94 @@ public class CustomerDevicesViewModel : BaseViewModel
 
         device.UpdatedAt =
             updatedAt;
+    }
+
+    private static string BuildCustomerCheckupReportFileName(
+        Customer customer,
+        CustomerDevice device,
+        CustomerCheckupVisit customerCheckupVisit)
+    {
+        var customerPart =
+            !string.IsNullOrWhiteSpace(
+                customer.CustomerNumber)
+                ? customer.CustomerNumber
+                : customer.DisplayName;
+
+        var devicePart =
+            !string.IsNullOrWhiteSpace(
+                device.DisplayName)
+                ? device.DisplayName
+                : "Geraet";
+
+        var reportDate =
+            customerCheckupVisit
+                .AfterCheckup?
+                .ScanDate
+            ?? DateTime.Now;
+
+        return
+            "Weber-IT-Kundencheckup-"
+            + SanitizeFileNamePart(
+                customerPart)
+            + "-"
+            + SanitizeFileNamePart(
+                devicePart)
+            + "-"
+            + reportDate.ToString(
+                "yyyy-MM-dd")
+            + ".pdf";
+    }
+
+    private static string SanitizeFileNamePart(
+        string? value)
+    {
+        if (string.IsNullOrWhiteSpace(
+                value))
+        {
+            return
+                "Unbekannt";
+        }
+
+        var invalidCharacters =
+            Path.GetInvalidFileNameChars();
+
+        var normalizedCharacters =
+            value
+                .Trim()
+                .Select(character =>
+                    invalidCharacters.Contains(
+                        character)
+                    || char.IsWhiteSpace(
+                        character)
+                        ? '-'
+                        : character)
+                .ToArray();
+
+        var normalizedValue =
+            new string(
+                normalizedCharacters);
+
+        while (normalizedValue.Contains(
+                   "--",
+                   StringComparison.Ordinal))
+        {
+            normalizedValue =
+                normalizedValue.Replace(
+                    "--",
+                    "-",
+                    StringComparison.Ordinal);
+        }
+
+        normalizedValue =
+            normalizedValue.Trim(
+                '-',
+                '.',
+                ' ');
+
+        return string.IsNullOrWhiteSpace(
+                normalizedValue)
+            ? "Unbekannt"
+            : normalizedValue;
     }
 
     private static string BuildScanErrorMessage(
