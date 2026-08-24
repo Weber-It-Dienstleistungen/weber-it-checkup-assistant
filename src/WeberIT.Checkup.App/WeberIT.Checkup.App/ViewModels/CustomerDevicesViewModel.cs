@@ -355,6 +355,74 @@ public class CustomerDevicesViewModel : BaseViewModel
             return;
         }
 
+        /*
+         * Ein Scan, der unmittelbar über
+         * "Gerät hinzufügen" entstanden ist, ist bei einem
+         * tatsächlich neuen Gerät zugleich der Eingangsscan
+         * des ersten Kundencheckups.
+         *
+         * Der Scanner erzeugt eine frische CheckupSession.
+         * Sollte sie unerwartet bereits Besuchsdaten enthalten,
+         * wird das neue Gerät nicht gespeichert. So verhindern
+         * wir, dass fremde oder historische Vorgangsdaten
+         * versehentlich an ein neues Kundengerät übernommen
+         * werden.
+         */
+        if (checkupSession.CustomerCheckupVisits.Count > 0)
+        {
+            _dialogService.ShowError(
+                "Kundencheckup konnte nicht gestartet werden",
+                "Der neue Systemscan enthält unerwartet bereits "
+                + "einen Kundencheckup-Verlauf."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Das Gerät wurde deshalb vorsorglich nicht "
+                + "gespeichert. Bitte führen Sie den Vorgang "
+                + "erneut mit einem frischen Scan durch.");
+
+            return;
+        }
+
+        CustomerCheckupVisit customerCheckupVisit;
+
+        try
+        {
+            customerCheckupVisit =
+                CustomerCheckupVisit.Start(
+                    checkupSession);
+        }
+        catch (Exception exception)
+        {
+            _dialogService.ShowError(
+                "Kundencheckup konnte nicht gestartet werden",
+                "Der gerade durchgeführte Systemscan konnte "
+                + "nicht als unveränderlicher Vorher-Zustand "
+                + "des neuen Kundencheckups vorbereitet werden."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Das Gerät wurde nicht gespeichert."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Technische Ursache:"
+                + Environment.NewLine
+                + BuildErrorDetails(
+                    exception));
+
+            return;
+        }
+
+        /*
+         * Besuch und aktueller Arbeitsstand werden gemeinsam
+         * im ersten Datenbankvorgang gespeichert.
+         *
+         * CustomerCheckupVisit.Start(...) erzeugt über das
+         * Modell den unabhängigen CheckupSnapshot. Die
+         * CheckupSession selbst bleibt der veränderbare
+         * Arbeitsstand des laufenden Kundencheckups.
+         */
+        checkupSession.CustomerCheckupVisits.Add(
+            customerCheckupVisit);
+
         var displayName =
             !string.IsNullOrWhiteSpace(
                 checkupSession.DeviceInformation.Name)

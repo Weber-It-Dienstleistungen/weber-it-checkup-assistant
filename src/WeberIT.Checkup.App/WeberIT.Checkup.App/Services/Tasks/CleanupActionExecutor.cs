@@ -16,6 +16,9 @@ public sealed class CleanupActionExecutor :
     private const string SupportedActionCode =
         "action.cleanup.selected-safe-categories";
 
+    private const int MaximumFailureDiagnostics =
+        8;
+
     private readonly ICheckupTaskActionExecutionCoordinator
         _executionCoordinator;
 
@@ -589,9 +592,13 @@ public sealed class CleanupActionExecutor :
 
             return false;
         }
-        catch
+        catch (Exception exception)
         {
-            metrics.FailedEntryCount++;
+            RecordFailure(
+                metrics,
+                directoryPath,
+                "Ordnerinhalt auflisten",
+                exception);
 
             entries =
                 Array.Empty<string>();
@@ -627,9 +634,13 @@ public sealed class CleanupActionExecutor :
 
             return false;
         }
-        catch
+        catch (Exception exception)
         {
-            metrics.FailedEntryCount++;
+            RecordFailure(
+                metrics,
+                directoryPath,
+                "Dateiliste ermitteln",
+                exception);
 
             files =
                 Array.Empty<string>();
@@ -669,9 +680,13 @@ public sealed class CleanupActionExecutor :
 
             return false;
         }
-        catch
+        catch (Exception exception)
         {
-            metrics.FailedEntryCount++;
+            RecordFailure(
+                metrics,
+                path,
+                "Dateisystemattribute lesen",
+                exception);
 
             attributes =
                 default;
@@ -719,9 +734,13 @@ public sealed class CleanupActionExecutor :
         {
             metrics.SkippedEntryCount++;
         }
-        catch
+        catch (Exception exception)
         {
-            metrics.FailedEntryCount++;
+            RecordFailure(
+                metrics,
+                filePath,
+                "Datei löschen",
+                exception);
         }
     }
 
@@ -754,10 +773,154 @@ public sealed class CleanupActionExecutor :
         {
             metrics.SkippedEntryCount++;
         }
-        catch
+        catch (Exception exception)
         {
-            metrics.FailedEntryCount++;
+            RecordFailure(
+                metrics,
+                directoryPath,
+                "Leeren Ordner löschen",
+                exception);
         }
+    }
+
+    private static void RecordFailure(
+        DeletionMetrics metrics,
+        string path,
+        string operation,
+        Exception exception)
+    {
+        metrics.FailedEntryCount++;
+
+        if (metrics.FailureDiagnostics.Count
+            >= MaximumFailureDiagnostics)
+        {
+            return;
+        }
+
+        var normalizedPath =
+            string.IsNullOrWhiteSpace(
+                path)
+                ? "(Pfad nicht verfügbar)"
+                : path.Trim();
+
+        var normalizedOperation =
+            string.IsNullOrWhiteSpace(
+                operation)
+                ? "Dateisystemzugriff"
+                : operation.Trim();
+
+        var reason =
+            ClassifyFailure(
+                exception);
+
+        var hResult =
+            unchecked(
+                (uint)exception.HResult);
+
+        var diagnostic =
+            normalizedOperation
+            + ": "
+            + normalizedPath
+            + Environment.NewLine
+            + "Ursache: "
+            + reason
+            + " ("
+            + exception.GetType().Name
+            + ", HRESULT 0x"
+            + hResult.ToString("X8")
+            + ")";
+
+        var technicalMessage =
+            NormalizeTechnicalMessage(
+                exception.Message);
+
+        if (!string.IsNullOrWhiteSpace(
+                technicalMessage))
+        {
+            diagnostic +=
+                Environment.NewLine
+                + "Windows: "
+                + technicalMessage;
+        }
+
+        metrics.FailureDiagnostics.Add(
+            diagnostic);
+    }
+
+    private static string ClassifyFailure(
+        Exception exception)
+    {
+        if (exception
+            is UnauthorizedAccessException)
+        {
+            return
+                "Zugriff verweigert";
+        }
+
+        if (exception
+            is IOException)
+        {
+            var win32ErrorCode =
+                exception.HResult
+                & 0xFFFF;
+
+            return win32ErrorCode switch
+            {
+                5 =>
+                    "Zugriff verweigert",
+
+                32 =>
+                    "Datei oder Ordner wird von einem "
+                    + "anderen Prozess verwendet",
+
+                33 =>
+                    "Datei oder Ordner ist gesperrt",
+
+                145 =>
+                    "Ordner ist nicht leer",
+
+                _ =>
+                    "E/A- oder Dateisystemfehler"
+            };
+        }
+
+        return
+            "Unerwarteter Dateisystemfehler";
+    }
+
+    private static string NormalizeTechnicalMessage(
+        string? message)
+    {
+        if (string.IsNullOrWhiteSpace(
+                message))
+        {
+            return string.Empty;
+        }
+
+        const int maximumLength =
+            300;
+
+        var normalizedMessage =
+            message
+                .Replace(
+                    "\r",
+                    " ",
+                    StringComparison.Ordinal)
+                .Replace(
+                    "\n",
+                    " ",
+                    StringComparison.Ordinal)
+                .Trim();
+
+        if (normalizedMessage.Length
+            <= maximumLength)
+        {
+            return normalizedMessage;
+        }
+
+        return normalizedMessage[
+                   ..maximumLength]
+               + " …";
     }
 
     private static void AddDeletedSize(
@@ -1088,7 +1251,7 @@ public sealed class CleanupActionExecutor :
                 ? string.Empty
                 : NormalizeErrorMessage(
                     errorMessage,
-                    metrics.FailedEntryCount);
+                    metrics);
 
         return new CleanupActionCategoryExecutionResult
         {
@@ -1129,28 +1292,72 @@ public sealed class CleanupActionExecutor :
 
     private static string NormalizeErrorMessage(
         string errorMessage,
-        long failedEntryCount)
+        DeletionMetrics metrics)
     {
-        if (!string.IsNullOrWhiteSpace(
-                errorMessage))
+        var summary =
+            !string.IsNullOrWhiteSpace(
+                errorMessage)
+                ? errorMessage.Trim()
+                : metrics.FailedEntryCount switch
+                {
+                    0 =>
+                        string.Empty,
+
+                    1 =>
+                        "Ein Eintrag konnte nicht gelöscht werden. "
+                        + "Die übrigen Ergebnisse wurden protokolliert.",
+
+                    _ =>
+                        $"{metrics.FailedEntryCount:N0} Einträge konnten "
+                        + "nicht gelöscht werden. Die übrigen "
+                        + "Ergebnisse wurden protokolliert."
+                };
+
+        if (metrics.FailureDiagnostics.Count == 0)
         {
-            return errorMessage.Trim();
+            return summary;
         }
 
-        return failedEntryCount switch
+        var diagnosticParts =
+            new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(
+                summary))
         {
-            0 =>
-                string.Empty,
+            diagnosticParts.Add(
+                summary);
+        }
 
-            1 =>
-                "Ein Eintrag konnte nicht gelöscht werden. "
-                + "Die übrigen Ergebnisse wurden protokolliert.",
+        diagnosticParts.Add(
+            "Technische Diagnose der fehlgeschlagenen Einträge:"
+            + Environment.NewLine
+            + Environment.NewLine
+            + string.Join(
+                Environment.NewLine
+                + Environment.NewLine,
+                metrics.FailureDiagnostics));
 
-            _ =>
-                $"{failedEntryCount:N0} Einträge konnten "
-                + "nicht gelöscht werden. Die übrigen "
-                + "Ergebnisse wurden protokolliert."
-        };
+        var unlistedFailureCount =
+            metrics.FailedEntryCount
+            - metrics.FailureDiagnostics.Count;
+
+        if (unlistedFailureCount > 0)
+        {
+            diagnosticParts.Add(
+                unlistedFailureCount == 1
+                    ? "Ein weiterer fehlgeschlagener Eintrag "
+                      + "wurde aus Gründen der Übersicht nicht "
+                      + "einzeln aufgeführt."
+                    : $"{unlistedFailureCount:N0} weitere "
+                      + "fehlgeschlagene Einträge wurden aus "
+                      + "Gründen der Übersicht nicht einzeln "
+                      + "aufgeführt.");
+        }
+
+        return string.Join(
+            Environment.NewLine
+            + Environment.NewLine,
+            diagnosticParts);
     }
 
     private sealed class DeletionMetrics
@@ -1166,6 +1373,9 @@ public sealed class CleanupActionExecutor :
         public long FailedEntryCount { get; set; }
 
         public long SkippedEntryCount { get; set; }
+
+        public List<string> FailureDiagnostics { get; } =
+            new();
     }
 
     private sealed record DeletionWorkItem(

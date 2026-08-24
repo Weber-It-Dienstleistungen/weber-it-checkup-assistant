@@ -73,6 +73,24 @@ public static class CheckupTaskGenerator
                     StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
 
+        /*
+         * Die normale Sortierung bleibt grundsätzlich erhalten.
+         *
+         * SFC ist jedoch eine Wartungsprüfung, die fachlich erst
+         * nach vorhandenen Windows-Update- und Neustartaufgaben
+         * erfolgen soll.
+         *
+         * Deshalb wird ausschließlich die SFC-Standardaufgabe
+         * hinter den letzten vorhandenen Eintrag dieser beiden
+         * Kategorien verschoben.
+         *
+         * Alle übrigen Aufgaben behalten ihre bisherige
+         * relative Reihenfolge.
+         */
+        tasks =
+            ApplySystemFileCheckWorkflowOrder(
+                tasks);
+
         return new CheckupTaskList
         {
             TaskListVersion =
@@ -343,6 +361,83 @@ public static class CheckupTaskGenerator
             _ =>
                 null
         };
+    }
+
+    private static List<CheckupTask>
+        ApplySystemFileCheckWorkflowOrder(
+            List<CheckupTask> tasks)
+    {
+        ArgumentNullException.ThrowIfNull(
+            tasks);
+
+        var systemFileCheckIndex =
+            tasks.FindIndex(
+                task =>
+                    string.Equals(
+                        task.TaskCode,
+                        CheckupStandardTaskCatalog
+                            .SystemFileCheckTaskCode,
+                        StringComparison.Ordinal));
+
+        if (systemFileCheckIndex < 0)
+        {
+            return tasks;
+        }
+
+        var lastPrerequisiteIndex =
+            tasks.FindLastIndex(
+                IsSystemFileCheckWorkflowPrerequisite);
+
+        if (lastPrerequisiteIndex < 0
+            || systemFileCheckIndex
+            > lastPrerequisiteIndex)
+        {
+            return tasks;
+        }
+
+        var systemFileCheckTask =
+            tasks[
+                systemFileCheckIndex];
+
+        tasks.RemoveAt(
+            systemFileCheckIndex);
+
+        /*
+         * Nach dem Entfernen von SFC können sich die Indizes
+         * verschoben haben. Deshalb wird die letzte relevante
+         * Voraufgabe erneut bestimmt.
+         */
+        lastPrerequisiteIndex =
+            tasks.FindLastIndex(
+                IsSystemFileCheckWorkflowPrerequisite);
+
+        if (lastPrerequisiteIndex < 0)
+        {
+            tasks.Insert(
+                Math.Min(
+                    systemFileCheckIndex,
+                    tasks.Count),
+                systemFileCheckTask);
+
+            return tasks;
+        }
+
+        tasks.Insert(
+            Math.Min(
+                lastPrerequisiteIndex + 1,
+                tasks.Count),
+            systemFileCheckTask);
+
+        return tasks;
+    }
+
+    private static bool
+        IsSystemFileCheckWorkflowPrerequisite(
+            CheckupTask task)
+    {
+        return task.Category
+            is CheckupTaskCategory.WindowsUpdate
+            or CheckupTaskCategory.Restart;
     }
 
     private static string BuildGroupKey(

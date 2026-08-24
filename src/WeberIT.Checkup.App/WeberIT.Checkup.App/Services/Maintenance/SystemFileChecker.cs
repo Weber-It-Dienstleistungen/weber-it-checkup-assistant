@@ -8,34 +8,68 @@ namespace WeberIT.Checkup.App.Services.Maintenance;
 
 public class SystemFileChecker : ISystemFileChecker
 {
-    private readonly IMaintenanceProcessRunner _processRunner;
-    private readonly SemaphoreSlim _executionLock = new(1, 1);
+    private readonly IMaintenanceProcessRunner
+        _processRunner;
+
+    private readonly IRestartInformationProvider
+        _restartInformationProvider;
+
+    private readonly SemaphoreSlim
+        _executionLock =
+            new(
+                1,
+                1);
 
     public SystemFileChecker(
-        IMaintenanceProcessRunner processRunner)
+        IMaintenanceProcessRunner processRunner,
+        IRestartInformationProvider
+            restartInformationProvider)
     {
-        _processRunner = processRunner;
+        ArgumentNullException.ThrowIfNull(
+            processRunner);
+
+        ArgumentNullException.ThrowIfNull(
+            restartInformationProvider);
+
+        _processRunner =
+            processRunner;
+
+        _restartInformationProvider =
+            restartInformationProvider;
     }
 
     public async Task<MaintenanceToolResult> RunAsync()
     {
         var lockAcquired =
-            await _executionLock.WaitAsync(0);
+            await _executionLock.WaitAsync(
+                0);
 
         if (!lockAcquired)
         {
             return new MaintenanceToolResult
             {
-                Status = MaintenanceToolStatus.Failed,
+                Status =
+                    MaintenanceToolStatus.Failed,
+
                 Summary =
                     "Die Systemdateiprüfung wird bereits ausgeführt.",
+
                 Details =
-                    "Eine zweite parallele Ausführung von SFC wurde verhindert."
+                    "Eine zweite parallele Ausführung von SFC "
+                    + "wurde verhindert."
             };
         }
 
         try
         {
+            var restartPreflightResult =
+                CheckRestartPrecondition();
+
+            if (restartPreflightResult is not null)
+            {
+                return restartPreflightResult;
+            }
+
             var sfcPath =
                 Path.Combine(
                     Environment.SystemDirectory,
@@ -54,17 +88,165 @@ public class SystemFileChecker : ISystemFileChecker
         {
             return new MaintenanceToolResult
             {
-                Status = MaintenanceToolStatus.Failed,
+                Status =
+                    MaintenanceToolStatus.Failed,
+
                 Summary =
                     "Die Systemdateiprüfung konnte nicht ausgeführt werden.",
+
                 Details =
-                    BuildExceptionDetails(exception)
+                    BuildExceptionDetails(
+                        exception)
             };
         }
         finally
         {
             _executionLock.Release();
         }
+    }
+
+    private MaintenanceToolResult?
+        CheckRestartPrecondition()
+    {
+        var startedAt =
+            DateTimeOffset.Now;
+
+        RestartInformation restartInformation;
+
+        try
+        {
+            restartInformation =
+                _restartInformationProvider
+                    .GetRestartInformation();
+        }
+        catch (Exception exception)
+        {
+            return new MaintenanceToolResult
+            {
+                Status =
+                    MaintenanceToolStatus.Failed,
+
+                Summary =
+                    "Der Neustartstatus konnte vor der "
+                    + "Systemdateiprüfung nicht geprüft werden.",
+
+                Details =
+                    "SFC wurde vorsorglich nicht gestartet, "
+                    + "weil die vorgeschaltete Prüfung des "
+                    + "Windows-Neustartstatus technisch "
+                    + "fehlgeschlagen ist."
+                    + Environment.NewLine
+                    + Environment.NewLine
+                    + BuildExceptionDetails(
+                        exception),
+
+                StartedAt =
+                    startedAt,
+
+                FinishedAt =
+                    DateTimeOffset.Now
+            };
+        }
+
+        if (!restartInformation.IsAnalysisPerformed)
+        {
+            return new MaintenanceToolResult
+            {
+                Status =
+                    MaintenanceToolStatus.Failed,
+
+                Summary =
+                    "Der Neustartstatus konnte vor der "
+                    + "Systemdateiprüfung nicht geprüft werden.",
+
+                Details =
+                    "SFC wurde vorsorglich nicht gestartet, "
+                    + "weil keine aktuelle Windows-"
+                    + "Neustartanalyse durchgeführt werden konnte.",
+
+                StartedAt =
+                    startedAt,
+
+                FinishedAt =
+                    DateTimeOffset.Now
+            };
+        }
+
+        if (restartInformation.IsRestartRequired != true)
+        {
+            /*
+             * Ein bloßer Hinweis wie
+             * PendingFileRenameOperations reicht nach unserem
+             * zentralen Neustartmodell bewusst nicht aus,
+             * um einen zwingenden Neustart zu behaupten.
+             *
+             * Geblockt wird SFC ausschließlich bei einem
+             * bestätigten Neustartbedarf.
+             */
+            return null;
+        }
+
+        var restartSources =
+            restartInformation
+                .Sources
+                .Where(
+                    source =>
+                        source.IsCheckSuccessful
+                        && source.IsRestartRequired
+                            == true)
+                .Select(
+                    source =>
+                        source.DisplayName?
+                            .Trim())
+                .Where(
+                    displayName =>
+                        !string.IsNullOrWhiteSpace(
+                            displayName))
+                .Cast<string>()
+                .Distinct(
+                    StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+        var sourceText =
+            restartSources.Count > 0
+                ? string.Join(
+                    ", ",
+                    restartSources)
+                : "Windows-Neustartindikatoren";
+
+        return new MaintenanceToolResult
+        {
+            Status =
+                MaintenanceToolStatus.Skipped,
+
+            Summary =
+                "Systemdateiprüfung zurückgestellt: "
+                + "Windows-Neustart erforderlich.",
+
+            Details =
+                "Die unmittelbar vor SFC durchgeführte "
+                + "Neustartanalyse meldet einen bestätigten "
+                + "ausstehenden Windows-Neustart. "
+                + "Die Systemdateiprüfung wurde deshalb "
+                + "nicht gestartet."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Vor weiteren Wartungs- oder "
+                + "Reparaturmaßnahmen sollte der Computer "
+                + "kontrolliert neu gestartet werden. "
+                + "Anschließend kann SFC erneut ausgeführt werden."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Erkannte Neustartquelle(n): "
+                + sourceText
+                + ".",
+
+            StartedAt =
+                startedAt,
+
+            FinishedAt =
+                DateTimeOffset.Now
+        };
     }
 
     private static MaintenanceToolResult InterpretResult(
@@ -85,7 +267,8 @@ public class SystemFileChecker : ISystemFileChecker
                 processResult,
                 MaintenanceToolStatus.Failed,
                 "Die Systemdateiprüfung konnte nicht gestartet werden.",
-                GetErrorDetails(processResult));
+                GetErrorDetails(
+                    processResult));
         }
 
         var completeOutput =
@@ -98,7 +281,7 @@ public class SystemFileChecker : ISystemFileChecker
                 completeOutput);
 
         if (ContainsUnrepairedFilesMessage(
-            normalizedOutput))
+                normalizedOutput))
         {
             return CreateResult(
                 processResult,
@@ -109,7 +292,7 @@ public class SystemFileChecker : ISystemFileChecker
         }
 
         if (ContainsSuccessfulRepairMessage(
-            normalizedOutput))
+                normalizedOutput))
         {
             return CreateResult(
                 processResult,
@@ -120,7 +303,7 @@ public class SystemFileChecker : ISystemFileChecker
         }
 
         if (ContainsNoIntegrityViolationsMessage(
-            normalizedOutput))
+                normalizedOutput))
         {
             return CreateResult(
                 processResult,
@@ -131,7 +314,7 @@ public class SystemFileChecker : ISystemFileChecker
         }
 
         if (ContainsExecutionFailureMessage(
-            normalizedOutput))
+                normalizedOutput))
         {
             return CreateResult(
                 processResult,
@@ -182,7 +365,8 @@ public class SystemFileChecker : ISystemFileChecker
         var previousCharacterWasSpace =
             false;
 
-        foreach (var character in decomposedOutput)
+        foreach (var character
+                 in decomposedOutput)
         {
             var unicodeCategory =
                 CharUnicodeInfo.GetUnicodeCategory(
@@ -194,17 +378,25 @@ public class SystemFileChecker : ISystemFileChecker
                 continue;
             }
 
-            if (char.IsLetterOrDigit(character))
+            if (char.IsLetterOrDigit(
+                    character))
             {
-                builder.Append(character);
-                previousCharacterWasSpace = false;
+                builder.Append(
+                    character);
+
+                previousCharacterWasSpace =
+                    false;
+
                 continue;
             }
 
             if (!previousCharacterWasSpace)
             {
-                builder.Append(' ');
-                previousCharacterWasSpace = true;
+                builder.Append(
+                    ' ');
+
+                previousCharacterWasSpace =
+                    true;
             }
         }
 
@@ -213,8 +405,9 @@ public class SystemFileChecker : ISystemFileChecker
             .Trim();
     }
 
-    private static bool ContainsNoIntegrityViolationsMessage(
-        string output)
+    private static bool
+        ContainsNoIntegrityViolationsMessage(
+            string output)
     {
         return ContainsAll(
                    output,
@@ -308,7 +501,8 @@ public class SystemFileChecker : ISystemFileChecker
         var additionalError =
             processResult.ErrorMessage;
 
-        if (!string.IsNullOrWhiteSpace(additionalError)
+        if (!string.IsNullOrWhiteSpace(
+                additionalError)
             && !details.Contains(
                 additionalError,
                 StringComparison.OrdinalIgnoreCase))
@@ -321,16 +515,31 @@ public class SystemFileChecker : ISystemFileChecker
 
         return new MaintenanceToolResult
         {
-            Status = status,
-            Summary = summary,
-            Details = details,
-            StandardOutput = CleanDisplayedOutput(
-                processResult.StandardOutput),
-            StandardError = CleanDisplayedOutput(
-                processResult.StandardError),
-            ExitCode = processResult.ExitCode,
-            StartedAt = processResult.StartedAt,
-            FinishedAt = processResult.FinishedAt
+            Status =
+                status,
+
+            Summary =
+                summary,
+
+            Details =
+                details,
+
+            StandardOutput =
+                CleanDisplayedOutput(
+                    processResult.StandardOutput),
+
+            StandardError =
+                CleanDisplayedOutput(
+                    processResult.StandardError),
+
+            ExitCode =
+                processResult.ExitCode,
+
+            StartedAt =
+                processResult.StartedAt,
+
+            FinishedAt =
+                processResult.FinishedAt
         };
     }
 
@@ -347,31 +556,34 @@ public class SystemFileChecker : ISystemFileChecker
         ProcessExecutionResult processResult)
     {
         if (!string.IsNullOrWhiteSpace(
-            processResult.ErrorMessage))
+                processResult.ErrorMessage))
         {
             return processResult.ErrorMessage;
         }
 
         if (!string.IsNullOrWhiteSpace(
-            processResult.StandardError))
+                processResult.StandardError))
         {
             return CleanDisplayedOutput(
                 processResult.StandardError);
         }
 
-        return "Der Prozess konnte nicht gestartet werden. "
-               + "Es wurden keine weiteren Fehlerdetails zurückgegeben.";
+        return
+            "Der Prozess konnte nicht gestartet werden. "
+            + "Es wurden keine weiteren Fehlerdetails zurückgegeben.";
     }
 
     private static string BuildExceptionDetails(
         Exception exception)
     {
         if (string.IsNullOrWhiteSpace(
-            exception.Message))
+                exception.Message))
         {
-            return "Es sind keine weiteren Fehlerdetails verfügbar.";
+            return
+                "Es sind keine weiteren Fehlerdetails verfügbar.";
         }
 
-        return $"Technische Details: {exception.Message}";
+        return
+            $"Technische Details: {exception.Message}";
     }
 }
