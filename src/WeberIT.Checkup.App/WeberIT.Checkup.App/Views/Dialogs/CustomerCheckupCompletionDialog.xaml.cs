@@ -647,7 +647,55 @@ public partial class CustomerCheckupCompletionDialog :
     private static string BuildActionSummaryText(
         CustomerCheckupComparison comparison)
     {
-        var parts =
+        var tasks =
+            comparison.Tasks
+            ?? new List<CustomerCheckupTaskComparison>();
+
+        var completedTaskCount =
+            tasks.Count(
+                task =>
+                    task.WorkStatus
+                    == CheckupTaskStatus.Completed);
+
+        var openTaskCount =
+            tasks.Count(
+                task =>
+                    task.WorkStatus
+                    == CheckupTaskStatus.Open);
+
+        var skippedTaskCount =
+            tasks.Count(
+                task =>
+                    task.WorkStatus
+                    == CheckupTaskStatus.Skipped);
+
+        var notFeasibleTaskCount =
+            tasks.Count(
+                task =>
+                    task.WorkStatus
+                    == CheckupTaskStatus.NotFeasible);
+
+        var taskParts =
+            new List<string>
+            {
+                completedTaskCount == 1
+                    ? "1 Aufgabe abgeschlossen"
+                    : $"{completedTaskCount} Aufgaben abgeschlossen",
+
+                openTaskCount == 1
+                    ? "1 Aufgabe offen"
+                    : $"{openTaskCount} Aufgaben offen",
+
+                skippedTaskCount == 1
+                    ? "1 Aufgabe übersprungen"
+                    : $"{skippedTaskCount} Aufgaben übersprungen",
+
+                notFeasibleTaskCount == 1
+                    ? "1 Aufgabe nicht durchführbar"
+                    : $"{notFeasibleTaskCount} Aufgaben nicht durchführbar"
+            };
+
+        var actionParts =
             new List<string>
             {
                 comparison.SuccessfulActionCount == 1
@@ -666,9 +714,21 @@ public partial class CustomerCheckupCompletionDialog :
                       + "abgebrochene Aktionen"
             };
 
-        return string.Join(
-            " · ",
-            parts);
+        return
+            "Aufgabenstatus: "
+            + string.Join(
+                " · ",
+                taskParts)
+            + Environment.NewLine
+            + "Technische Aktionen: "
+            + string.Join(
+                " · ",
+                actionParts)
+            + Environment.NewLine
+            + "Der Aufgabenstatus dokumentiert die Bearbeitung; "
+            + "der Vorher-/Nachher-Vergleich bewertet davon "
+            + "unabhängig, ob ein technischer Befund im "
+            + "Kontrollscan weiterhin vorhanden ist.";
     }
 
     private static string BuildAreaEvaluationText(
@@ -715,28 +775,28 @@ public partial class CustomerCheckupCompletionDialog :
         return status switch
         {
             CustomerCheckupAreaComparisonStatus.UnchangedHealthy =>
-                "Unverändert in Ordnung",
+                "Technisch unverändert in Ordnung",
 
             CustomerCheckupAreaComparisonStatus.Improved =>
-                "Behoben",
+                "Technischer Befund behoben",
 
             CustomerCheckupAreaComparisonStatus
                 .ImprovedButStillNeedsAttention =>
-                    "Verbessert, weiter prüfen",
+                    "Technisch verbessert, Restbefund vorhanden",
 
             CustomerCheckupAreaComparisonStatus
                 .UnchangedNeedsAttention =>
-                    "Unverändert auffällig",
+                    "Technischer Befund weiterhin vorhanden",
 
             CustomerCheckupAreaComparisonStatus.Worsened =>
-                "Verschlechtert",
+                "Technischer Zustand verschlechtert",
 
             CustomerCheckupAreaComparisonStatus
                 .NewlyNeedsAttention =>
-                    "Neu auffällig",
+                    "Neuer technischer Befund",
 
             _ =>
-                "Nicht direkt vergleichbar"
+                "Technisch nicht direkt vergleichbar"
         };
     }
 
@@ -746,7 +806,7 @@ public partial class CustomerCheckupCompletionDialog :
         return status switch
         {
             CustomerCheckupFindingComparisonStatus.StillOpen =>
-                "Weiterhin offen",
+                "Weiterhin vorhanden",
 
             CustomerCheckupFindingComparisonStatus.NewlyDetected =>
                 "Neu erkannt",
