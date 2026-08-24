@@ -27,32 +27,87 @@
 
                 </StackPanel>
 
-                <Border
+                <StackPanel
                     Grid.Column="1"
                     Margin="20,0,0,0"
-                    Padding="12,7"
-                    VerticalAlignment="Top"
-                    Background="{StaticResource SurfaceSecondaryBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="7">
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top">
 
-                    <StackPanel Orientation="Horizontal">
+                    <Border
+                        Padding="12,7"
+                        HorizontalAlignment="Right"
+                        Background="{StaticResource SurfaceSecondaryBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="7">
 
-                        <TextBlock
-                            Margin="0,0,5,0"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource AccentBrush}"
-                            Text="Aktualisierungen:" />
+                        <StackPanel Orientation="Horizontal">
 
-                        <TextBlock
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource TextPrimaryBrush}"
-                            Text="{Binding AvailableUpdateCount}" />
+                            <TextBlock
+                                Margin="0,0,5,0"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource AccentBrush}"
+                                Text="Aktualisierungen:" />
 
-                    </StackPanel>
+                            <TextBlock
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                Text="{Binding AvailableUpdateCount}" />
 
-                </Border>
+                        </StackPanel>
+
+                    </Border>
+
+                    <Button
+                        x:Name="ResolveProgramUpdatesButton"
+                        MinWidth="190"
+                        Height="38"
+                        Margin="0,10,0,0"
+                        HorizontalAlignment="Right"
+                        Click="ResolveProgramUpdatesButton_OnClick"
+                        Content="Programmupdates beheben">
+
+                        <Button.Style>
+
+                            <Style
+                                TargetType="Button"
+                                BasedOn="{StaticResource AccentButtonStyle}">
+
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Visible" />
+
+                                <Style.Triggers>
+
+                                    <DataTrigger
+                                        Binding="{Binding IsAnalysisSuccessful}"
+                                        Value="False">
+
+                                        <Setter
+                                            Property="Visibility"
+                                            Value="Collapsed" />
+
+                                    </DataTrigger>
+
+                                    <DataTrigger
+                                        Binding="{Binding AvailableUpdateCount}"
+                                        Value="0">
+
+                                        <Setter
+                                            Property="Visibility"
+                                            Value="Collapsed" />
+
+                                    </DataTrigger>
+
+                                </Style.Triggers>
+
+                            </Style>
+
+                        </Button.Style>
+
+                    </Button>
+
+                </StackPanel>
 
             </Grid>
 

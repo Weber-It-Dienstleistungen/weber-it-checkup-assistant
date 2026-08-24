@@ -810,14 +810,14 @@
                     <checkup:CheckupDetailsView
                         DataContext="{Binding CurrentCheckup}" />
 
+                    <checkup:ProgramUpdatesCard
+                        Margin="0,24,0,0"
+                        DataContext="{Binding CurrentCheckup.ProgramUpdateInformation}" />
+
                     <checkup:CheckupTaskListCard
                         Margin="0,24,0,0"
                         CheckupSession="{Binding DataContext.CurrentCheckup, RelativeSource={RelativeSource AncestorType=UserControl}}"
                         DataContext="{Binding CurrentCheckup.TaskList}" />
-
-                    <checkup:ProgramUpdatesCard
-                        Margin="0,24,0,0"
-                        DataContext="{Binding CurrentCheckup.ProgramUpdateInformation}" />
 
                     <Border
                         Margin="0,24,0,0"

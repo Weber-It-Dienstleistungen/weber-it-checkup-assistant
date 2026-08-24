@@ -15,6 +15,9 @@ public class ProgramUpdateInformationProvider :
     private const int VersionTimeoutMilliseconds = 15000;
     private const int AnalysisTimeoutMilliseconds = 120000;
 
+    private const string WingetSourceName =
+        "winget";
+
     private static readonly Regex AnsiEscapeSequenceRegex =
         new(
             @"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])",
@@ -46,6 +49,7 @@ public class ProgramUpdateInformationProvider :
         if (!versionResult.WasStarted)
         {
             information.IsWingetAvailable = false;
+
             information.AnalysisDetails =
                 BuildUnavailableDetails(
                     versionResult);
@@ -56,6 +60,7 @@ public class ProgramUpdateInformationProvider :
         if (versionResult.TimedOut)
         {
             information.IsWingetAvailable = null;
+
             information.AnalysisDetails =
                 "Die Verfügbarkeit von WinGet konnte nicht rechtzeitig "
                 + "ermittelt werden. Der Versionsaufruf hat das Zeitlimit "
@@ -67,6 +72,7 @@ public class ProgramUpdateInformationProvider :
         if (versionResult.ExitCode != 0)
         {
             information.IsWingetAvailable = null;
+
             information.AnalysisDetails =
                 BuildFailureDetails(
                     "WinGet wurde gefunden, der Versionsaufruf wurde jedoch "
@@ -77,26 +83,32 @@ public class ProgramUpdateInformationProvider :
         }
 
         information.IsWingetAvailable = true;
+
         information.WingetVersion =
-            CleanOutput(versionResult.StandardOutput)
+            CleanOutput(
+                    versionResult.StandardOutput)
                 .Trim();
 
         information.IsAnalysisPerformed = true;
-        information.AnalysisDate = DateTime.Now;
+
+        information.AnalysisDate =
+            DateTime.Now;
 
         var analysisResult =
             RunWinget(
                 [
                     "upgrade",
                     "--source",
-                    "winget",
-                    "--disable-interactivity"
+                    WingetSourceName,
+                    "--disable-interactivity",
+                    "--accept-source-agreements"
                 ],
                 AnalysisTimeoutMilliseconds);
 
         if (!analysisResult.WasStarted)
         {
             information.IsAnalysisSuccessful = false;
+
             information.AnalysisDetails =
                 BuildFailureDetails(
                     "Die WinGet-Programupdate-Analyse konnte nicht gestartet werden.",
@@ -108,6 +120,7 @@ public class ProgramUpdateInformationProvider :
         if (analysisResult.TimedOut)
         {
             information.IsAnalysisSuccessful = false;
+
             information.AnalysisDetails =
                 "Die WinGet-Programupdate-Analyse wurde nach zwei Minuten "
                 + "beendet, weil sie nicht rechtzeitig abgeschlossen wurde. "
@@ -120,6 +133,7 @@ public class ProgramUpdateInformationProvider :
         if (analysisResult.ExitCode != 0)
         {
             information.IsAnalysisSuccessful = false;
+
             information.AnalysisDetails =
                 BuildFailureDetails(
                     "WinGet konnte die verfügbaren Programmaktualisierungen "
@@ -137,6 +151,7 @@ public class ProgramUpdateInformationProvider :
         if (!parseResult.IsRecognized)
         {
             information.IsAnalysisSuccessful = false;
+
             information.AnalysisDetails =
                 "WinGet wurde erfolgreich ausgeführt, das zurückgegebene "
                 + "Ausgabeformat konnte jedoch nicht zuverlässig ausgewertet "
@@ -155,6 +170,7 @@ public class ProgramUpdateInformationProvider :
             != parseResult.Updates.Count)
         {
             information.IsAnalysisSuccessful = false;
+
             information.AnalysisDetails =
                 "WinGet meldet "
                 + parseResult.ReportedUpdateCount.Value
@@ -168,6 +184,7 @@ public class ProgramUpdateInformationProvider :
         }
 
         information.IsAnalysisSuccessful = true;
+
         information.AvailableUpdateCount =
             parseResult.Updates.Count;
 
@@ -177,7 +194,8 @@ public class ProgramUpdateInformationProvider :
 
         information.AvailableUpdates =
             parseResult.Updates
-                .Take(MaximumStoredUpdates)
+                .Take(
+                    MaximumStoredUpdates)
                 .ToList();
 
         information.AnalysisDetails =
@@ -197,24 +215,39 @@ public class ProgramUpdateInformationProvider :
             var startInfo =
                 new ProcessStartInfo
                 {
-                    FileName = "winget.exe",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    StandardOutputEncoding = Encoding.UTF8,
-                    StandardErrorEncoding = Encoding.UTF8
+                    FileName =
+                        "winget.exe",
+
+                    UseShellExecute =
+                        false,
+
+                    CreateNoWindow =
+                        true,
+
+                    RedirectStandardOutput =
+                        true,
+
+                    RedirectStandardError =
+                        true,
+
+                    StandardOutputEncoding =
+                        Encoding.UTF8,
+
+                    StandardErrorEncoding =
+                        Encoding.UTF8
                 };
 
             foreach (var argument in arguments)
             {
-                startInfo.ArgumentList.Add(argument);
+                startInfo.ArgumentList.Add(
+                    argument);
             }
 
             using var process =
                 new Process
                 {
-                    StartInfo = startInfo
+                    StartInfo =
+                        startInfo
                 };
 
             if (!process.Start())
@@ -227,10 +260,12 @@ public class ProgramUpdateInformationProvider :
             }
 
             var standardOutputTask =
-                process.StandardOutput.ReadToEndAsync();
+                process.StandardOutput
+                    .ReadToEndAsync();
 
             var standardErrorTask =
-                process.StandardError.ReadToEndAsync();
+                process.StandardError
+                    .ReadToEndAsync();
 
             var completed =
                 process.WaitForExit(
@@ -238,12 +273,16 @@ public class ProgramUpdateInformationProvider :
 
             if (!completed)
             {
-                TryTerminateProcess(process);
+                TryTerminateProcess(
+                    process);
 
                 return new WingetExecutionResult
                 {
-                    WasStarted = true,
-                    TimedOut = true
+                    WasStarted =
+                        true,
+
+                    TimedOut =
+                        true
                 };
             }
 
@@ -259,24 +298,33 @@ public class ProgramUpdateInformationProvider :
 
             return new WingetExecutionResult
             {
-                WasStarted = true,
-                ExitCode = process.ExitCode,
-                StandardOutput = standardOutput,
-                StandardError = standardError
+                WasStarted =
+                    true,
+
+                ExitCode =
+                    process.ExitCode,
+
+                StandardOutput =
+                    standardOutput,
+
+                StandardError =
+                    standardError
             };
         }
         catch (Win32Exception exception)
         {
             return new WingetExecutionResult
             {
-                ErrorMessage = exception.Message
+                ErrorMessage =
+                    exception.Message
             };
         }
         catch (Exception exception)
         {
             return new WingetExecutionResult
             {
-                ErrorMessage = exception.Message
+                ErrorMessage =
+                    exception.Message
             };
         }
     }
@@ -285,7 +333,12 @@ public class ProgramUpdateInformationProvider :
         string output)
     {
         var cleanedOutput =
-            CleanOutput(output);
+            CleanOutput(
+                output);
+
+        var reportedUpdateCount =
+            TryReadReportedUpdateCount(
+                cleanedOutput);
 
         var lines =
             cleanedOutput
@@ -295,114 +348,134 @@ public class ProgramUpdateInformationProvider :
                         "\n"
                     ],
                     StringSplitOptions.None)
-                .Select(line => line.TrimEnd())
+                .Select(
+                    line =>
+                        line.TrimEnd())
                 .ToList();
 
         var separatorLineIndex =
-            FindTableSeparatorLine(lines);
+            FindTableSeparatorLine(
+                lines);
 
         if (separatorLineIndex < 1)
         {
             if (ContainsNoUpdatesMessage(
-                cleanedOutput))
+                    cleanedOutput))
             {
                 return new ProgramUpdateParseResult
                 {
-                    IsRecognized = true,
-                    Updates = new List<AvailableProgramUpdate>(),
-                    ReportedUpdateCount = 0
+                    IsRecognized =
+                        true,
+
+                    Updates =
+                        new List<AvailableProgramUpdate>(),
+
+                    ReportedUpdateCount =
+                        0
                 };
             }
 
             return new ProgramUpdateParseResult
             {
-                IsRecognized = false
+                IsRecognized =
+                    false
             };
         }
 
         var headerLine =
-            lines[separatorLineIndex - 1];
+            lines[
+                separatorLineIndex - 1];
+
+        var headerMatches =
+            HeaderColumnRegex
+                .Matches(
+                    headerLine)
+                .Cast<Match>()
+                .ToList();
 
         var columnStarts =
-            GetColumnStartsFromHeader(
-                headerLine);
+            headerMatches
+                .Select(
+                    match =>
+                        match.Index)
+                .ToList();
 
         if (columnStarts.Count < 4)
         {
             return new ProgramUpdateParseResult
             {
-                IsRecognized = false
+                IsRecognized =
+                    false
             };
         }
+
+        var sourceColumnIndex =
+            FindSourceColumnIndex(
+                headerMatches);
 
         var updates =
             new List<AvailableProgramUpdate>();
 
-        for (var lineIndex = separatorLineIndex + 1;
+        for (var lineIndex =
+                 separatorLineIndex + 1;
              lineIndex < lines.Count;
              lineIndex++)
         {
             var line =
                 lines[lineIndex];
 
-            if (string.IsNullOrWhiteSpace(line))
+            if (string.IsNullOrWhiteSpace(
+                    line))
             {
                 continue;
             }
 
-            if (IsProgressLine(line))
+            if (IsProgressLine(
+                    line))
             {
                 continue;
             }
 
-            var values =
-                ReadColumns(
+            /*
+             * WinGet kann nach der eigentlichen Paketliste
+             * Zusammenfassungen und weitere Paketgruppen
+             * ausgeben. Die gemeldete Updateanzahl markiert
+             * das Ende der Haupttabelle.
+             *
+             * Ohne diese Grenze würde beispielsweise eine
+             * nachgelagerte Liste mit gesondert zu
+             * behandelnden Paketen erneut als Bestandteil
+             * der normalen Updateliste gelesen.
+             */
+            if (IsReportedUpdateCountLine(
+                    line))
+            {
+                break;
+            }
+
+            if (!TryCreateUpdateFromTableRow(
                     line,
-                    columnStarts);
-
-            if (values.Count < 4)
-            {
-                continue;
-            }
-
-            var name =
-                values[0];
-
-            var packageId =
-                values[1];
-
-            var installedVersion =
-                values[2];
-
-            var availableVersion =
-                values[3];
-
-            if (string.IsNullOrWhiteSpace(name)
-                || string.IsNullOrWhiteSpace(packageId)
-                || string.IsNullOrWhiteSpace(installedVersion)
-                || string.IsNullOrWhiteSpace(availableVersion))
+                    columnStarts,
+                    sourceColumnIndex,
+                    out var update))
             {
                 continue;
             }
 
             updates.Add(
-                new AvailableProgramUpdate
-                {
-                    Name = name,
-                    PackageId = packageId,
-                    InstalledVersion = installedVersion,
-                    AvailableVersion = availableVersion,
-                    Source = "winget"
-                });
+                update);
         }
 
         return new ProgramUpdateParseResult
         {
-            IsRecognized = true,
-            Updates = updates,
+            IsRecognized =
+                true,
+
+            Updates =
+                updates,
+
             ReportedUpdateCount =
-                TryReadReportedUpdateCount(
-                    cleanedOutput)
+                reportedUpdateCount
         };
     }
 
@@ -414,22 +487,25 @@ public class ProgramUpdateInformationProvider :
              index++)
         {
             var trimmedLine =
-                lines[index].Trim();
+                lines[index]
+                    .Trim();
 
             if (trimmedLine.Length < 10)
             {
                 continue;
             }
 
-            if (!trimmedLine.All(character =>
-                    character == '-'))
+            if (!trimmedLine.All(
+                    character =>
+                        character == '-'))
             {
                 continue;
             }
 
             var headerColumnCount =
                 HeaderColumnRegex
-                    .Matches(lines[index - 1])
+                    .Matches(
+                        lines[index - 1])
                     .Count;
 
             if (headerColumnCount >= 4)
@@ -441,13 +517,154 @@ public class ProgramUpdateInformationProvider :
         return -1;
     }
 
-    private static List<int> GetColumnStartsFromHeader(
-        string headerLine)
+    private static int FindSourceColumnIndex(
+        IReadOnlyList<Match> headerMatches)
     {
-        return HeaderColumnRegex
-            .Matches(headerLine)
-            .Select(match => match.Index)
-            .ToList();
+        for (var index = 0;
+             index < headerMatches.Count;
+             index++)
+        {
+            var columnName =
+                headerMatches[index]
+                    .Value
+                    .Trim();
+
+            if (string.Equals(
+                    columnName,
+                    "Quelle",
+                    StringComparison.OrdinalIgnoreCase)
+                || string.Equals(
+                    columnName,
+                    "Source",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static bool TryCreateUpdateFromTableRow(
+        string line,
+        IReadOnlyList<int> columnStarts,
+        int sourceColumnIndex,
+        out AvailableProgramUpdate update)
+    {
+        update =
+            new AvailableProgramUpdate();
+
+        var values =
+            ReadColumns(
+                line,
+                columnStarts);
+
+        if (values.Count < 4)
+        {
+            return false;
+        }
+
+        var name =
+            values[0];
+
+        var packageId =
+            values[1];
+
+        var installedVersion =
+            values[2];
+
+        var availableVersion =
+            values[3];
+
+        if (string.IsNullOrWhiteSpace(
+                name)
+            || string.IsNullOrWhiteSpace(
+                packageId)
+            || string.IsNullOrWhiteSpace(
+                installedVersion)
+            || string.IsNullOrWhiteSpace(
+                availableVersion))
+        {
+            return false;
+        }
+
+        if (!IsPlausiblePackageIdentifier(
+                packageId))
+        {
+            return false;
+        }
+
+        if (sourceColumnIndex >= 0)
+        {
+            if (sourceColumnIndex
+                >= values.Count)
+            {
+                return false;
+            }
+
+            var source =
+                values[
+                    sourceColumnIndex];
+
+            if (!string.Equals(
+                    source,
+                    WingetSourceName,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        update =
+            new AvailableProgramUpdate
+            {
+                Name =
+                    name,
+
+                PackageId =
+                    packageId,
+
+                InstalledVersion =
+                    installedVersion,
+
+                AvailableVersion =
+                    availableVersion,
+
+                Source =
+                    WingetSourceName
+            };
+
+        return true;
+    }
+
+    private static bool IsPlausiblePackageIdentifier(
+        string packageId)
+    {
+        if (string.IsNullOrWhiteSpace(
+                packageId))
+        {
+            return false;
+        }
+
+        if (!string.Equals(
+                packageId,
+                packageId.Trim(),
+                StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (packageId.Any(
+                character =>
+                    char.IsWhiteSpace(
+                        character)
+                    || char.IsControl(
+                        character)))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static List<string> ReadColumns(
@@ -458,22 +675,28 @@ public class ProgramUpdateInformationProvider :
             new List<string>();
 
         for (var columnIndex = 0;
-             columnIndex < columnStarts.Count;
+             columnIndex
+             < columnStarts.Count;
              columnIndex++)
         {
             var start =
-                columnStarts[columnIndex];
+                columnStarts[
+                    columnIndex];
 
             if (start >= line.Length)
             {
-                values.Add(string.Empty);
+                values.Add(
+                    string.Empty);
+
                 continue;
             }
 
             var end =
-                columnIndex + 1 < columnStarts.Count
+                columnIndex + 1
+                < columnStarts.Count
                     ? Math.Min(
-                        columnStarts[columnIndex + 1],
+                        columnStarts[
+                            columnIndex + 1],
                         line.Length)
                     : line.Length;
 
@@ -493,6 +716,14 @@ public class ProgramUpdateInformationProvider :
         return values;
     }
 
+    private static bool IsReportedUpdateCountLine(
+        string line)
+    {
+        return ReportedUpdateCountRegex
+            .IsMatch(
+                line);
+    }
+
     private static int? TryReadReportedUpdateCount(
         string output)
     {
@@ -506,7 +737,9 @@ public class ProgramUpdateInformationProvider :
         }
 
         var countText =
-            match.Groups["count"].Value;
+            match.Groups[
+                "count"]
+                .Value;
 
         if (!int.TryParse(
                 countText,
@@ -559,15 +792,16 @@ public class ProgramUpdateInformationProvider :
             return true;
         }
 
-        return trimmedLine.All(character =>
-            character is '-'
-                or '\\'
-                or '|'
-                or '/'
-                or '█'
-                or '▒'
-                or '░'
-                or ' ');
+        return trimmedLine.All(
+            character =>
+                character is '-'
+                    or '\\'
+                    or '|'
+                    or '/'
+                    or '█'
+                    or '▒'
+                    or '░'
+                    or ' ');
     }
 
     private static string BuildUnavailableDetails(
@@ -580,7 +814,7 @@ public class ProgramUpdateInformationProvider :
             + "registriert.";
 
         if (!string.IsNullOrWhiteSpace(
-            result.ErrorMessage))
+                result.ErrorMessage))
         {
             details +=
                 " Technische Details: "
@@ -605,7 +839,7 @@ public class ProgramUpdateInformationProvider :
                     : result.ErrorMessage;
 
         if (string.IsNullOrWhiteSpace(
-            technicalDetails))
+                technicalDetails))
         {
             return summary;
         }
@@ -613,7 +847,8 @@ public class ProgramUpdateInformationProvider :
         return summary
                + " Technische Details: "
                + LimitTechnicalText(
-                   CleanOutput(technicalDetails));
+                   CleanOutput(
+                       technicalDetails));
     }
 
     private static string BuildSuccessDetails(
@@ -622,9 +857,10 @@ public class ProgramUpdateInformationProvider :
     {
         if (availableUpdateCount == 0)
         {
-            return "WinGet hat in der öffentlichen WinGet-Quelle "
-                   + "keine verfügbaren Aktualisierungen für erkannte "
-                   + "Programme gemeldet.";
+            return
+                "WinGet hat in der öffentlichen WinGet-Quelle "
+                + "keine verfügbaren Aktualisierungen für erkannte "
+                + "Programme gemeldet.";
         }
 
         var details =
@@ -662,17 +898,20 @@ public class ProgramUpdateInformationProvider :
     private static string LimitTechnicalText(
         string text)
     {
-        const int maximumLength = 1000;
+        const int maximumLength =
+            1000;
 
         var normalized =
             text.Trim();
 
-        if (normalized.Length <= maximumLength)
+        if (normalized.Length
+            <= maximumLength)
         {
             return normalized;
         }
 
-        return normalized[..maximumLength]
+        return normalized[
+                   ..maximumLength]
                + " …";
     }
 
