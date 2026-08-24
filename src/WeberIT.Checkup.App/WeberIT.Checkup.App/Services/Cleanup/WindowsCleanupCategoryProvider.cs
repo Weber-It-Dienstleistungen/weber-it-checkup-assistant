@@ -246,6 +246,12 @@ internal sealed class WindowsCleanupCategoryProvider
                     MeasurementStatus =
                         CleanupMeasurementStatus.InformationOnly,
 
+                    SizeBytes =
+                        0,
+
+                    FileCount =
+                        0,
+
                     Description =
                         "Es wurde keine vorherige "
                         + "Windows-Installation erkannt."

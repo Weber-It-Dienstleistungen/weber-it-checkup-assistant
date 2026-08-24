@@ -44,6 +44,15 @@ public class CleanupCategoryResult
             or CleanupMeasurementStatus.TimedOut;
 
     [JsonIgnore]
+    public bool IsAbsentPreviousWindowsInstallation =>
+        Category
+            == CleanupCategoryType.PreviousWindowsInstallation
+        && MeasurementStatus
+            == CleanupMeasurementStatus.InformationOnly
+        && SizeBytes == 0
+        && FileCount == 0;
+
+    [JsonIgnore]
     public string CategoryText =>
         Category switch
         {
@@ -105,39 +114,54 @@ public class CleanupCategoryResult
         };
 
     [JsonIgnore]
-    public string MeasurementStatusText =>
-        MeasurementStatus switch
+    public string MeasurementStatusText
+    {
+        get
         {
-            CleanupMeasurementStatus.NotAnalyzed =>
-                "Nicht analysiert",
+            if (IsAbsentPreviousWindowsInstallation)
+            {
+                return "Nicht vorhanden";
+            }
 
-            CleanupMeasurementStatus.Measured =>
-                "Vollständig gemessen",
+            return MeasurementStatus switch
+            {
+                CleanupMeasurementStatus.NotAnalyzed =>
+                    "Nicht analysiert",
 
-            CleanupMeasurementStatus.PartiallyMeasured =>
-                "Teilweise gemessen",
+                CleanupMeasurementStatus.Measured =>
+                    "Vollständig gemessen",
 
-            CleanupMeasurementStatus.InformationOnly =>
-                "Nur Vorhandensein geprüft",
+                CleanupMeasurementStatus.PartiallyMeasured =>
+                    "Teilweise gemessen",
 
-            CleanupMeasurementStatus.NotEvaluable =>
-                "Nicht auswertbar",
+                CleanupMeasurementStatus.InformationOnly =>
+                    "Nur Vorhandensein geprüft",
 
-            CleanupMeasurementStatus.Excluded =>
-                "Nicht Bestandteil der Analyse",
+                CleanupMeasurementStatus.NotEvaluable =>
+                    "Nicht auswertbar",
 
-            CleanupMeasurementStatus.TimedOut =>
-                "Zeitlimit erreicht",
+                CleanupMeasurementStatus.Excluded =>
+                    "Nicht Bestandteil der Analyse",
 
-            _ =>
-                "Unbekannter Messstatus"
-        };
+                CleanupMeasurementStatus.TimedOut =>
+                    "Zeitlimit erreicht",
+
+                _ =>
+                    "Unbekannter Messstatus"
+            };
+        }
+    }
 
     [JsonIgnore]
     public string SizeText
     {
         get
         {
+            if (IsAbsentPreviousWindowsInstallation)
+            {
+                return "Nicht vorhanden";
+            }
+
             if (MeasurementStatus
                 == CleanupMeasurementStatus.InformationOnly)
             {
@@ -164,6 +188,11 @@ public class CleanupCategoryResult
     {
         get
         {
+            if (IsAbsentPreviousWindowsInstallation)
+            {
+                return "Keine Dateien vorhanden";
+            }
+
             if (MeasurementStatus
                 == CleanupMeasurementStatus.InformationOnly)
             {
