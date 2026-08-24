@@ -5,19 +5,30 @@ namespace WeberIT.Checkup.App.Services.Cleanup;
 
 internal sealed class WindowsCleanupCategoryProvider
 {
+    private static readonly TimeSpan RollbackProbeTimeLimit =
+        TimeSpan.FromSeconds(20);
+
     private readonly CleanupDirectoryMeasurer
         _directoryMeasurer;
 
+    private readonly WindowsRollbackAvailabilityProbe
+        _rollbackAvailabilityProbe;
+
     public WindowsCleanupCategoryProvider(
-        CleanupDirectoryMeasurer directoryMeasurer)
+        CleanupDirectoryMeasurer directoryMeasurer,
+        WindowsRollbackAvailabilityProbe
+            rollbackAvailabilityProbe)
     {
         _directoryMeasurer =
             directoryMeasurer;
+
+        _rollbackAvailabilityProbe =
+            rollbackAvailabilityProbe;
     }
 
     public IReadOnlyCollection<CleanupCategoryResult> Analyze(
         string systemVolumeRoot,
-        DateTime deadline)
+        TimeSpan categoryTimeLimit)
     {
         var categories =
             new List<CleanupCategoryResult>();
@@ -25,22 +36,22 @@ internal sealed class WindowsCleanupCategoryProvider
         AddWindowsUpdateDownloadCache(
             categories,
             systemVolumeRoot,
-            deadline);
+            categoryTimeLimit);
 
         AddWindowsErrorReports(
             categories,
             systemVolumeRoot,
-            deadline);
+            categoryTimeLimit);
 
         AddMemoryDumps(
             categories,
             systemVolumeRoot,
-            deadline);
+            categoryTimeLimit);
 
         AddPreviousWindowsInstallation(
             categories,
             systemVolumeRoot,
-            deadline);
+            categoryTimeLimit);
 
         return categories;
     }
@@ -48,7 +59,7 @@ internal sealed class WindowsCleanupCategoryProvider
     private void AddWindowsUpdateDownloadCache(
         ICollection<CleanupCategoryResult> categories,
         string systemVolumeRoot,
-        DateTime deadline)
+        TimeSpan categoryTimeLimit)
     {
         var windowsDirectory =
             Environment.GetFolderPath(
@@ -74,14 +85,15 @@ internal sealed class WindowsCleanupCategoryProvider
                 + "benötigt werden",
                 path,
                 systemVolumeRoot,
-                deadline,
+                CreateDeadline(
+                    categoryTimeLimit),
                 SearchOption.AllDirectories));
     }
 
     private void AddWindowsErrorReports(
         ICollection<CleanupCategoryResult> categories,
         string systemVolumeRoot,
-        DateTime deadline)
+        TimeSpan categoryTimeLimit)
     {
         var commonApplicationData =
             Environment.GetFolderPath(
@@ -108,15 +120,20 @@ internal sealed class WindowsCleanupCategoryProvider
                 + "gelten nicht automatisch als entbehrlich",
                 path,
                 systemVolumeRoot,
-                deadline,
+                CreateDeadline(
+                    categoryTimeLimit),
                 SearchOption.AllDirectories));
     }
 
     private void AddMemoryDumps(
         ICollection<CleanupCategoryResult> categories,
         string systemVolumeRoot,
-        DateTime deadline)
+        TimeSpan categoryTimeLimit)
     {
+        var deadline =
+            CreateDeadline(
+                categoryTimeLimit);
+
         var windowsDirectory =
             Environment.GetFolderPath(
                 Environment.SpecialFolder.Windows);
@@ -150,89 +167,192 @@ internal sealed class WindowsCleanupCategoryProvider
         categories.Add(result);
     }
 
-    private static void AddPreviousWindowsInstallation(
+    private void AddPreviousWindowsInstallation(
         ICollection<CleanupCategoryResult> categories,
         string systemVolumeRoot,
-        DateTime deadline)
+        TimeSpan categoryTimeLimit)
     {
-        var result =
-            new CleanupCategoryResult
-            {
-                Category =
-                    CleanupCategoryType.PreviousWindowsInstallation,
-
-                Classification =
-                    CleanupCategoryClassification.ManualReview,
-
-                Description =
-                    "Prüfung auf eine vorherige "
-                    + "Windows-Installation"
-            };
-
-        if (DateTime.UtcNow >= deadline)
-        {
-            result.MeasurementStatus =
-                CleanupMeasurementStatus.TimedOut;
-
-            result.Description +=
-                ". Das Zeitlimit war bereits vor "
-                + "der Prüfung erreicht.";
-
-            categories.Add(result);
-            return;
-        }
-
         if (string.IsNullOrWhiteSpace(
                 systemVolumeRoot)
             || IsNetworkPath(
                 systemVolumeRoot))
         {
-            result.MeasurementStatus =
-                CleanupMeasurementStatus.Excluded;
+            categories.Add(
+                new CleanupCategoryResult
+                {
+                    Category =
+                        CleanupCategoryType.PreviousWindowsInstallation,
 
-            result.Description +=
-                ". Das lokale Systemvolume konnte "
-                + "nicht sicher bestätigt werden.";
+                    Classification =
+                        CleanupCategoryClassification.Excluded,
 
-            categories.Add(result);
+                    MeasurementStatus =
+                        CleanupMeasurementStatus.Excluded,
+
+                    Description =
+                        "Das lokale Systemvolume konnte für die "
+                        + "Prüfung auf eine vorherige "
+                        + "Windows-Installation nicht sicher "
+                        + "bestätigt werden."
+                });
+
             return;
         }
 
+        string path;
+
         try
         {
-            var path =
+            path =
                 Path.Combine(
                     systemVolumeRoot,
                     "Windows.old");
-
-            var isPresent =
-                Directory.Exists(path);
-
-            result.MeasurementStatus =
-                CleanupMeasurementStatus.InformationOnly;
-
-            result.Description =
-                isPresent
-                    ? "Eine vorherige Windows-Installation "
-                      + "wurde erkannt. Sie kann für die Rückkehr "
-                      + "zur vorherigen Windows-Version oder für "
-                      + "die Wiederherstellung älterer Dateien "
-                      + "relevant sein. Die Größe wird bewusst "
-                      + "nicht rekursiv ermittelt."
-                    : "Es wurde keine vorherige "
-                      + "Windows-Installation erkannt.";
         }
         catch
         {
-            result.MeasurementStatus =
-                CleanupMeasurementStatus.NotEvaluable;
+            categories.Add(
+                new CleanupCategoryResult
+                {
+                    Category =
+                        CleanupCategoryType.PreviousWindowsInstallation,
 
-            result.Description +=
-                ". Das Vorhandensein konnte nicht "
-                + "zuverlässig geprüft werden.";
+                    Classification =
+                        CleanupCategoryClassification.Information,
+
+                    MeasurementStatus =
+                        CleanupMeasurementStatus.NotEvaluable,
+
+                    Description =
+                        "Der Speicherort einer vorherigen "
+                        + "Windows-Installation konnte nicht "
+                        + "zuverlässig bestimmt werden."
+                });
+
+            return;
         }
 
-        categories.Add(result);
+        if (!Directory.Exists(
+                path))
+        {
+            categories.Add(
+                new CleanupCategoryResult
+                {
+                    Category =
+                        CleanupCategoryType.PreviousWindowsInstallation,
+
+                    Classification =
+                        CleanupCategoryClassification.Information,
+
+                    MeasurementStatus =
+                        CleanupMeasurementStatus.InformationOnly,
+
+                    Description =
+                        "Es wurde keine vorherige "
+                        + "Windows-Installation erkannt."
+                });
+
+            return;
+        }
+
+        var rollbackResult =
+            _rollbackAvailabilityProbe.Analyze(
+                CreateDeadline(
+                    RollbackProbeTimeLimit));
+
+        var classification =
+            rollbackResult.Status
+                == WindowsRollbackAvailabilityStatus.Available
+                ? CleanupCategoryClassification.Information
+                : CleanupCategoryClassification.ManualReview;
+
+        var description =
+            BuildPreviousWindowsInstallationDescription(
+                rollbackResult);
+
+        var measurement =
+            _directoryMeasurer.MeasureDirectory(
+                CleanupCategoryType.PreviousWindowsInstallation,
+                classification,
+                description,
+                path,
+                systemVolumeRoot,
+                CreateDeadline(
+                    categoryTimeLimit),
+                SearchOption.AllDirectories);
+
+        categories.Add(
+            measurement);
+    }
+
+    private static string
+        BuildPreviousWindowsInstallationDescription(
+            WindowsRollbackAvailabilityResult rollbackResult)
+    {
+        switch (rollbackResult.Status)
+        {
+            case WindowsRollbackAvailabilityStatus.Available:
+                {
+                    var windowDescription =
+                        rollbackResult.UninstallWindowDays.HasValue
+                            ? $" Das konfigurierte Rückkehrfenster "
+                              + $"beträgt "
+                              + $"{rollbackResult.UninstallWindowDays.Value} "
+                              + "Tage. Dieser Wert beschreibt die "
+                              + "konfigurierte Frist und nicht die "
+                              + "verbleibende Restzeit."
+                            : string.Empty;
+
+                    return
+                        "Eine vorherige Windows-Installation wurde "
+                        + "erkannt. DISM meldet die Windows-"
+                        + "Rückkehrfunktion als verfügbar."
+                        + windowDescription
+                        + " Der Speicherbereich wird zur "
+                        + "Dokumentation vermessen, aber nicht als "
+                        + "Bereinigungspotenzial eingestuft. "
+                        + "Solange die Rückkehrfunktion verfügbar "
+                        + "ist, sollte Windows.old nicht entfernt werden";
+                }
+
+            case WindowsRollbackAvailabilityStatus.Unavailable:
+                return
+                    "Eine vorherige Windows-Installation wurde "
+                    + "erkannt. DISM meldet keine verfügbare "
+                    + "Windows-Rückkehrfunktion mehr. "
+                    + "Windows.old wird deshalb als manuell zu "
+                    + "prüfender Altbestand vermessen. Vor einer "
+                    + "Bereinigung muss geprüft werden, ob daraus "
+                    + "noch persönliche oder technische Dateien "
+                    + "benötigt werden";
+
+            case WindowsRollbackAvailabilityStatus.TimedOut:
+                return
+                    "Eine vorherige Windows-Installation wurde "
+                    + "erkannt. Die automatisierte Prüfung der "
+                    + "Windows-Rückkehrfunktion hat ihr eigenes "
+                    + "Sicherheitszeitlimit erreicht. "
+                    + "Windows.old wird trotzdem zur Dokumentation "
+                    + "vermessen, darf aber ohne manuelle Prüfung "
+                    + "nicht als entbehrlich eingestuft werden";
+
+            default:
+                {
+                    var detail =
+                        string.IsNullOrWhiteSpace(
+                            rollbackResult.Message)
+                            ? "Die Ursache ist nicht näher bekannt."
+                            : rollbackResult.Message;
+
+                    return
+                        "Eine vorherige Windows-Installation wurde "
+                        + "erkannt. Die Windows-Rückkehrfunktion konnte "
+                        + "nicht zuverlässig automatisch geprüft werden. "
+                        + detail
+                        + " Windows.old wird trotzdem zur Dokumentation "
+                        + "vermessen, darf aber ohne manuelle Prüfung "
+                        + "nicht als entbehrlich eingestuft werden";
+                }
+        }
     }
 
     private static void AddFullMemoryDump(
@@ -442,5 +562,12 @@ internal sealed class WindowsCleanupCategoryProvider
         {
             return string.Empty;
         }
+    }
+
+    private static DateTime CreateDeadline(
+        TimeSpan timeLimit)
+    {
+        return DateTime.UtcNow.Add(
+            timeLimit);
     }
 }

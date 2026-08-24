@@ -8,8 +8,8 @@ namespace WeberIT.Checkup.App.Services.Cleanup;
 public class CleanupPotentialProvider :
     ICleanupPotentialProvider
 {
-    private static readonly TimeSpan AnalysisTimeLimit =
-        TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan CategoryAnalysisTimeLimit =
+        TimeSpan.FromMinutes(2);
 
     private readonly SafeCleanupCategoryProvider
         _safeCategoryProvider;
@@ -28,6 +28,9 @@ public class CleanupPotentialProvider :
         var directoryMeasurer =
             new CleanupDirectoryMeasurer();
 
+        var rollbackAvailabilityProbe =
+            new WindowsRollbackAvailabilityProbe();
+
         _safeCategoryProvider =
             new SafeCleanupCategoryProvider(
                 directoryMeasurer);
@@ -37,7 +40,8 @@ public class CleanupPotentialProvider :
 
         _windowsCategoryProvider =
             new WindowsCleanupCategoryProvider(
-                directoryMeasurer);
+                directoryMeasurer,
+                rollbackAvailabilityProbe);
 
         _browserCategoryProvider =
             new BrowserCleanupCategoryProvider(
@@ -96,29 +100,25 @@ public class CleanupPotentialProvider :
                 return information;
             }
 
-            var deadline =
-                DateTime.UtcNow
-                    .Add(AnalysisTimeLimit);
-
             information.Categories.AddRange(
                 _safeCategoryProvider.Analyze(
                     systemVolumeRoot,
-                    deadline));
+                    CategoryAnalysisTimeLimit));
 
             information.Categories.Add(
                 _recycleBinCategoryProvider.Analyze(
                     systemVolumeRoot,
-                    deadline));
+                    CategoryAnalysisTimeLimit));
 
             information.Categories.Add(
                 _browserCategoryProvider.Analyze(
                     systemVolumeRoot,
-                    deadline));
+                    CategoryAnalysisTimeLimit));
 
             information.Categories.AddRange(
                 _windowsCategoryProvider.Analyze(
                     systemVolumeRoot,
-                    deadline));
+                    CategoryAnalysisTimeLimit));
 
             information.AnalysisStatus =
                 DetermineOverallStatus(
@@ -295,9 +295,12 @@ public class CleanupPotentialProvider :
                 + "teilweise ausgewertet werden.",
 
             CleanupMeasurementStatus.TimedOut =>
-                "Das Zeitlimit der Bereinigungsanalyse "
-                + "wurde erreicht. Bereits ermittelte Werte "
-                + "bleiben als unvollständige Messung erhalten.",
+                "Mindestens eine Bereinigungskategorie hat "
+                + "ihr eigenes Sicherheitszeitlimit erreicht. "
+                + "Bereits ermittelte Werte bleiben als "
+                + "unvollständige Messung erhalten. Andere "
+                + "Kategorien wurden davon unabhängig weiter "
+                + "untersucht.",
 
             _ when categories.All(
                 category =>

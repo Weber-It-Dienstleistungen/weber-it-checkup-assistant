@@ -7,8 +7,12 @@ internal sealed class RecycleBinCleanupCategoryProvider
 {
     public CleanupCategoryResult Analyze(
         string systemVolumeRoot,
-        DateTime deadline)
+        TimeSpan categoryTimeLimit)
     {
+        var deadline =
+            DateTime.UtcNow.Add(
+                categoryTimeLimit);
+
         var result =
             new CleanupCategoryResult
             {

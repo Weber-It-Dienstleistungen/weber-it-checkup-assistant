@@ -17,7 +17,7 @@ internal sealed class SafeCleanupCategoryProvider
 
     public IReadOnlyCollection<CleanupCategoryResult> Analyze(
         string systemVolumeRoot,
-        DateTime deadline)
+        TimeSpan categoryTimeLimit)
     {
         var categories =
             new List<CleanupCategoryResult>();
@@ -25,22 +25,22 @@ internal sealed class SafeCleanupCategoryProvider
         AddUserTemporaryFiles(
             categories,
             systemVolumeRoot,
-            deadline);
+            categoryTimeLimit);
 
         AddWindowsTemporaryFiles(
             categories,
             systemVolumeRoot,
-            deadline);
+            categoryTimeLimit);
 
         AddDirectXShaderCache(
             categories,
             systemVolumeRoot,
-            deadline);
+            categoryTimeLimit);
 
         AddThumbnailCache(
             categories,
             systemVolumeRoot,
-            deadline);
+            categoryTimeLimit);
 
         return categories;
     }
@@ -48,7 +48,7 @@ internal sealed class SafeCleanupCategoryProvider
     private void AddUserTemporaryFiles(
         ICollection<CleanupCategoryResult> categories,
         string systemVolumeRoot,
-        DateTime deadline)
+        TimeSpan categoryTimeLimit)
     {
         var path =
             Path.GetTempPath();
@@ -61,14 +61,15 @@ internal sealed class SafeCleanupCategoryProvider
                 + "angemeldeten Benutzers",
                 path,
                 systemVolumeRoot,
-                deadline,
+                CreateDeadline(
+                    categoryTimeLimit),
                 SearchOption.AllDirectories));
     }
 
     private void AddWindowsTemporaryFiles(
         ICollection<CleanupCategoryResult> categories,
         string systemVolumeRoot,
-        DateTime deadline)
+        TimeSpan categoryTimeLimit)
     {
         var windowsDirectory =
             Environment.GetFolderPath(
@@ -89,14 +90,15 @@ internal sealed class SafeCleanupCategoryProvider
                 "Temporäre Dateien von Windows",
                 path,
                 systemVolumeRoot,
-                deadline,
+                CreateDeadline(
+                    categoryTimeLimit),
                 SearchOption.AllDirectories));
     }
 
     private void AddDirectXShaderCache(
         ICollection<CleanupCategoryResult> categories,
         string systemVolumeRoot,
-        DateTime deadline)
+        TimeSpan categoryTimeLimit)
     {
         var localApplicationData =
             Environment.GetFolderPath(
@@ -117,14 +119,15 @@ internal sealed class SafeCleanupCategoryProvider
                 "DirectX-Shadercache",
                 path,
                 systemVolumeRoot,
-                deadline,
+                CreateDeadline(
+                    categoryTimeLimit),
                 SearchOption.AllDirectories));
     }
 
     private void AddThumbnailCache(
         ICollection<CleanupCategoryResult> categories,
         string systemVolumeRoot,
-        DateTime deadline)
+        TimeSpan categoryTimeLimit)
     {
         var localApplicationData =
             Environment.GetFolderPath(
@@ -147,8 +150,16 @@ internal sealed class SafeCleanupCategoryProvider
                 "Windows-Vorschaubildcache",
                 path,
                 systemVolumeRoot,
-                deadline,
+                CreateDeadline(
+                    categoryTimeLimit),
                 SearchOption.TopDirectoryOnly,
                 "thumbcache_*.db"));
+    }
+
+    private static DateTime CreateDeadline(
+        TimeSpan timeLimit)
+    {
+        return DateTime.UtcNow.Add(
+            timeLimit);
     }
 }
