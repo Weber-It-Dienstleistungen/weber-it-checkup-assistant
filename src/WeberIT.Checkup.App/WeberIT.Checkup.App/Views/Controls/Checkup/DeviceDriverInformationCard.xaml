@@ -2,38 +2,25 @@
     x:Class="WeberIT.Checkup.App.Views.Controls.Checkup.DeviceDriverInformationCard"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:checkup="clr-namespace:WeberIT.Checkup.App.Views.Controls.Checkup"
     xmlns:models="clr-namespace:WeberIT.Checkup.App.Models">
 
-    <Border Style="{StaticResource PanelCardStyle}">
+    <checkup:CollapsibleCheckupSection
+        Title="Geräte- und Treiberanalyse">
 
-        <StackPanel>
+        <checkup:CollapsibleCheckupSection.SectionContent>
 
-            <Grid>
+            <StackPanel>
 
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0">
-
-                    <TextBlock
-                        Text="Geräte- und Treiberanalyse"
-                        Style="{StaticResource SectionTitleTextStyle}" />
-
-                    <TextBlock
-                        Margin="0,6,0,0"
-                        Foreground="{StaticResource TextSecondaryBrush}"
-                        Text="Rein lesende Analyse lokaler Plug-and-Play-Geräte und zugeordneter Windows-Treiber."
-                        TextWrapping="Wrap" />
-
-                </StackPanel>
+                <TextBlock
+                    Foreground="{StaticResource TextSecondaryBrush}"
+                    Text="Rein lesende Analyse lokaler Plug-and-Play-Geräte und zugeordneter Windows-Treiber."
+                    TextWrapping="Wrap" />
 
                 <Border
-                    Grid.Column="1"
-                    Margin="20,0,0,0"
+                    Margin="0,16,0,0"
                     Padding="10,6"
-                    VerticalAlignment="Top"
+                    HorizontalAlignment="Left"
                     Background="{StaticResource SurfaceSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="1"
@@ -48,620 +35,619 @@
 
                 </Border>
 
-            </Grid>
+                <Border
+                    Margin="0,18,0,0"
+                    Padding="14"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
 
-            <Border
-                Margin="0,18,0,0"
-                Padding="14"
-                Background="{StaticResource SurfaceSecondaryBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="1"
-                CornerRadius="8">
+                    <StackPanel>
 
-                <StackPanel>
+                        <TextBlock
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="{Binding AnalysisMessageText}"
+                            TextWrapping="Wrap" />
+
+                        <Grid Margin="0,14,0,0">
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock
+                                Grid.Column="0"
+                                FontWeight="SemiBold"
+                                Text="Analysezeitpunkt:" />
+
+                            <TextBlock
+                                Grid.Column="1"
+                                Text="{Binding AnalysisDateText}" />
+
+                            <TextBlock
+                                Grid.Column="2"
+                                Margin="20,0,0,0"
+                                FontWeight="SemiBold"
+                                Text="Analysedauer:" />
+
+                            <TextBlock
+                                Grid.Column="3"
+                                Text="{Binding AnalysisDurationText}" />
+
+                        </Grid>
+
+                    </StackPanel>
+
+                </Border>
+
+                <UniformGrid
+                    Margin="0,18,0,0"
+                    Columns="4"
+                    Rows="2">
+
+                    <Border
+                        Margin="0,0,6,8"
+                        Padding="12"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Ausgewertet" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{Binding EvaluatedDeviceCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border
+                        Margin="2,0,4,8"
+                        Padding="12"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource AccentBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Mit Detaildaten" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{Binding DetailedDeviceCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border
+                        Margin="4,0,2,8"
+                        Padding="12"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Technisch aggregiert" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{Binding AggregatedDeviceCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border
+                        Margin="6,0,0,8"
+                        Padding="12"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource WarningBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Prüfungsrelevant" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{Binding ReviewEntryCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border
+                        Margin="0,4,6,0"
+                        Padding="12"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource WarningBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Windows-Probleme" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{Binding ProblemDeviceCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border
+                        Margin="2,4,4,0"
+                        Padding="12"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource DangerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Fehlende Treiber" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{Binding MissingDriverCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border
+                        Margin="4,4,2,0"
+                        Padding="12"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource TextMutedBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Deaktiviert" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{Binding DisabledDeviceCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border
+                        Margin="6,4,0,0"
+                        Padding="12"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Nicht eindeutig" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{Binding NotEvaluableDeviceCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                </UniformGrid>
+
+                <Border
+                    Margin="0,18,0,0"
+                    Padding="12"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderBrush="{StaticResource WarningBrush}"
+                    BorderThickness="1"
+                    CornerRadius="7">
+
+                    <Border.Style>
+
+                        <Style TargetType="Border">
+
+                            <Setter
+                                Property="Visibility"
+                                Value="Collapsed" />
+
+                            <Style.Triggers>
+
+                                <DataTrigger
+                                    Binding="{Binding HasFailedOrIncompleteAnalysis}"
+                                    Value="True">
+
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Visible" />
+
+                                </DataTrigger>
+
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </Border.Style>
 
                     <TextBlock
                         Foreground="{StaticResource TextSecondaryBrush}"
-                        Text="{Binding AnalysisMessageText}"
+                        Text="Die Geräte- und Treiberanalyse war nicht vollständig. Einzelne Geräte oder Treiberinformationen können in der Darstellung fehlen."
                         TextWrapping="Wrap" />
 
-                    <Grid Margin="0,14,0,0">
-
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="150" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <TextBlock
-                            Grid.Column="0"
-                            FontWeight="SemiBold"
-                            Text="Analysezeitpunkt:" />
-
-                        <TextBlock
-                            Grid.Column="1"
-                            Text="{Binding AnalysisDateText}" />
-
-                        <TextBlock
-                            Grid.Column="2"
-                            Margin="20,0,0,0"
-                            FontWeight="SemiBold"
-                            Text="Analysedauer:" />
-
-                        <TextBlock
-                            Grid.Column="3"
-                            Text="{Binding AnalysisDurationText}" />
-
-                    </Grid>
-
-                </StackPanel>
-
-            </Border>
-
-            <UniformGrid
-                Margin="0,18,0,0"
-                Columns="4"
-                Rows="2">
-
-                <Border
-                    Margin="0,0,6,8"
-                    Padding="12"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-
-                    <StackPanel>
-
-                        <TextBlock
-                            FontSize="11"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Ausgewertet" />
-
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            FontSize="20"
-                            FontWeight="SemiBold"
-                            Text="{Binding EvaluatedDeviceCount}" />
-
-                    </StackPanel>
-
                 </Border>
-
-                <Border
-                    Margin="2,0,4,8"
-                    Padding="12"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource AccentBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-
-                    <StackPanel>
-
-                        <TextBlock
-                            FontSize="11"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Mit Detaildaten" />
-
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            FontSize="20"
-                            FontWeight="SemiBold"
-                            Text="{Binding DetailedDeviceCount}" />
-
-                    </StackPanel>
-
-                </Border>
-
-                <Border
-                    Margin="4,0,2,8"
-                    Padding="12"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-
-                    <StackPanel>
-
-                        <TextBlock
-                            FontSize="11"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Technisch aggregiert" />
-
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            FontSize="20"
-                            FontWeight="SemiBold"
-                            Text="{Binding AggregatedDeviceCount}" />
-
-                    </StackPanel>
-
-                </Border>
-
-                <Border
-                    Margin="6,0,0,8"
-                    Padding="12"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource WarningBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-
-                    <StackPanel>
-
-                        <TextBlock
-                            FontSize="11"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Prüfungsrelevant" />
-
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            FontSize="20"
-                            FontWeight="SemiBold"
-                            Text="{Binding ReviewEntryCount}" />
-
-                    </StackPanel>
-
-                </Border>
-
-                <Border
-                    Margin="0,4,6,0"
-                    Padding="12"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource WarningBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-
-                    <StackPanel>
-
-                        <TextBlock
-                            FontSize="11"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Windows-Probleme" />
-
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            FontSize="20"
-                            FontWeight="SemiBold"
-                            Text="{Binding ProblemDeviceCount}" />
-
-                    </StackPanel>
-
-                </Border>
-
-                <Border
-                    Margin="2,4,4,0"
-                    Padding="12"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource DangerBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-
-                    <StackPanel>
-
-                        <TextBlock
-                            FontSize="11"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Fehlende Treiber" />
-
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            FontSize="20"
-                            FontWeight="SemiBold"
-                            Text="{Binding MissingDriverCount}" />
-
-                    </StackPanel>
-
-                </Border>
-
-                <Border
-                    Margin="4,4,2,0"
-                    Padding="12"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource TextMutedBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-
-                    <StackPanel>
-
-                        <TextBlock
-                            FontSize="11"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Deaktiviert" />
-
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            FontSize="20"
-                            FontWeight="SemiBold"
-                            Text="{Binding DisabledDeviceCount}" />
-
-                    </StackPanel>
-
-                </Border>
-
-                <Border
-                    Margin="6,4,0,0"
-                    Padding="12"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-
-                    <StackPanel>
-
-                        <TextBlock
-                            FontSize="11"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Nicht eindeutig" />
-
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            FontSize="20"
-                            FontWeight="SemiBold"
-                            Text="{Binding NotEvaluableDeviceCount}" />
-
-                    </StackPanel>
-
-                </Border>
-
-            </UniformGrid>
-
-            <Border
-                Margin="0,18,0,0"
-                Padding="12"
-                Background="{StaticResource SurfaceSecondaryBrush}"
-                BorderBrush="{StaticResource WarningBrush}"
-                BorderThickness="1"
-                CornerRadius="7">
-
-                <Border.Style>
-
-                    <Style TargetType="Border">
-
-                        <Setter
-                            Property="Visibility"
-                            Value="Collapsed" />
-
-                        <Style.Triggers>
-
-                            <DataTrigger
-                                Binding="{Binding HasFailedOrIncompleteAnalysis}"
-                                Value="True">
-
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Visible" />
-
-                            </DataTrigger>
-
-                        </Style.Triggers>
-
-                    </Style>
-
-                </Border.Style>
 
                 <TextBlock
-                    Foreground="{StaticResource TextSecondaryBrush}"
-                    Text="Die Geräte- und Treiberanalyse war nicht vollständig. Einzelne Geräte oder Treiberinformationen können in der Darstellung fehlen."
-                    TextWrapping="Wrap" />
-
-            </Border>
-
-            <TextBlock
-                Margin="0,22,0,0"
-                FontSize="16"
-                FontWeight="SemiBold"
-                Foreground="{StaticResource TextPrimaryBrush}"
-                Text="Prüfungsrelevante Geräte und Treiber" />
-
-            <TextBlock
-                Margin="0,5,0,0"
-                FontSize="11"
-                Foreground="{StaticResource TextMutedBrush}"
-                Text="Korrekt arbeitende Geräte bleiben im Checkup mit ihren Detailinformationen gespeichert, werden hier aber zugunsten einer übersichtlichen Prüfung nicht einzeln aufgelistet."
-                TextWrapping="Wrap" />
-
-            <Border
-                Margin="0,12,0,0"
-                Padding="14"
-                Background="{StaticResource BackgroundBrush}"
-                BorderBrush="{StaticResource SuccessBrush}"
-                BorderThickness="1"
-                CornerRadius="8">
-
-                <Border.Style>
-
-                    <Style TargetType="Border">
-
-                        <Setter
-                            Property="Visibility"
-                            Value="Collapsed" />
-
-                        <Style.Triggers>
-
-                            <DataTrigger
-                                Binding="{Binding HasNoReviewEntries}"
-                                Value="True">
-
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Visible" />
-
-                            </DataTrigger>
-
-                        </Style.Triggers>
-
-                    </Style>
-
-                </Border.Style>
+                    Margin="0,22,0,0"
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource TextPrimaryBrush}"
+                    Text="Prüfungsrelevante Geräte und Treiber" />
 
                 <TextBlock
-                    Foreground="{StaticResource TextSecondaryBrush}"
-                    Text="Windows meldet für die ausgewerteten Geräte keinen prüfungsrelevanten Geräte- oder Treiberzustand."
+                    Margin="0,5,0,0"
+                    FontSize="11"
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="Korrekt arbeitende Geräte bleiben im Checkup mit ihren Detailinformationen gespeichert, werden hier aber zugunsten einer übersichtlichen Prüfung nicht einzeln aufgelistet."
                     TextWrapping="Wrap" />
 
-            </Border>
+                <Border
+                    Margin="0,12,0,0"
+                    Padding="14"
+                    Background="{StaticResource BackgroundBrush}"
+                    BorderBrush="{StaticResource SuccessBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
 
-            <ItemsControl
-                Margin="0,12,0,0"
-                ItemsSource="{Binding ReviewEntries}">
+                    <Border.Style>
 
-                <ItemsControl.Style>
+                        <Style TargetType="Border">
 
-                    <Style TargetType="ItemsControl">
+                            <Setter
+                                Property="Visibility"
+                                Value="Collapsed" />
 
-                        <Setter
-                            Property="Visibility"
-                            Value="Collapsed" />
+                            <Style.Triggers>
 
-                        <Style.Triggers>
-
-                            <DataTrigger
-                                Binding="{Binding HasReviewEntries}"
-                                Value="True">
-
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Visible" />
-
-                            </DataTrigger>
-
-                        </Style.Triggers>
-
-                    </Style>
-
-                </ItemsControl.Style>
-
-                <ItemsControl.ItemTemplate>
-
-                    <DataTemplate>
-
-                        <Border
-                            Margin="0,0,0,10"
-                            Padding="14"
-                            Background="{StaticResource BackgroundBrush}"
-                            BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8">
-
-                            <Border.Style>
-
-                                <Style TargetType="Border">
+                                <DataTrigger
+                                    Binding="{Binding HasNoReviewEntries}"
+                                    Value="True">
 
                                     <Setter
-                                        Property="BorderBrush"
-                                        Value="{StaticResource BorderBrush}" />
+                                        Property="Visibility"
+                                        Value="Visible" />
 
-                                    <Style.Triggers>
+                                </DataTrigger>
 
-                                        <DataTrigger
-                                            Binding="{Binding Classification}"
-                                            Value="{x:Static models:DeviceDriverClassification.MissingDriver}">
+                            </Style.Triggers>
 
-                                            <Setter
-                                                Property="BorderBrush"
-                                                Value="{StaticResource DangerBrush}" />
+                        </Style>
 
-                                        </DataTrigger>
+                    </Border.Style>
 
-                                        <DataTrigger
-                                            Binding="{Binding Classification}"
-                                            Value="{x:Static models:DeviceDriverClassification.WindowsProblem}">
+                    <TextBlock
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Text="Windows meldet für die ausgewerteten Geräte keinen prüfungsrelevanten Geräte- oder Treiberzustand."
+                        TextWrapping="Wrap" />
 
-                                            <Setter
-                                                Property="BorderBrush"
-                                                Value="{StaticResource WarningBrush}" />
+                </Border>
 
-                                        </DataTrigger>
+                <ItemsControl
+                    Margin="0,12,0,0"
+                    ItemsSource="{Binding ReviewEntries}">
 
-                                        <DataTrigger
-                                            Binding="{Binding Classification}"
-                                            Value="{x:Static models:DeviceDriverClassification.UnsignedDriver}">
+                    <ItemsControl.Style>
 
-                                            <Setter
-                                                Property="BorderBrush"
-                                                Value="{StaticResource WarningBrush}" />
+                        <Style TargetType="ItemsControl">
 
-                                        </DataTrigger>
+                            <Setter
+                                Property="Visibility"
+                                Value="Collapsed" />
 
-                                        <DataTrigger
-                                            Binding="{Binding Classification}"
-                                            Value="{x:Static models:DeviceDriverClassification.Disabled}">
+                            <Style.Triggers>
 
-                                            <Setter
-                                                Property="Opacity"
-                                                Value="0.72" />
+                                <DataTrigger
+                                    Binding="{Binding HasReviewEntries}"
+                                    Value="True">
 
-                                        </DataTrigger>
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Visible" />
 
-                                    </Style.Triggers>
+                                </DataTrigger>
 
-                                </Style>
+                            </Style.Triggers>
 
-                            </Border.Style>
+                        </Style>
 
-                            <Grid>
+                    </ItemsControl.Style>
 
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="1.6*" />
-                                    <ColumnDefinition Width="1.4*" />
-                                    <ColumnDefinition Width="1.4*" />
-                                    <ColumnDefinition Width="1.1*" />
-                                </Grid.ColumnDefinitions>
+                    <ItemsControl.ItemTemplate>
 
-                                <StackPanel Grid.Column="0">
+                        <DataTemplate>
 
-                                    <TextBlock
-                                        FontWeight="SemiBold"
-                                        Foreground="{StaticResource TextPrimaryBrush}"
-                                        Text="{Binding DisplayNameText}"
-                                        TextWrapping="Wrap" />
+                            <Border
+                                Margin="0,0,0,10"
+                                Padding="14"
+                                Background="{StaticResource BackgroundBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8">
 
-                                    <TextBlock
-                                        Margin="0,5,0,0"
-                                        FontSize="12"
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        Text="{Binding DeviceClassText}"
-                                        TextWrapping="Wrap" />
+                                <Border.Style>
 
-                                    <TextBlock
-                                        Margin="0,3,0,0"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="{Binding ManufacturerText}"
-                                        TextWrapping="Wrap" />
+                                    <Style TargetType="Border">
 
-                                </StackPanel>
+                                        <Setter
+                                            Property="BorderBrush"
+                                            Value="{StaticResource BorderBrush}" />
 
-                                <StackPanel
-                                    Grid.Column="1"
-                                    Margin="20,0,0,0">
+                                        <Style.Triggers>
 
-                                    <TextBlock
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="Windows-Status" />
+                                            <DataTrigger
+                                                Binding="{Binding Classification}"
+                                                Value="{x:Static models:DeviceDriverClassification.MissingDriver}">
 
-                                    <TextBlock
-                                        Margin="0,4,0,0"
-                                        FontSize="12"
-                                        FontWeight="SemiBold"
-                                        Text="{Binding OperationalStateText}"
-                                        TextWrapping="Wrap" />
+                                                <Setter
+                                                    Property="BorderBrush"
+                                                    Value="{StaticResource DangerBrush}" />
 
-                                    <TextBlock
-                                        Margin="0,4,0,0"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        Text="{Binding ConfigManagerErrorCodeText}"
-                                        TextWrapping="Wrap" />
+                                            </DataTrigger>
 
-                                    <TextBlock
-                                        Margin="0,4,0,0"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="{Binding StatusDescriptionText}"
-                                        TextWrapping="Wrap" />
+                                            <DataTrigger
+                                                Binding="{Binding Classification}"
+                                                Value="{x:Static models:DeviceDriverClassification.WindowsProblem}">
 
-                                </StackPanel>
+                                                <Setter
+                                                    Property="BorderBrush"
+                                                    Value="{StaticResource WarningBrush}" />
 
-                                <StackPanel
-                                    Grid.Column="2"
-                                    Margin="20,0,0,0">
+                                            </DataTrigger>
 
-                                    <TextBlock
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="Treiber" />
+                                            <DataTrigger
+                                                Binding="{Binding Classification}"
+                                                Value="{x:Static models:DeviceDriverClassification.UnsignedDriver}">
 
-                                    <TextBlock
-                                        Margin="0,4,0,0"
-                                        FontSize="12"
-                                        FontWeight="SemiBold"
-                                        Text="{Binding DriverAssignmentStateText}"
-                                        TextWrapping="Wrap" />
+                                                <Setter
+                                                    Property="BorderBrush"
+                                                    Value="{StaticResource WarningBrush}" />
 
-                                    <TextBlock
-                                        Margin="0,4,0,0"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        Text="{Binding DriverProviderText}"
-                                        TextWrapping="Wrap" />
+                                            </DataTrigger>
 
-                                    <TextBlock
-                                        Margin="0,3,0,0"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="{Binding DriverVersionText}"
-                                        TextWrapping="Wrap" />
+                                            <DataTrigger
+                                                Binding="{Binding Classification}"
+                                                Value="{x:Static models:DeviceDriverClassification.Disabled}">
 
-                                    <TextBlock
-                                        Margin="0,3,0,0"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="{Binding DriverDateText}"
-                                        TextWrapping="Wrap" />
+                                                <Setter
+                                                    Property="Opacity"
+                                                    Value="0.72" />
 
-                                    <TextBlock
-                                        Margin="0,3,0,0"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="{Binding SignedStatusText}"
-                                        TextWrapping="Wrap" />
+                                            </DataTrigger>
 
-                                </StackPanel>
+                                        </Style.Triggers>
 
-                                <StackPanel
-                                    Grid.Column="3"
-                                    Margin="20,0,0,0">
+                                    </Style>
 
-                                    <Border
-                                        Padding="8,5"
-                                        Background="{StaticResource SurfaceSecondaryBrush}"
-                                        BorderBrush="{StaticResource BorderBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="6">
+                                </Border.Style>
+
+                                <Grid>
+
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.6*" />
+                                        <ColumnDefinition Width="1.4*" />
+                                        <ColumnDefinition Width="1.4*" />
+                                        <ColumnDefinition Width="1.1*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
 
                                         <TextBlock
-                                            HorizontalAlignment="Center"
-                                            FontSize="11"
                                             FontWeight="SemiBold"
-                                            Text="{Binding ClassificationText}"
+                                            Foreground="{StaticResource TextPrimaryBrush}"
+                                            Text="{Binding DisplayNameText}"
+                                            TextWrapping="Wrap" />
+
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="12"
+                                            Foreground="{StaticResource TextSecondaryBrush}"
+                                            Text="{Binding DeviceClassText}"
+                                            TextWrapping="Wrap" />
+
+                                        <TextBlock
+                                            Margin="0,3,0,0"
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="{Binding ManufacturerText}"
+                                            TextWrapping="Wrap" />
+
+                                    </StackPanel>
+
+                                    <StackPanel
+                                        Grid.Column="1"
+                                        Margin="20,0,0,0">
+
+                                        <TextBlock
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="Windows-Status" />
+
+                                        <TextBlock
+                                            Margin="0,4,0,0"
+                                            FontSize="12"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding OperationalStateText}"
+                                            TextWrapping="Wrap" />
+
+                                        <TextBlock
+                                            Margin="0,4,0,0"
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextSecondaryBrush}"
+                                            Text="{Binding ConfigManagerErrorCodeText}"
+                                            TextWrapping="Wrap" />
+
+                                        <TextBlock
+                                            Margin="0,4,0,0"
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="{Binding StatusDescriptionText}"
+                                            TextWrapping="Wrap" />
+
+                                    </StackPanel>
+
+                                    <StackPanel
+                                        Grid.Column="2"
+                                        Margin="20,0,0,0">
+
+                                        <TextBlock
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="Treiber" />
+
+                                        <TextBlock
+                                            Margin="0,4,0,0"
+                                            FontSize="12"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding DriverAssignmentStateText}"
+                                            TextWrapping="Wrap" />
+
+                                        <TextBlock
+                                            Margin="0,4,0,0"
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextSecondaryBrush}"
+                                            Text="{Binding DriverProviderText}"
+                                            TextWrapping="Wrap" />
+
+                                        <TextBlock
+                                            Margin="0,3,0,0"
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="{Binding DriverVersionText}"
+                                            TextWrapping="Wrap" />
+
+                                        <TextBlock
+                                            Margin="0,3,0,0"
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="{Binding DriverDateText}"
+                                            TextWrapping="Wrap" />
+
+                                        <TextBlock
+                                            Margin="0,3,0,0"
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="{Binding SignedStatusText}"
+                                            TextWrapping="Wrap" />
+
+                                    </StackPanel>
+
+                                    <StackPanel
+                                        Grid.Column="3"
+                                        Margin="20,0,0,0">
+
+                                        <Border
+                                            Padding="8,5"
+                                            Background="{StaticResource SurfaceSecondaryBrush}"
+                                            BorderBrush="{StaticResource BorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="6">
+
+                                            <TextBlock
+                                                HorizontalAlignment="Center"
+                                                FontSize="11"
+                                                FontWeight="SemiBold"
+                                                Text="{Binding ClassificationText}"
+                                                TextAlignment="Center"
+                                                TextWrapping="Wrap" />
+
+                                        </Border>
+
+                                        <TextBlock
+                                            Margin="0,9,0,0"
+                                            HorizontalAlignment="Center"
+                                            FontSize="10"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="{Binding InfNameText}"
                                             TextAlignment="Center"
                                             TextWrapping="Wrap" />
 
-                                    </Border>
+                                    </StackPanel>
 
-                                    <TextBlock
-                                        Margin="0,9,0,0"
-                                        HorizontalAlignment="Center"
-                                        FontSize="10"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="{Binding InfNameText}"
-                                        TextAlignment="Center"
-                                        TextWrapping="Wrap" />
+                                </Grid>
 
-                                </StackPanel>
+                            </Border>
 
-                            </Grid>
+                        </DataTemplate>
 
-                        </Border>
+                    </ItemsControl.ItemTemplate>
 
-                    </DataTemplate>
+                </ItemsControl>
 
-                </ItemsControl.ItemTemplate>
+                <TextBlock
+                    Margin="0,10,0,0"
+                    FontSize="11"
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="Die Analyse verwendet ausschließlich lokale Windows-Informationen. Es wurden keine Geräte oder Treiber verändert, gesucht, heruntergeladen, installiert, aktualisiert oder entfernt. Ein älteres Treiberdatum und Microsoft als Treiberanbieter werden nicht negativ bewertet."
+                    TextWrapping="Wrap" />
 
-            </ItemsControl>
+            </StackPanel>
 
-            <TextBlock
-                Margin="0,10,0,0"
-                FontSize="11"
-                Foreground="{StaticResource TextMutedBrush}"
-                Text="Die Analyse verwendet ausschließlich lokale Windows-Informationen. Es wurden keine Geräte oder Treiber verändert, gesucht, heruntergeladen, installiert, aktualisiert oder entfernt. Ein älteres Treiberdatum und Microsoft als Treiberanbieter werden nicht negativ bewertet."
-                TextWrapping="Wrap" />
+        </checkup:CollapsibleCheckupSection.SectionContent>
 
-        </StackPanel>
-
-    </Border>
+    </checkup:CollapsibleCheckupSection>
 
 </UserControl>

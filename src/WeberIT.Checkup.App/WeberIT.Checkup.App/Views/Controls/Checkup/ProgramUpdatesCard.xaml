@@ -1,384 +1,317 @@
-﻿<UserControl x:Class="WeberIT.Checkup.App.Views.Controls.Checkup.ProgramUpdatesCard"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+﻿<UserControl
+    x:Class="WeberIT.Checkup.App.Views.Controls.Checkup.ProgramUpdatesCard"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:checkup="clr-namespace:WeberIT.Checkup.App.Views.Controls.Checkup">
 
-    <Border Style="{StaticResource PanelCardStyle}">
+    <checkup:CollapsibleCheckupSection
+        Title="Programmaktualisierungen">
 
-        <StackPanel>
+        <checkup:CollapsibleCheckupSection.SectionContent>
 
-            <Grid>
+            <StackPanel>
 
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Foreground="{StaticResource TextSecondaryBrush}"
+                    Text="Über die öffentliche WinGet-Quelle erkannte Programmaktualisierungen."
+                    TextWrapping="Wrap" />
 
-                <StackPanel Grid.Column="0">
+                <Border
+                    Margin="0,16,0,0"
+                    Padding="12,7"
+                    HorizontalAlignment="Left"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="7">
+
+                    <StackPanel Orientation="Horizontal">
+
+                        <TextBlock
+                            Margin="0,0,5,0"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource AccentBrush}"
+                            Text="Aktualisierungen:" />
+
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Text="{Binding AvailableUpdateCount}" />
+
+                    </StackPanel>
+
+                </Border>
+
+                <Grid Margin="0,20,0,0">
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
                     <TextBlock
-                        Text="Programmaktualisierungen"
-                        Style="{StaticResource SectionTitleTextStyle}" />
+                        Grid.Row="0"
+                        Grid.Column="0"
+                        FontWeight="SemiBold"
+                        Text="WinGet verfügbar:" />
 
                     <TextBlock
-                        Margin="0,6,0,0"
+                        Grid.Row="0"
+                        Grid.Column="1"
+                        Text="{Binding IsWingetAvailable}" />
+
+                    <TextBlock
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        Margin="0,8,0,0"
+                        FontWeight="SemiBold"
+                        Text="WinGet-Version:" />
+
+                    <TextBlock
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Margin="0,8,0,0"
+                        Text="{Binding WingetVersion}" />
+
+                    <TextBlock
+                        Grid.Row="2"
+                        Grid.Column="0"
+                        Margin="0,8,0,0"
+                        FontWeight="SemiBold"
+                        Text="Analysezeitpunkt:" />
+
+                    <TextBlock
+                        Grid.Row="2"
+                        Grid.Column="1"
+                        Margin="0,8,0,0"
+                        Text="{Binding AnalysisDate, StringFormat={}{0:dd.MM.yyyy HH:mm}}" />
+
+                </Grid>
+
+                <Border
+                    Margin="0,18,0,0"
+                    Padding="12"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="7">
+
+                    <TextBlock
                         Foreground="{StaticResource TextSecondaryBrush}"
-                        Text="Über die öffentliche WinGet-Quelle erkannte Programmaktualisierungen."
+                        Text="{Binding AnalysisDetails}"
                         TextWrapping="Wrap" />
 
-                </StackPanel>
-
-                <StackPanel
-                    Grid.Column="1"
-                    Margin="20,0,0,0"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top">
-
-                    <Border
-                        Padding="12,7"
-                        HorizontalAlignment="Right"
-                        Background="{StaticResource SurfaceSecondaryBrush}"
-                        BorderBrush="{StaticResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="7">
-
-                        <StackPanel Orientation="Horizontal">
-
-                            <TextBlock
-                                Margin="0,0,5,0"
-                                FontWeight="SemiBold"
-                                Foreground="{StaticResource AccentBrush}"
-                                Text="Aktualisierungen:" />
-
-                            <TextBlock
-                                FontWeight="SemiBold"
-                                Foreground="{StaticResource TextPrimaryBrush}"
-                                Text="{Binding AvailableUpdateCount}" />
-
-                        </StackPanel>
-
-                    </Border>
-
-                    <Button
-                        x:Name="ResolveProgramUpdatesButton"
-                        MinWidth="190"
-                        Height="38"
-                        Margin="0,10,0,0"
-                        HorizontalAlignment="Right"
-                        Click="ResolveProgramUpdatesButton_OnClick"
-                        Content="Programmupdates beheben">
-
-                        <Button.Style>
-
-                            <Style
-                                TargetType="Button"
-                                BasedOn="{StaticResource AccentButtonStyle}">
-
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Visible" />
-
-                                <Style.Triggers>
-
-                                    <DataTrigger
-                                        Binding="{Binding IsAnalysisSuccessful}"
-                                        Value="False">
-
-                                        <Setter
-                                            Property="Visibility"
-                                            Value="Collapsed" />
-
-                                    </DataTrigger>
-
-                                    <DataTrigger
-                                        Binding="{Binding AvailableUpdateCount}"
-                                        Value="0">
-
-                                        <Setter
-                                            Property="Visibility"
-                                            Value="Collapsed" />
-
-                                    </DataTrigger>
-
-                                </Style.Triggers>
-
-                            </Style>
-
-                        </Button.Style>
-
-                    </Button>
-
-                </StackPanel>
-
-            </Grid>
-
-            <Grid Margin="0,20,0,0">
-
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="160" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+                </Border>
 
                 <TextBlock
-                    Grid.Row="0"
-                    Grid.Column="0"
+                    Margin="0,22,0,10"
+                    FontSize="16"
                     FontWeight="SemiBold"
-                    Text="WinGet verfügbar:" />
+                    Foreground="{StaticResource TextPrimaryBrush}"
+                    Text="Erkannte Aktualisierungen" />
 
                 <TextBlock
-                    Grid.Row="0"
-                    Grid.Column="1"
-                    Text="{Binding IsWingetAvailable}" />
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="Keine Programmliste verfügbar."
+                    TextWrapping="Wrap">
 
-                <TextBlock
-                    Grid.Row="1"
-                    Grid.Column="0"
-                    Margin="0,8,0,0"
-                    FontWeight="SemiBold"
-                    Text="WinGet-Version:" />
+                    <TextBlock.Style>
 
-                <TextBlock
-                    Grid.Row="1"
-                    Grid.Column="1"
-                    Margin="0,8,0,0"
-                    Text="{Binding WingetVersion}" />
+                        <Style TargetType="TextBlock">
 
-                <TextBlock
-                    Grid.Row="2"
-                    Grid.Column="0"
-                    Margin="0,8,0,0"
-                    FontWeight="SemiBold"
-                    Text="Analysezeitpunkt:" />
+                            <Setter
+                                Property="Visibility"
+                                Value="Collapsed" />
 
-                <TextBlock
-                    Grid.Row="2"
-                    Grid.Column="1"
-                    Margin="0,8,0,0"
-                    Text="{Binding AnalysisDate, StringFormat={}{0:dd.MM.yyyy HH:mm}}" />
+                            <Style.Triggers>
 
-            </Grid>
+                                <DataTrigger
+                                    Binding="{Binding AvailableUpdateCount}"
+                                    Value="0">
 
-            <Border
-                Margin="0,18,0,0"
-                Padding="12"
-                Background="{StaticResource SurfaceSecondaryBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="1"
-                CornerRadius="7">
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Visible" />
 
-                <TextBlock
-                    Foreground="{StaticResource TextSecondaryBrush}"
-                    Text="{Binding AnalysisDetails}"
-                    TextWrapping="Wrap" />
+                                </DataTrigger>
 
-            </Border>
+                            </Style.Triggers>
 
-            <TextBlock
-                Margin="0,22,0,10"
-                FontSize="16"
-                FontWeight="SemiBold"
-                Foreground="{StaticResource TextPrimaryBrush}"
-                Text="Erkannte Aktualisierungen" />
+                        </Style>
 
-            <TextBlock
-                Foreground="{StaticResource TextMutedBrush}"
-                Text="Keine Programmliste verfügbar."
-                TextWrapping="Wrap">
+                    </TextBlock.Style>
 
-                <TextBlock.Style>
+                </TextBlock>
 
-                    <Style TargetType="TextBlock">
+                <ItemsControl
+                    ItemsSource="{Binding AvailableUpdates}">
 
-                        <Setter
-                            Property="Visibility"
-                            Value="Collapsed" />
+                    <ItemsControl.ItemTemplate>
 
-                        <Style.Triggers>
+                        <DataTemplate>
 
-                            <DataTrigger
-                                Binding="{Binding AvailableUpdateCount}"
-                                Value="0">
+                            <Border
+                                Margin="0,0,0,10"
+                                Padding="14"
+                                Background="{StaticResource BackgroundBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8">
 
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Visible" />
+                                <Grid>
 
-                            </DataTrigger>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
 
-                        </Style.Triggers>
+                                    <StackPanel Grid.Column="0">
 
-                    </Style>
+                                        <TextBlock
+                                            FontWeight="SemiBold"
+                                            Foreground="{StaticResource TextPrimaryBrush}"
+                                            Text="{Binding Name}"
+                                            TextWrapping="Wrap" />
 
-                </TextBlock.Style>
+                                        <TextBlock
+                                            Margin="0,4,0,0"
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="Programm" />
 
-            </TextBlock>
+                                    </StackPanel>
 
-            <ItemsControl
-                ItemsSource="{Binding AvailableUpdates}">
+                                    <StackPanel
+                                        Grid.Column="1"
+                                        Margin="20,0,0,0">
 
-                <ItemsControl.ItemTemplate>
+                                        <TextBlock
+                                            Foreground="{StaticResource TextSecondaryBrush}"
+                                            Text="{Binding PackageId}"
+                                            TextWrapping="Wrap" />
 
-                    <DataTemplate>
+                                        <TextBlock
+                                            Margin="0,4,0,0"
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="Paket-ID" />
 
-                        <Border
-                            Margin="0,0,0,10"
-                            Padding="14"
-                            Background="{StaticResource BackgroundBrush}"
-                            BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8">
+                                    </StackPanel>
 
-                            <Grid>
+                                    <StackPanel
+                                        Grid.Column="2"
+                                        Margin="20,0,0,0">
 
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="2*" />
-                                    <ColumnDefinition Width="2*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="40" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            Foreground="{StaticResource TextSecondaryBrush}"
+                                            Text="{Binding InstalledVersion}"
+                                            TextWrapping="Wrap" />
 
-                                <StackPanel Grid.Column="0">
+                                        <TextBlock
+                                            Margin="0,4,0,0"
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="Installiert" />
+
+                                    </StackPanel>
 
                                     <TextBlock
-                                        FontWeight="SemiBold"
-                                        Foreground="{StaticResource TextPrimaryBrush}"
-                                        Text="{Binding Name}"
-                                        TextWrapping="Wrap" />
-
-                                    <TextBlock
-                                        Margin="0,4,0,0"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="Programm" />
-
-                                </StackPanel>
-
-                                <StackPanel
-                                    Grid.Column="1"
-                                    Margin="20,0,0,0">
-
-                                    <TextBlock
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        Text="{Binding PackageId}"
-                                        TextWrapping="Wrap" />
-
-                                    <TextBlock
-                                        Margin="0,4,0,0"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="Paket-ID" />
-
-                                </StackPanel>
-
-                                <StackPanel
-                                    Grid.Column="2"
-                                    Margin="20,0,0,0">
-
-                                    <TextBlock
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        Text="{Binding InstalledVersion}"
-                                        TextWrapping="Wrap" />
-
-                                    <TextBlock
-                                        Margin="0,4,0,0"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="Installiert" />
-
-                                </StackPanel>
-
-                                <TextBlock
-                                    Grid.Column="3"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Top"
-                                    FontSize="16"
-                                    Foreground="{StaticResource AccentBrush}"
-                                    Text="→" />
-
-                                <StackPanel Grid.Column="4">
-
-                                    <TextBlock
-                                        FontWeight="SemiBold"
+                                        Grid.Column="3"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Top"
+                                        FontSize="16"
                                         Foreground="{StaticResource AccentBrush}"
-                                        Text="{Binding AvailableVersion}"
-                                        TextWrapping="Wrap" />
+                                        Text="→" />
 
-                                    <TextBlock
-                                        Margin="0,4,0,0"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"
-                                        Text="Verfügbar" />
+                                    <StackPanel Grid.Column="4">
 
-                                </StackPanel>
+                                        <TextBlock
+                                            FontWeight="SemiBold"
+                                            Foreground="{StaticResource AccentBrush}"
+                                            Text="{Binding AvailableVersion}"
+                                            TextWrapping="Wrap" />
 
-                            </Grid>
+                                        <TextBlock
+                                            Margin="0,4,0,0"
+                                            FontSize="11"
+                                            Foreground="{StaticResource TextMutedBrush}"
+                                            Text="Verfügbar" />
 
-                        </Border>
+                                    </StackPanel>
 
-                    </DataTemplate>
+                                </Grid>
 
-                </ItemsControl.ItemTemplate>
+                            </Border>
 
-            </ItemsControl>
+                        </DataTemplate>
 
-            <Border
-                Margin="0,8,0,0"
-                Padding="12"
-                Background="{StaticResource SurfaceSecondaryBrush}"
-                BorderBrush="{StaticResource InformationBrush}"
-                BorderThickness="1"
-                CornerRadius="7">
+                    </ItemsControl.ItemTemplate>
 
-                <Border.Style>
+                </ItemsControl>
 
-                    <Style
-                        TargetType="Border"
-                        BasedOn="{StaticResource PanelCardStyle}">
+                <Border
+                    Margin="0,8,0,0"
+                    Padding="12"
+                    Background="{StaticResource SurfaceSecondaryBrush}"
+                    BorderBrush="{StaticResource InformationBrush}"
+                    BorderThickness="1"
+                    CornerRadius="7">
 
-                        <Setter
-                            Property="Visibility"
-                            Value="Collapsed" />
+                    <Border.Style>
 
-                        <Style.Triggers>
+                        <Style
+                            TargetType="Border"
+                            BasedOn="{StaticResource PanelCardStyle}">
 
-                            <DataTrigger
-                                Binding="{Binding IsResultTruncated}"
-                                Value="True">
+                            <Setter
+                                Property="Visibility"
+                                Value="Collapsed" />
 
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Visible" />
+                            <Style.Triggers>
 
-                            </DataTrigger>
+                                <DataTrigger
+                                    Binding="{Binding IsResultTruncated}"
+                                    Value="True">
 
-                        </Style.Triggers>
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Visible" />
 
-                    </Style>
+                                </DataTrigger>
 
-                </Border.Style>
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </Border.Style>
+
+                    <TextBlock
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Text="Die gespeicherte Programmliste wurde aus Speicher- und Darstellungsgründen begrenzt."
+                        TextWrapping="Wrap" />
+
+                </Border>
 
                 <TextBlock
-                    Foreground="{StaticResource TextSecondaryBrush}"
-                    Text="Die gespeicherte Programmliste wurde aus Speicher- und Darstellungsgründen begrenzt."
+                    Margin="0,14,0,0"
+                    FontSize="11"
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="Microsoft-Store-Apps und Programme, die WinGet nicht zuordnen kann, sind in dieser Liste nicht enthalten. Es wurden keine Programme aktualisiert."
                     TextWrapping="Wrap" />
 
-            </Border>
+            </StackPanel>
 
-            <TextBlock
-                Margin="0,14,0,0"
-                FontSize="11"
-                Foreground="{StaticResource TextMutedBrush}"
-                Text="Microsoft-Store-Apps und Programme, die WinGet nicht zuordnen kann, sind in dieser Liste nicht enthalten. Es wurden keine Programme aktualisiert."
-                TextWrapping="Wrap" />
+        </checkup:CollapsibleCheckupSection.SectionContent>
 
-        </StackPanel>
-
-    </Border>
+    </checkup:CollapsibleCheckupSection>
 
 </UserControl>
