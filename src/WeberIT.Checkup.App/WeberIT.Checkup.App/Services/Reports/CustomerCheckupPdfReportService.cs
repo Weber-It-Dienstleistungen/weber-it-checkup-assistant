@@ -454,8 +454,8 @@ public sealed class CustomerCheckupPdfReportService :
         var subtitle =
             section.AddParagraph(
                 "Dokumentation des Ausgangszustands, der "
-                + "durchgeführten Maßnahmen und der "
-                + "abschließenden Kontrollprüfung");
+                + "Aufgabenbearbeitung, der technischen Maßnahmen "
+                + "und der abschließenden Kontrollprüfung");
 
         subtitle.Format.Font.Size =
             Unit.FromPoint(
@@ -476,8 +476,8 @@ public sealed class CustomerCheckupPdfReportService :
                 customer.DisplayName,
                 "den ausgewählten Kunden")
             + ". Er fasst den gesicherten Vorher-Zustand, "
-            + "den Arbeitsverlauf und den Nachher-Zustand "
-            + "zusammen.",
+            + "die dokumentierte Bearbeitung und den technischen "
+            + "Zustand nach der Abschlusskontrolle zusammen.",
             AccentColor);
 
         AddKeyValueTable(
@@ -595,7 +595,7 @@ public sealed class CustomerCheckupPdfReportService :
     {
         AddSectionHeading(
             section,
-            "2. Ergebnisübersicht");
+            "2. Technische Ergebnisübersicht");
 
         var table =
             CreateTable(
@@ -607,8 +607,8 @@ public sealed class CustomerCheckupPdfReportService :
 
         AddHeaderRow(
             table,
-            "Behoben",
-            "Weiterhin offen",
+            "Technisch behoben",
+            "Weiterhin vorhanden",
             "Neu erkannt",
             "Nicht erneut auswertbar");
 
@@ -651,6 +651,16 @@ public sealed class CustomerCheckupPdfReportService :
             section,
             6);
 
+        AddCallout(
+            section,
+            "Einordnung der Ergebnisübersicht",
+            "Diese vier Werte beschreiben ausschließlich die "
+            + "technische Befundlage nach der Abschlusskontrolle. "
+            + "Sie sagen nicht aus, ob ein zugehöriger Arbeitspunkt "
+            + "unbearbeitet war. Aufgabenbearbeitung und technischer "
+            + "Befund werden bewusst getrennt dokumentiert.",
+            AccentColor);
+
         var actionSummary =
             comparison.SuccessfulActionCount
             + " erfolgreich · "
@@ -661,13 +671,16 @@ public sealed class CustomerCheckupPdfReportService :
 
         AddCallout(
             section,
-            "Dokumentierte technische Maßnahmen",
+            "Dokumentierte technische Aktionen",
             actionSummary
             + (comparison.HasRestartRequirement
-                ? ". Mindestens eine Maßnahme meldet "
+                ? ". Mindestens eine technische Aktion meldet "
                   + "Neustartbedarf."
                 : ". Kein ausdrücklicher Neustartbedarf "
-                  + "dokumentiert."),
+                  + "dokumentiert.")
+            + " Manuell oder geführt bearbeitete Aufgaben "
+            + "werden separat in der Aufgabendokumentation "
+            + "ausgewiesen.",
             comparison.FailedActionCount > 0
                 ? DangerColor
                 : AccentColor);
@@ -789,7 +802,7 @@ public sealed class CustomerCheckupPdfReportService :
             "Bereich",
             "Vorher",
             "Nachher",
-            "Ergebnis",
+            "Technisches Ergebnis",
             "Auswertbarkeit");
 
         var rowIndex =
@@ -834,7 +847,7 @@ public sealed class CustomerCheckupPdfReportService :
     {
         AddSectionHeading(
             section,
-            "5. Durchgeführte technische Maßnahmen");
+            "5. Dokumentierte technische Aktionen");
 
         var actions =
             comparison.Actions
@@ -856,7 +869,9 @@ public sealed class CustomerCheckupPdfReportService :
                 "Keine technischen Aktionen dokumentiert",
                 "Im Arbeitsstand dieses Kundencheckups sind "
                 + "keine ausgeführten technischen Aktionen "
-                + "gespeichert.",
+                + "gespeichert. Manuell oder geführt bearbeitete "
+                + "Aufgaben können dennoch in Abschnitt 7 "
+                + "dokumentiert sein.",
                 MutedTextColor);
 
             return;
@@ -872,10 +887,10 @@ public sealed class CustomerCheckupPdfReportService :
 
         AddHeaderRow(
             table,
-            "Maßnahme",
+            "Aktion",
             "Status",
             "Zeitpunkt",
-            "Ergebnis");
+            "Technisches Ergebnis");
 
         var rowIndex =
             0;
@@ -919,7 +934,8 @@ public sealed class CustomerCheckupPdfReportService :
     {
         AddSectionHeading(
             section,
-            "6. Verbleibende und neu erkannte Hinweise");
+            "6. Verbleibende, neue oder nicht erneut "
+            + "auswertbare Befunde");
 
         var findings =
             comparison.Findings
@@ -948,9 +964,9 @@ public sealed class CustomerCheckupPdfReportService :
         {
             AddCallout(
                 section,
-                "Keine verbleibenden Vergleichsbefunde",
-                "Es wurden keine weiterhin offenen, neuen "
-                + "oder nicht erneut auswertbaren Befunde "
+                "Keine verbleibenden technischen Befunde",
+                "Es wurden keine verbleibenden, neuen oder "
+                + "nicht erneut auswertbaren technischen Befunde "
                 + "festgestellt.",
                 SuccessColor);
 
@@ -969,7 +985,7 @@ public sealed class CustomerCheckupPdfReportService :
             table,
             "Befund",
             "Einstufung",
-            "Vergleich",
+            "Befundstatus",
             "Beschreibung nach Abschlusskontrolle");
 
         var rowIndex =
@@ -1021,7 +1037,7 @@ public sealed class CustomerCheckupPdfReportService :
     {
         AddSectionHeading(
             section,
-            "7. Aufgabendokumentation");
+            "7. Aufgabenbearbeitung und Dokumentation");
 
         var tasks =
             comparison.Tasks
@@ -1052,6 +1068,16 @@ public sealed class CustomerCheckupPdfReportService :
             return;
         }
 
+        AddCallout(
+            section,
+            "Aufgabenstatus und technischer Befund",
+            "Der Aufgabenstatus dokumentiert, wie ein Arbeitspunkt "
+            + "bearbeitet wurde. Er ist nicht automatisch mit dem "
+            + "technischen Befund identisch. Ob ein Befund nach der "
+            + "Bearbeitung weiterhin vorhanden ist, ergibt sich aus "
+            + "der Abschlusskontrolle.",
+            AccentColor);
+
         var table =
             CreateTable(
                 section,
@@ -1064,7 +1090,7 @@ public sealed class CustomerCheckupPdfReportService :
             table,
             "Aufgabe",
             "Priorität",
-            "Abschlussstatus",
+            "Aufgabenstatus",
             "Technikernotiz / Begründung");
 
         var rowIndex =
@@ -1169,10 +1195,12 @@ public sealed class CustomerCheckupPdfReportService :
             "Dieser Bericht dokumentiert den zu den "
             + "Scanzeitpunkten aus Windows auslesbaren Zustand "
             + "sowie die im Kundencheckup gespeicherten "
-            + "Maßnahmen. Er ersetzt keine Datensicherung, "
-            + "Herstellergarantie oder physische Laborprüfung. "
-            + "Nicht auswertbare Bereiche und nicht direkt "
-            + "vergleichbare Bewertungen sind gekennzeichnet.",
+            + "Aufgabenbearbeitungen und technischen Aktionen. "
+            + "Er ersetzt keine Datensicherung, Herstellergarantie "
+            + "oder physische Laborprüfung. Nicht auswertbare "
+            + "Bereiche und nicht direkt vergleichbare Bewertungen "
+            + "sind gekennzeichnet. Aufgabenstatus und technische "
+            + "Befundlage werden bewusst getrennt ausgewiesen.",
             MutedTextColor);
     }
 
@@ -1626,30 +1654,30 @@ public sealed class CustomerCheckupPdfReportService :
         {
             CustomerCheckupAreaComparisonStatus
                 .UnchangedHealthy =>
-                    "Unverändert in Ordnung",
+                    "Technisch unverändert in Ordnung",
 
             CustomerCheckupAreaComparisonStatus
                 .Improved =>
-                    "Behoben",
+                    "Technischer Befund behoben",
 
             CustomerCheckupAreaComparisonStatus
                 .ImprovedButStillNeedsAttention =>
-                    "Verbessert, weiter prüfen",
+                    "Technisch verbessert, Restbefund vorhanden",
 
             CustomerCheckupAreaComparisonStatus
                 .UnchangedNeedsAttention =>
-                    "Unverändert auffällig",
+                    "Technischer Befund weiterhin vorhanden",
 
             CustomerCheckupAreaComparisonStatus
                 .Worsened =>
-                    "Verschlechtert",
+                    "Technischer Zustand verschlechtert",
 
             CustomerCheckupAreaComparisonStatus
                 .NewlyNeedsAttention =>
-                    "Neu auffällig",
+                    "Neuer technischer Befund",
 
             _ =>
-                "Nicht direkt vergleichbar"
+                "Technisch nicht direkt vergleichbar"
         };
     }
 
@@ -1728,7 +1756,7 @@ public sealed class CustomerCheckupPdfReportService :
         {
             CustomerCheckupFindingComparisonStatus
                 .StillOpen =>
-                    "Weiterhin offen",
+                    "Weiterhin vorhanden",
 
             CustomerCheckupFindingComparisonStatus
                 .NewlyDetected =>
@@ -1739,7 +1767,7 @@ public sealed class CustomerCheckupPdfReportService :
                     "Nicht erneut auswertbar",
 
             _ =>
-                "Behoben"
+                "Technisch behoben"
         };
     }
 
@@ -1899,15 +1927,15 @@ public sealed class CustomerCheckupPdfReportService :
 
             CustomerCheckupTaskComparisonStatus
                 .CompletedButStillDetected =>
-                    "Erledigt, weiterhin erkannt",
+                    "Abgeschlossen – Befund weiterhin vorhanden",
 
             CustomerCheckupTaskComparisonStatus
                 .StillOpen =>
-                    "Weiterhin offen",
+                    "Aufgabe weiterhin offen",
 
             CustomerCheckupTaskComparisonStatus
                 .NoLongerDetected =>
-                    "Nicht mehr erkannt",
+                    "Abgeschlossen – Befund nicht mehr erkannt",
 
             CustomerCheckupTaskComparisonStatus
                 .Skipped =>
@@ -1919,7 +1947,7 @@ public sealed class CustomerCheckupPdfReportService :
 
             CustomerCheckupTaskComparisonStatus
                 .NewlyDetected =>
-                    "Neu erkannt",
+                    "Neu erkannt – Aufgabe offen",
 
             _ =>
                 "Nicht erneut auswertbar"
