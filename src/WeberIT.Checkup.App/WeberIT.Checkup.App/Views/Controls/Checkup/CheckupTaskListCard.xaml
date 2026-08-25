@@ -6,29 +6,37 @@
     xmlns:models="clr-namespace:WeberIT.Checkup.App.Models">
 
     <UserControl.Resources>
+
         <converters:TaskCodeToActionDefinitionConverter
             x:Key="TaskCodeToActionDefinitionConverter" />
+
     </UserControl.Resources>
 
     <Border Style="{StaticResource PanelCardStyle}">
+
         <StackPanel>
 
+            <!-- Kopf -->
+
             <Grid>
+
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0">
+
                     <TextBlock
-                        Text="Geführte Aufgabenliste"
+                        Text="Aufgaben"
                         Style="{StaticResource SectionTitleTextStyle}" />
 
                     <TextBlock
                         Margin="0,6,0,0"
                         Foreground="{StaticResource TextSecondaryBrush}"
-                        Text="Aus den prüfungsrelevanten Befunden abgeleitete Arbeitspositionen. Die Aufgabenliste ist vom System- und Hardwarezustand getrennt."
+                        Text="Die Arbeitsliste zeigt nur Punkte, die aktuell noch bearbeitet werden müssen. Erfolgreich bearbeitete Aufgaben verschwinden bis zur erneuten technischen Kontrolle."
                         TextWrapping="Wrap" />
+
                 </StackPanel>
 
                 <Border
@@ -46,7 +54,9 @@
                         FontWeight="SemiBold"
                         Foreground="{StaticResource TextSecondaryBrush}"
                         Text="{Binding VersionText}" />
+
                 </Border>
+
             </Grid>
 
             <!-- Historischer Checkup -->
@@ -60,12 +70,15 @@
                 CornerRadius="8">
 
                 <Border.Style>
+
                     <Style TargetType="Border">
+
                         <Setter
                             Property="Visibility"
                             Value="Visible" />
 
                         <Style.Triggers>
+
                             <DataTrigger
                                 Binding="{Binding IsAvailable}"
                                 Value="True">
@@ -73,12 +86,17 @@
                                 <Setter
                                     Property="Visibility"
                                     Value="Collapsed" />
+
                             </DataTrigger>
+
                         </Style.Triggers>
+
                     </Style>
+
                 </Border.Style>
 
                 <Grid>
+
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="38" />
                         <ColumnDefinition Width="*" />
@@ -93,6 +111,7 @@
                         Text="&#xE823;" />
 
                     <StackPanel Grid.Column="1">
+
                         <TextBlock
                             FontWeight="SemiBold"
                             Foreground="{StaticResource TextPrimaryBrush}"
@@ -110,11 +129,14 @@
                             Foreground="{StaticResource TextMutedBrush}"
                             Text="Für eine aktuelle Aufgabenableitung ist ein neuer Systemscan erforderlich."
                             TextWrapping="Wrap" />
+
                     </StackPanel>
+
                 </Grid>
+
             </Border>
 
-            <!-- Neuer Checkup ohne Aufgaben -->
+            <!-- Keine Aufgaben -->
 
             <Border
                 Margin="0,20,0,0"
@@ -125,14 +147,19 @@
                 CornerRadius="8">
 
                 <Border.Style>
+
                     <Style TargetType="Border">
+
                         <Setter
                             Property="Visibility"
                             Value="Collapsed" />
 
                         <Style.Triggers>
+
                             <MultiDataTrigger>
+
                                 <MultiDataTrigger.Conditions>
+
                                     <Condition
                                         Binding="{Binding IsAvailable}"
                                         Value="True" />
@@ -140,17 +167,23 @@
                                     <Condition
                                         Binding="{Binding HasTasks}"
                                         Value="False" />
+
                                 </MultiDataTrigger.Conditions>
 
                                 <Setter
                                     Property="Visibility"
                                     Value="Visible" />
+
                             </MultiDataTrigger>
+
                         </Style.Triggers>
+
                     </Style>
+
                 </Border.Style>
 
                 <Grid>
+
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="38" />
                         <ColumnDefinition Width="*" />
@@ -165,6 +198,7 @@
                         Text="&#xE73E;" />
 
                     <StackPanel Grid.Column="1">
+
                         <TextBlock
                             FontWeight="SemiBold"
                             Foreground="{StaticResource TextPrimaryBrush}"
@@ -176,26 +210,26 @@
                             Text="{Binding AvailabilityText}"
                             TextWrapping="Wrap" />
 
-                        <TextBlock
-                            Margin="0,7,0,0"
-                            FontSize="11"
-                            Foreground="{StaticResource TextMutedBrush}"
-                            Text="Nicht auswertbare Bereiche und reine Informationen erzeugen keine künstlichen Aufgaben."
-                            TextWrapping="Wrap" />
                     </StackPanel>
+
                 </Grid>
+
             </Border>
 
-            <!-- Zusammenfassung -->
+            <!-- Arbeitsfortschritt -->
 
-            <Grid Margin="0,20,0,0">
-                <Grid.Style>
-                    <Style TargetType="Grid">
+            <StackPanel Margin="0,20,0,0">
+
+                <StackPanel.Style>
+
+                    <Style TargetType="StackPanel">
+
                         <Setter
                             Property="Visibility"
                             Value="Collapsed" />
 
                         <Style.Triggers>
+
                             <DataTrigger
                                 Binding="{Binding HasTasks}"
                                 Value="True">
@@ -203,172 +237,269 @@
                                 <Setter
                                     Property="Visibility"
                                     Value="Visible" />
+
                             </DataTrigger>
+
                         </Style.Triggers>
+
                     </Style>
-                </Grid.Style>
 
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
+                </StackPanel.Style>
 
-                <Border
-                    Grid.Column="0"
-                    Padding="14"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
+                <Grid>
 
-                    <StackPanel>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Grid.Column="0"
+                        Padding="14"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource WarningBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="NOCH ZU BEARBEITEN" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="22"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource WarningBrush}"
+                                Text="{Binding ActiveTaskCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border
+                        Grid.Column="2"
+                        Padding="14"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource WarningBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="PFLICHT OFFEN" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="22"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource WarningBrush}"
+                                Text="{Binding RequiredActiveTaskCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border
+                        Grid.Column="4"
+                        Padding="14"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource InformationBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="KONTROLLE AUSSTEHEND" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="22"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource InformationBrush}"
+                                Text="{Binding AwaitingVerificationTaskCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border
+                        Grid.Column="6"
+                        Padding="14"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource SuccessBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="BEARBEITET" />
+
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                FontSize="22"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource SuccessBrush}"
+                                Text="{Binding ProcessedTaskCount}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                </Grid>
+
+                <TextBlock
+                    Margin="0,12,0,0"
+                    FontSize="12"
+                    Foreground="{StaticResource TextSecondaryBrush}"
+                    Text="{Binding WorkListSummaryText}"
+                    TextWrapping="Wrap" />
+
+                <TextBlock
+                    Margin="0,4,0,0"
+                    FontSize="11"
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="{Binding ProcessedTaskSummaryText}"
+                    TextWrapping="Wrap" />
+
+            </StackPanel>
+
+            <!-- Keine aktive Aufgabe mehr -->
+
+            <Border
+                Margin="0,18,0,0"
+                Padding="16"
+                Background="{StaticResource BackgroundBrush}"
+                BorderBrush="{StaticResource SuccessBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+
+                <Border.Style>
+
+                    <Style TargetType="Border">
+
+                        <Setter
+                            Property="Visibility"
+                            Value="Collapsed" />
+
+                        <Style.Triggers>
+
+                            <MultiDataTrigger>
+
+                                <MultiDataTrigger.Conditions>
+
+                                    <Condition
+                                        Binding="{Binding HasTasks}"
+                                        Value="True" />
+
+                                    <Condition
+                                        Binding="{Binding HasActiveTasks}"
+                                        Value="False" />
+
+                                </MultiDataTrigger.Conditions>
+
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Visible" />
+
+                            </MultiDataTrigger>
+
+                        </Style.Triggers>
+
+                    </Style>
+
+                </Border.Style>
+
+                <Grid>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="38" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock
+                        Grid.Column="0"
+                        VerticalAlignment="Top"
+                        FontFamily="Segoe MDL2 Assets"
+                        FontSize="17"
+                        Foreground="{StaticResource SuccessBrush}"
+                        Text="&#xE73E;" />
+
+                    <StackPanel Grid.Column="1">
+
                         <TextBlock
-                            FontSize="11"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource TextMutedBrush}"
-                            Text="GESAMT" />
-
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            FontSize="22"
                             FontWeight="SemiBold"
                             Foreground="{StaticResource TextPrimaryBrush}"
-                            Text="{Binding TotalTaskCount}" />
-                    </StackPanel>
-                </Border>
-
-                <Border
-                    Grid.Column="2"
-                    Padding="14"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource WarningBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-
-                    <StackPanel>
-                        <TextBlock
-                            FontSize="11"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource TextMutedBrush}"
-                            Text="OFFEN" />
+                            Text="Arbeitsliste aktuell abgearbeitet" />
 
                         <TextBlock
                             Margin="0,5,0,0"
-                            FontSize="22"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource WarningBrush}"
-                            Text="{Binding OpenTaskCount}" />
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Text="{Binding WorkListSummaryText}"
+                            TextWrapping="Wrap" />
+
                     </StackPanel>
-                </Border>
 
-                <Border
-                    Grid.Column="4"
-                    Padding="14"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource WarningBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
+                </Grid>
 
-                    <StackPanel>
-                        <TextBlock
-                            FontSize="11"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource TextMutedBrush}"
-                            Text="PFLICHT OFFEN" />
+            </Border>
 
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            FontSize="22"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource WarningBrush}"
-                            Text="{Binding RequiredOpenTaskCount}" />
-                    </StackPanel>
-                </Border>
-
-                <Border
-                    Grid.Column="6"
-                    Padding="14"
-                    Background="{StaticResource BackgroundBrush}"
-                    BorderBrush="{StaticResource SuccessBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-
-                    <StackPanel>
-                        <TextBlock
-                            FontSize="11"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource TextMutedBrush}"
-                            Text="DOKUMENTIERT" />
-
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            FontSize="22"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource SuccessBrush}"
-                            Text="{Binding DocumentedTaskCount}" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <TextBlock
-                Margin="0,12,0,0"
-                FontSize="12"
-                Foreground="{StaticResource TextSecondaryBrush}"
-                Text="{Binding ProgressText}"
-                TextWrapping="Wrap">
-
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Setter
-                            Property="Visibility"
-                            Value="Collapsed" />
-
-                        <Style.Triggers>
-                            <DataTrigger
-                                Binding="{Binding HasTasks}"
-                                Value="True">
-
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
-
-            <!-- Aufgaben -->
+            <!-- Aktive Aufgaben -->
 
             <ItemsControl
                 Margin="0,18,0,0"
-                ItemsSource="{Binding Tasks}">
+                ItemsSource="{Binding ActiveTasks}">
 
                 <ItemsControl.Style>
+
                     <Style TargetType="ItemsControl">
+
                         <Setter
                             Property="Visibility"
                             Value="Collapsed" />
 
                         <Style.Triggers>
+
                             <DataTrigger
-                                Binding="{Binding HasTasks}"
+                                Binding="{Binding HasActiveTasks}"
                                 Value="True">
 
                                 <Setter
                                     Property="Visibility"
                                     Value="Visible" />
+
                             </DataTrigger>
+
                         </Style.Triggers>
+
                     </Style>
+
                 </ItemsControl.Style>
 
                 <ItemsControl.ItemTemplate>
+
                     <DataTemplate>
+
                         <Border
                             Margin="0,0,0,12"
                             Padding="16"
@@ -378,6 +509,7 @@
                             CornerRadius="8">
 
                             <Grid>
+
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="44" />
                                     <ColumnDefinition Width="*" />
@@ -401,12 +533,15 @@
                                         Text="&#xE7BA;">
 
                                         <TextBlock.Style>
+
                                             <Style TargetType="TextBlock">
+
                                                 <Setter
                                                     Property="Foreground"
                                                     Value="{StaticResource InformationBrush}" />
 
                                                 <Style.Triggers>
+
                                                     <DataTrigger
                                                         Binding="{Binding Priority}"
                                                         Value="{x:Static models:CheckupTaskPriority.Recommended}">
@@ -414,6 +549,7 @@
                                                         <Setter
                                                             Property="Foreground"
                                                             Value="{StaticResource AccentBrush}" />
+
                                                     </DataTrigger>
 
                                                     <DataTrigger
@@ -423,15 +559,23 @@
                                                         <Setter
                                                             Property="Foreground"
                                                             Value="{StaticResource WarningBrush}" />
+
                                                     </DataTrigger>
+
                                                 </Style.Triggers>
+
                                             </Style>
+
                                         </TextBlock.Style>
+
                                     </TextBlock>
+
                                 </Border>
 
                                 <StackPanel Grid.Column="1">
+
                                     <StackPanel Orientation="Horizontal">
+
                                         <Border
                                             Margin="0,0,8,0"
                                             Padding="8,3"
@@ -441,36 +585,9 @@
                                             <TextBlock
                                                 FontSize="10"
                                                 FontWeight="SemiBold"
-                                                Text="{Binding PriorityText}">
+                                                Foreground="{StaticResource AccentBrush}"
+                                                Text="{Binding PriorityText}" />
 
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter
-                                                            Property="Foreground"
-                                                            Value="{StaticResource InformationBrush}" />
-
-                                                        <Style.Triggers>
-                                                            <DataTrigger
-                                                                Binding="{Binding Priority}"
-                                                                Value="{x:Static models:CheckupTaskPriority.Recommended}">
-
-                                                                <Setter
-                                                                    Property="Foreground"
-                                                                    Value="{StaticResource AccentBrush}" />
-                                                            </DataTrigger>
-
-                                                            <DataTrigger
-                                                                Binding="{Binding Priority}"
-                                                                Value="{x:Static models:CheckupTaskPriority.Required}">
-
-                                                                <Setter
-                                                                    Property="Foreground"
-                                                                    Value="{StaticResource WarningBrush}" />
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
                                         </Border>
 
                                         <Border
@@ -483,7 +600,9 @@
                                                 FontWeight="SemiBold"
                                                 Foreground="{StaticResource TextSecondaryBrush}"
                                                 Text="{Binding CategoryText}" />
+
                                         </Border>
+
                                     </StackPanel>
 
                                     <TextBlock
@@ -500,6 +619,13 @@
                                         Text="{Binding Description}"
                                         TextWrapping="Wrap" />
 
+                                    <!--
+                                        Aktionsdefinition.
+                                        Intern können unterschiedliche
+                                        Ausführungsarten hinter dem
+                                        universellen Beheben-Button liegen.
+                                    -->
+
                                     <Border
                                         Margin="0,12,0,0"
                                         Padding="12"
@@ -510,7 +636,9 @@
                                         DataContext="{Binding TaskCode, Converter={StaticResource TaskCodeToActionDefinitionConverter}}">
 
                                         <StackPanel>
+
                                             <Grid>
+
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
@@ -530,6 +658,7 @@
                                                     FontWeight="SemiBold"
                                                     Foreground="{StaticResource TextSecondaryBrush}"
                                                     Text="{Binding RiskLevelText}" />
+
                                             </Grid>
 
                                             <TextBlock
@@ -546,81 +675,25 @@
                                                 Text="{Binding Description}"
                                                 TextWrapping="Wrap" />
 
-                                            <TextBlock
-                                                Margin="0,5,0,0"
-                                                FontSize="11"
-                                                Foreground="{StaticResource TextMutedBrush}"
-                                                Text="{Binding RiskDescription}"
-                                                TextWrapping="Wrap" />
+                                            <Button
+                                                Margin="0,12,0,0"
+                                                MinWidth="130"
+                                                Height="38"
+                                                HorizontalAlignment="Left"
+                                                Content="Beheben"
+                                                CommandParameter="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
+                                                Click="ResolveTaskButton_OnClick"
+                                                Style="{StaticResource AccentButtonStyle}" />
 
-                                            <StackPanel
-                                                Margin="0,10,0,0"
-                                                Orientation="Horizontal">
-
-                                                <Button
-                                                    Content="Aktionsdetails anzeigen"
-                                                    Click="ActionDetailsButton_OnClick" />
-
-                                                <Button
-                                                    Margin="8,0,0,0"
-                                                    CommandParameter="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
-                                                    Content="Programmupdates auswählen"
-                                                    Click="ProgramUpdateSelectionButton_OnClick">
-
-                                                    <Button.Style>
-                                                        <Style
-                                                            BasedOn="{StaticResource {x:Type Button}}"
-                                                            TargetType="Button">
-
-                                                            <Setter
-                                                                Property="Visibility"
-                                                                Value="Collapsed" />
-
-                                                            <Style.Triggers>
-                                                                <DataTrigger
-                                                                    Binding="{Binding ActionCode}"
-                                                                    Value="action.program-updates.selected-upgrades">
-
-                                                                    <Setter
-                                                                        Property="Visibility"
-                                                                        Value="Visible" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Button.Style>
-                                                </Button>
-
-                                                <Button
-                                                    Margin="8,0,0,0"
-                                                    CommandParameter="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
-                                                    Content="Bereinigung auswählen"
-                                                    Click="CleanupSelectionButton_OnClick">
-
-                                                    <Button.Style>
-                                                        <Style
-                                                            BasedOn="{StaticResource {x:Type Button}}"
-                                                            TargetType="Button">
-
-                                                            <Setter
-                                                                Property="Visibility"
-                                                                Value="Collapsed" />
-
-                                                            <Style.Triggers>
-                                                                <DataTrigger
-                                                                    Binding="{Binding ActionCode}"
-                                                                    Value="action.cleanup.selected-safe-categories">
-
-                                                                    <Setter
-                                                                        Property="Visibility"
-                                                                        Value="Visible" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Button.Style>
-                                                </Button>
-                                            </StackPanel>
                                         </StackPanel>
+
                                     </Border>
+
+                                    <!--
+                                        Frühere fehlgeschlagene oder bereits
+                                        kontrollierte technische Versuche
+                                        bleiben nachvollziehbar.
+                                    -->
 
                                     <Border
                                         Margin="0,12,0,0"
@@ -631,12 +704,15 @@
                                         CornerRadius="7">
 
                                         <Border.Style>
+
                                             <Style TargetType="Border">
+
                                                 <Setter
                                                     Property="Visibility"
                                                     Value="Collapsed" />
 
                                                 <Style.Triggers>
+
                                                     <DataTrigger
                                                         Binding="{Binding HasActionResults}"
                                                         Value="True">
@@ -644,24 +720,31 @@
                                                         <Setter
                                                             Property="Visibility"
                                                             Value="Visible" />
+
                                                     </DataTrigger>
+
                                                 </Style.Triggers>
+
                                             </Style>
+
                                         </Border.Style>
 
                                         <StackPanel>
+
                                             <TextBlock
                                                 FontSize="11"
                                                 FontWeight="SemiBold"
                                                 Foreground="{StaticResource InformationBrush}"
-                                                Text="{Binding ActionProgressText}" />
+                                                Text="Bisherige technische Ergebnisse" />
 
                                             <ItemsControl
                                                 Margin="0,8,0,0"
                                                 ItemsSource="{Binding ActionResults}">
 
                                                 <ItemsControl.ItemTemplate>
+
                                                     <DataTemplate>
+
                                                         <Border
                                                             Margin="0,0,0,8"
                                                             Padding="10"
@@ -671,7 +754,9 @@
                                                             CornerRadius="5">
 
                                                             <StackPanel>
+
                                                                 <Grid>
+
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="*" />
                                                                         <ColumnDefinition Width="Auto" />
@@ -690,14 +775,8 @@
                                                                         FontSize="10"
                                                                         Foreground="{StaticResource TextSecondaryBrush}"
                                                                         Text="{Binding StatusText}" />
-                                                                </Grid>
 
-                                                                <TextBlock
-                                                                    Margin="0,5,0,0"
-                                                                    FontSize="11"
-                                                                    Foreground="{StaticResource TextSecondaryBrush}"
-                                                                    Text="{Binding TargetDescription}"
-                                                                    TextWrapping="Wrap" />
+                                                                </Grid>
 
                                                                 <TextBlock
                                                                     Margin="0,5,0,0"
@@ -712,13 +791,21 @@
                                                                     Foreground="{StaticResource TextMutedBrush}"
                                                                     Text="{Binding FinishedAtText}"
                                                                     TextWrapping="Wrap" />
+
                                                             </StackPanel>
+
                                                         </Border>
+
                                                     </DataTemplate>
+
                                                 </ItemsControl.ItemTemplate>
+
                                             </ItemsControl>
+
                                         </StackPanel>
+
                                     </Border>
+
                                 </StackPanel>
 
                                 <Border
@@ -734,29 +821,193 @@
                                     <TextBlock
                                         FontSize="10"
                                         FontWeight="SemiBold"
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        Text="{Binding StatusText}" />
+                                        Foreground="{StaticResource WarningBrush}"
+                                        Text="Offen" />
+
                                 </Border>
+
                             </Grid>
+
                         </Border>
+
                     </DataTemplate>
+
                 </ItemsControl.ItemTemplate>
+
             </ItemsControl>
 
-            <TextBlock
-                Margin="0,2,0,0"
-                FontSize="11"
-                Foreground="{StaticResource TextMutedBrush}"
-                Text="Technische Aktionen können nur für ausdrücklich unterstützte Aufgaben nach Auswahl, Planprüfung und zusätzlicher Bestätigung gestartet werden. Die Bereinigungsfunktion erstellt in diesem Schritt ausschließlich eine Vorschau und löscht noch keine Daten."
-                TextWrapping="Wrap">
+            <!-- Nicht durchführbar / übersprungen -->
 
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
+            <Border
+                Margin="0,18,0,0"
+                Padding="16"
+                Background="{StaticResource SurfaceSecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+
+                <Border.Style>
+
+                    <Style TargetType="Border">
+
                         <Setter
                             Property="Visibility"
                             Value="Collapsed" />
 
                         <Style.Triggers>
+
+                            <DataTrigger
+                                Binding="{Binding HasDocumentedExceptionTasks}"
+                                Value="True">
+
+                                <Setter
+                                    Property="Visibility"
+                                    Value="Visible" />
+
+                            </DataTrigger>
+
+                        </Style.Triggers>
+
+                    </Style>
+
+                </Border.Style>
+
+                <StackPanel>
+
+                    <TextBlock
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextPrimaryBrush}"
+                        Text="Dokumentierte Ausnahmen" />
+
+                    <TextBlock
+                        Margin="0,5,0,12"
+                        FontSize="11"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Text="Nicht durchführbare oder bewusst übersprungene Punkte bleiben sichtbar dokumentiert, ohne die aktive Arbeitsliste zu blockieren."
+                        TextWrapping="Wrap" />
+
+                    <ItemsControl
+                        ItemsSource="{Binding DocumentedExceptionTasks}">
+
+                        <ItemsControl.ItemTemplate>
+
+                            <DataTemplate>
+
+                                <Border
+                                    Margin="0,0,0,8"
+                                    Padding="12"
+                                    Background="{StaticResource BackgroundBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+
+                                    <Grid>
+
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+
+                                            <TextBlock
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource TextPrimaryBrush}"
+                                                Text="{Binding Title}"
+                                                TextWrapping="Wrap" />
+
+                                            <TextBlock
+                                                Margin="0,5,0,0"
+                                                FontSize="11"
+                                                Foreground="{StaticResource TextSecondaryBrush}"
+                                                Text="{Binding StatusReason}"
+                                                TextWrapping="Wrap" />
+
+                                            <TextBlock
+                                                Margin="0,4,0,0"
+                                                FontSize="10"
+                                                Foreground="{StaticResource TextMutedBrush}"
+                                                Text="{Binding TechnicianNote}"
+                                                TextWrapping="Wrap">
+
+                                                <TextBlock.Style>
+
+                                                    <Style TargetType="TextBlock">
+
+                                                        <Setter
+                                                            Property="Visibility"
+                                                            Value="Collapsed" />
+
+                                                        <Style.Triggers>
+
+                                                            <DataTrigger
+                                                                Binding="{Binding HasTechnicianNote}"
+                                                                Value="True">
+
+                                                                <Setter
+                                                                    Property="Visibility"
+                                                                    Value="Visible" />
+
+                                                            </DataTrigger>
+
+                                                        </Style.Triggers>
+
+                                                    </Style>
+
+                                                </TextBlock.Style>
+
+                                            </TextBlock>
+
+                                        </StackPanel>
+
+                                        <Border
+                                            Grid.Column="1"
+                                            Margin="16,0,0,0"
+                                            Padding="8,4"
+                                            VerticalAlignment="Top"
+                                            Background="{StaticResource SurfaceSecondaryBrush}"
+                                            CornerRadius="5">
+
+                                            <TextBlock
+                                                FontSize="10"
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource WarningBrush}"
+                                                Text="{Binding StatusText}" />
+
+                                        </Border>
+
+                                    </Grid>
+
+                                </Border>
+
+                            </DataTemplate>
+
+                        </ItemsControl.ItemTemplate>
+
+                    </ItemsControl>
+
+                </StackPanel>
+
+            </Border>
+
+            <TextBlock
+                Margin="0,12,0,0"
+                FontSize="11"
+                Foreground="{StaticResource TextMutedBrush}"
+                Text="Der Button „Beheben“ ist der einheitliche Einstiegspunkt. Je nach Aufgabe startet das Programm eine kontrollierte technische Aktion, eine Auswahl oder einen geführten beziehungsweise manuellen Prüfschritt."
+                TextWrapping="Wrap">
+
+                <TextBlock.Style>
+
+                    <Style TargetType="TextBlock">
+
+                        <Setter
+                            Property="Visibility"
+                            Value="Collapsed" />
+
+                        <Style.Triggers>
+
                             <DataTrigger
                                 Binding="{Binding HasTasks}"
                                 Value="True">
@@ -764,11 +1015,19 @@
                                 <Setter
                                     Property="Visibility"
                                     Value="Visible" />
+
                             </DataTrigger>
+
                         </Style.Triggers>
+
                     </Style>
+
                 </TextBlock.Style>
+
             </TextBlock>
+
         </StackPanel>
+
     </Border>
+
 </UserControl>

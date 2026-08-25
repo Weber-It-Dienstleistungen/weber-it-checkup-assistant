@@ -92,6 +92,190 @@ public class CheckupTaskList : INotifyPropertyChanged
                 && task.Status
                     == CheckupTaskStatus.Open);
 
+    /*
+     * Die Arbeitsansicht ist bewusst keine zweite
+     * Aufgabenwahrheit.
+     *
+     * Sie ist ausschließlich eine Projektion der bereits
+     * gespeicherten Aufgaben-, Status- und Aktionsergebnisse.
+     *
+     * Offen + noch nicht erfolgreich bearbeitet:
+     *   in der Arbeitsliste sichtbar.
+     *
+     * Erfolgreiche technische Aktion seit dem letzten
+     * Kontrollscan:
+     *   vorläufig aus der Arbeitsliste ausgeblendet.
+     *
+     * Kontrollscan erkennt den Befund erneut:
+     *   Aufgabe ist weiterhin Open und wird wieder sichtbar.
+     *
+     * Completed:
+     *   aus der Arbeitsliste ausgeblendet.
+     *
+     * Skipped / NotFeasible:
+     *   aus der Arbeitsliste ausgeblendet, aber separat
+     *   als dokumentiertes Ergebnis angezeigt.
+     */
+
+    [JsonIgnore]
+    public IReadOnlyList<CheckupTask> ActiveTasks =>
+        Tasks
+            .Where(
+                IsTaskVisibleInWorkList)
+            .ToList();
+
+    [JsonIgnore]
+    public bool HasActiveTasks =>
+        ActiveTaskCount > 0;
+
+    [JsonIgnore]
+    public int ActiveTaskCount =>
+        Tasks.Count(
+            IsTaskVisibleInWorkList);
+
+    [JsonIgnore]
+    public int RequiredActiveTaskCount =>
+        Tasks.Count(
+            task =>
+                task.Priority
+                    == CheckupTaskPriority.Required
+                && IsTaskVisibleInWorkList(
+                    task));
+
+    [JsonIgnore]
+    public IReadOnlyList<CheckupTask>
+        TasksAwaitingVerification =>
+            Tasks
+                .Where(
+                    IsTaskAwaitingVerificationCore)
+                .ToList();
+
+    [JsonIgnore]
+    public int AwaitingVerificationTaskCount =>
+        Tasks.Count(
+            IsTaskAwaitingVerificationCore);
+
+    [JsonIgnore]
+    public bool HasTasksAwaitingVerification =>
+        AwaitingVerificationTaskCount > 0;
+
+    [JsonIgnore]
+    public IReadOnlyList<CheckupTask>
+        DocumentedExceptionTasks =>
+            Tasks
+                .Where(
+                    task =>
+                        task.Status
+                            is CheckupTaskStatus.Skipped
+                            or CheckupTaskStatus.NotFeasible)
+                .ToList();
+
+    [JsonIgnore]
+    public bool HasDocumentedExceptionTasks =>
+        DocumentedExceptionTaskCount > 0;
+
+    [JsonIgnore]
+    public int DocumentedExceptionTaskCount =>
+        Tasks.Count(
+            task =>
+                task.Status
+                    is CheckupTaskStatus.Skipped
+                    or CheckupTaskStatus.NotFeasible);
+
+    [JsonIgnore]
+    public int ProcessedTaskCount =>
+        Math.Max(
+            0,
+            TotalTaskCount
+            - ActiveTaskCount);
+
+    [JsonIgnore]
+    public string WorkListSummaryText
+    {
+        get
+        {
+            if (!HasTasks)
+            {
+                return
+                    "Keine Aufgaben vorhanden.";
+            }
+
+            if (ActiveTaskCount == 0
+                && AwaitingVerificationTaskCount > 0)
+            {
+                return AwaitingVerificationTaskCount == 1
+                    ? "Alle aktuell bearbeitbaren Aufgaben wurden "
+                      + "bearbeitet. Eine Aufgabe wartet auf einen "
+                      + "erneuten Kontrollscan."
+                    : "Alle aktuell bearbeitbaren Aufgaben wurden "
+                      + "bearbeitet. "
+                      + $"{AwaitingVerificationTaskCount} Aufgaben "
+                      + "warten auf einen erneuten Kontrollscan.";
+            }
+
+            if (ActiveTaskCount == 0)
+            {
+                return
+                    "Aktuell ist keine weitere Aufgabe zu bearbeiten.";
+            }
+
+            return ActiveTaskCount == 1
+                ? "Noch eine Aufgabe ist aktiv zu bearbeiten."
+                : $"Noch {ActiveTaskCount} Aufgaben sind "
+                  + "aktiv zu bearbeiten.";
+        }
+    }
+
+    [JsonIgnore]
+    public string ProcessedTaskSummaryText
+    {
+        get
+        {
+            var parts =
+                new List<string>();
+
+            if (AwaitingVerificationTaskCount > 0)
+            {
+                parts.Add(
+                    AwaitingVerificationTaskCount == 1
+                        ? "1 wartet auf Kontrolle"
+                        : $"{AwaitingVerificationTaskCount} "
+                          + "warten auf Kontrolle");
+            }
+
+            if (CompletedTaskCount > 0)
+            {
+                parts.Add(
+                    CompletedTaskCount == 1
+                        ? "1 erledigt"
+                        : $"{CompletedTaskCount} erledigt");
+            }
+
+            if (NotFeasibleTaskCount > 0)
+            {
+                parts.Add(
+                    NotFeasibleTaskCount == 1
+                        ? "1 nicht durchführbar"
+                        : $"{NotFeasibleTaskCount} "
+                          + "nicht durchführbar");
+            }
+
+            if (SkippedTaskCount > 0)
+            {
+                parts.Add(
+                    SkippedTaskCount == 1
+                        ? "1 übersprungen"
+                        : $"{SkippedTaskCount} übersprungen");
+            }
+
+            return parts.Count == 0
+                ? "Noch keine Aufgabe bearbeitet."
+                : string.Join(
+                    " · ",
+                    parts);
+        }
+    }
+
     [JsonIgnore]
     public int ActionResultCount =>
         Tasks.Sum(
@@ -101,16 +285,6 @@ public class CheckupTaskList : INotifyPropertyChanged
     [JsonIgnore]
     public bool HasActionResults =>
         ActionResultCount > 0;
-
-    [JsonIgnore]
-    public int AwaitingVerificationTaskCount =>
-        Tasks.Count(
-            task =>
-                task.HasSuccessfulActionAwaitingVerification);
-
-    [JsonIgnore]
-    public bool HasTasksAwaitingVerification =>
-        AwaitingVerificationTaskCount > 0;
 
     [JsonIgnore]
     public bool HasCompletionCheck =>
@@ -148,9 +322,7 @@ public class CheckupTaskList : INotifyPropertyChanged
                     + "keine Aufgaben abgeleitet.";
             }
 
-            return OpenTaskCount == 1
-                ? "Eine Aufgabe ist noch offen."
-                : $"{OpenTaskCount} Aufgaben sind noch offen.";
+            return WorkListSummaryText;
         }
     }
 
@@ -172,9 +344,9 @@ public class CheckupTaskList : INotifyPropertyChanged
             }
 
             return
-                $"{DocumentedTaskCount} von "
+                $"{ProcessedTaskCount} von "
                 + $"{TotalTaskCount} Aufgaben "
-                + "abschließend dokumentiert";
+                + "bearbeitet oder dokumentiert";
         }
     }
 
@@ -221,6 +393,17 @@ public class CheckupTaskList : INotifyPropertyChanged
     {
         get
         {
+            if (HasTasksAwaitingVerification)
+            {
+                return AwaitingVerificationTaskCount == 1
+                    ? "Eine erfolgreich ausgeführte technische "
+                      + "Aktion wartet auf einen neuen lesenden "
+                      + "Kontrollscan."
+                    : $"{AwaitingVerificationTaskCount} erfolgreich "
+                      + "bearbeitete Aufgaben warten auf einen "
+                      + "neuen lesenden Kontrollscan.";
+            }
+
             if (HasCompletionCheck)
             {
                 return
@@ -233,15 +416,6 @@ public class CheckupTaskList : INotifyPropertyChanged
                         .ToString(
                             "dd.MM.yyyy HH:mm")
                     + " Uhr.";
-            }
-
-            if (HasTasksAwaitingVerification)
-            {
-                return
-                    "Mindestens eine technische Aktion wurde "
-                    + "erfolgreich ausgeführt. Ein neuer "
-                    + "lesender Kontrollscan prüft, ob der "
-                    + "zugrunde liegende Befund weiterhin besteht.";
             }
 
             return
@@ -260,6 +434,16 @@ public class CheckupTaskList : INotifyPropertyChanged
         TaskListVersion > 0
             ? $"Aufgabenmodell Version {TaskListVersion}"
             : "Historischer Checkup ohne Aufgabenliste";
+
+    public bool IsTaskAwaitingVerification(
+        CheckupTask task)
+    {
+        EnsureTaskBelongsToList(
+            task);
+
+        return IsTaskAwaitingVerificationCore(
+            task);
+    }
 
     public bool EnsureTask(
         CheckupTask task,
@@ -668,6 +852,71 @@ public class CheckupTaskList : INotifyPropertyChanged
         }
     }
 
+    private bool IsTaskVisibleInWorkList(
+        CheckupTask task)
+    {
+        return task.Status
+                   == CheckupTaskStatus.Open
+               && !IsTaskAwaitingVerificationCore(
+                   task);
+    }
+
+    private bool IsTaskAwaitingVerificationCore(
+        CheckupTask task)
+    {
+        if (task.Status
+            != CheckupTaskStatus.Open)
+        {
+            return false;
+        }
+
+        var successfulActions =
+            task.ActionResults
+                .Where(
+                    result =>
+                        result.Status
+                        == CheckupTaskActionStatus.Successful)
+                .ToList();
+
+        if (successfulActions.Count == 0)
+        {
+            return false;
+        }
+
+        /*
+         * Ein erfolgreiches Ergebnis ohne belastbaren
+         * Abschlusszeitpunkt wird vorsorglich als noch nicht
+         * verifiziert behandelt.
+         */
+        if (successfulActions.Any(
+                action =>
+                    !action.FinishedAt.HasValue
+                    && !action.StartedAt.HasValue))
+        {
+            return true;
+        }
+
+        if (!LastCompletionCheckAt.HasValue)
+        {
+            return true;
+        }
+
+        var lastCompletionCheckAt =
+            LastCompletionCheckAt.Value;
+
+        return successfulActions.Any(
+            action =>
+            {
+                var actionAt =
+                    action.FinishedAt
+                    ?? action.StartedAt;
+
+                return !actionAt.HasValue
+                       || actionAt.Value
+                       > lastCompletionCheckAt;
+            });
+    }
+
     private void EnsureTaskBelongsToList(
         CheckupTask task)
     {
@@ -730,7 +979,8 @@ public class CheckupTaskList : INotifyPropertyChanged
                 + "Aufgabe überein.");
         }
 
-        if (!task.HasSuccessfulActionAwaitingVerification)
+        if (!IsTaskAwaitingVerificationCore(
+                task))
         {
             throw new InvalidOperationException(
                 "Der Status einer zu prüfenden Aufgabe "
@@ -778,11 +1028,7 @@ public class CheckupTaskList : INotifyPropertyChanged
         }
 
         var expectedTaskIds =
-            Tasks
-                .Where(
-                    task =>
-                        task
-                            .HasSuccessfulActionAwaitingVerification)
+            TasksAwaitingVerification
                 .Select(
                     task =>
                         task.Id)
@@ -1090,6 +1336,8 @@ public class CheckupTaskList : INotifyPropertyChanged
 
         OnPropertyChanged(
             nameof(ProgressText));
+
+        NotifyWorkListChanged();
     }
 
     private void NotifySummaryChanged()
@@ -1135,6 +1383,8 @@ public class CheckupTaskList : INotifyPropertyChanged
 
         OnPropertyChanged(
             nameof(CompletionCheckButtonText));
+
+        NotifyWorkListChanged();
     }
 
     private void NotifyActionSummaryChanged()
@@ -1165,6 +1415,8 @@ public class CheckupTaskList : INotifyPropertyChanged
 
         OnPropertyChanged(
             nameof(CompletionCheckButtonText));
+
+        NotifyWorkListChanged();
     }
 
     private void NotifyCompletionCheckChanged()
@@ -1182,6 +1434,12 @@ public class CheckupTaskList : INotifyPropertyChanged
             nameof(HasCompletionCheck));
 
         OnPropertyChanged(
+            nameof(AwaitingVerificationTaskCount));
+
+        OnPropertyChanged(
+            nameof(HasTasksAwaitingVerification));
+
+        OnPropertyChanged(
             nameof(ShouldShowCompletionCheckPanel));
 
         OnPropertyChanged(
@@ -1189,6 +1447,53 @@ public class CheckupTaskList : INotifyPropertyChanged
 
         OnPropertyChanged(
             nameof(CompletionCheckButtonText));
+
+        OnPropertyChanged(
+            nameof(ActionSummaryText));
+
+        NotifyWorkListChanged();
+    }
+
+    private void NotifyWorkListChanged()
+    {
+        OnPropertyChanged(
+            nameof(ActiveTasks));
+
+        OnPropertyChanged(
+            nameof(HasActiveTasks));
+
+        OnPropertyChanged(
+            nameof(ActiveTaskCount));
+
+        OnPropertyChanged(
+            nameof(RequiredActiveTaskCount));
+
+        OnPropertyChanged(
+            nameof(TasksAwaitingVerification));
+
+        OnPropertyChanged(
+            nameof(AwaitingVerificationTaskCount));
+
+        OnPropertyChanged(
+            nameof(HasTasksAwaitingVerification));
+
+        OnPropertyChanged(
+            nameof(DocumentedExceptionTasks));
+
+        OnPropertyChanged(
+            nameof(HasDocumentedExceptionTasks));
+
+        OnPropertyChanged(
+            nameof(DocumentedExceptionTaskCount));
+
+        OnPropertyChanged(
+            nameof(ProcessedTaskCount));
+
+        OnPropertyChanged(
+            nameof(WorkListSummaryText));
+
+        OnPropertyChanged(
+            nameof(ProcessedTaskSummaryText));
     }
 
     private void OnPropertyChanged(

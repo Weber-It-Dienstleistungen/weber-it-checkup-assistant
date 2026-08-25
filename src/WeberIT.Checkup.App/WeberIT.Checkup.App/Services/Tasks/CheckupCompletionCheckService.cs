@@ -61,12 +61,21 @@ public sealed class CheckupCompletionCheckService
         ArgumentNullException.ThrowIfNull(
             sourceCheckup);
 
+        /*
+         * Maßgeblich ist die Aufgabenliste selbst.
+         *
+         * Sie kennt nicht nur erfolgreiche Aktionen,
+         * sondern auch den Zeitpunkt der letzten bereits
+         * durchgeführten Kontrollprüfung.
+         *
+         * Dadurch wird eine erfolgreich ausgeführte Aktion
+         * nicht mehrfach kontrolliert, solange danach keine
+         * neue erfolgreiche Aktion dokumentiert wurde.
+         */
         var tasksAwaitingVerification =
-            sourceCheckup.TaskList.Tasks
-                .Where(
-                    task =>
-                        task
-                            .HasSuccessfulActionAwaitingVerification)
+            sourceCheckup
+                .TaskList
+                .TasksAwaitingVerification
                 .ToList();
 
         if (tasksAwaitingVerification.Count == 0)
