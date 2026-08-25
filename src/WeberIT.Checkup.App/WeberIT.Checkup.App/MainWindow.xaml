@@ -35,47 +35,26 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Anwendungssignet -->
+                <!-- Weber-IT-Original-Logo -->
 
-                <StackPanel
+                <Border
                     Grid.Column="0"
-                    VerticalAlignment="Center"
-                    Orientation="Horizontal">
+                    Width="172"
+                    Height="64"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center">
 
-                    <Border
-                        Width="40"
-                        Height="40"
-                        Margin="0,0,12,0"
-                        Background="{StaticResource AccentBrush}"
-                        CornerRadius="9">
+                    <Border.Background>
 
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontFamily="Segoe MDL2 Assets"
-                            FontSize="19"
-                            Foreground="{StaticResource TextPrimaryBrush}"
-                            Text="&#xE950;" />
+                        <ImageBrush
+                            ImageSource="Resources/Branding/WeberIT-Logo.png"
+                            Stretch="Uniform"
+                            Viewbox="27,91,447,168"
+                            ViewboxUnits="Absolute" />
 
-                    </Border>
+                    </Border.Background>
 
-                    <StackPanel VerticalAlignment="Center">
-
-                        <TextBlock
-                            FontSize="16"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource TextPrimaryBrush}"
-                            Text="Weber IT" />
-
-                        <TextBlock
-                            Margin="0,2,0,0"
-                            FontSize="11"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="CHECKUP ASSISTENT" />
-
-                    </StackPanel>
-
-                </StackPanel>
+                </Border>
 
                 <Border
                     Grid.Column="1"

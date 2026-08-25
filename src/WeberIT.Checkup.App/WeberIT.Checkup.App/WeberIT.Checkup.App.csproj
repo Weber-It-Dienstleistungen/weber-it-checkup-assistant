@@ -19,10 +19,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Update="Resources\Branding\WeberIT-Logo.png">
+		<None Remove="Resources\Branding\WeberIT-Logo.png" />
+
+		<Content Include="Resources\Branding\WeberIT-Logo.png">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</None>
+		</Content>
 	</ItemGroup>
 
 </Project>
