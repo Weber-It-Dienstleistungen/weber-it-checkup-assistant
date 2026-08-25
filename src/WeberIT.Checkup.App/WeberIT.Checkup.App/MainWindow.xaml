@@ -401,7 +401,7 @@
                     <TextBlock
                         FontSize="11"
                         Foreground="{StaticResource TextMutedBrush}"
-                        Text="v0.1.0" />
+                        Text="v1.0.0" />
 
                 </StackPanel>
 
