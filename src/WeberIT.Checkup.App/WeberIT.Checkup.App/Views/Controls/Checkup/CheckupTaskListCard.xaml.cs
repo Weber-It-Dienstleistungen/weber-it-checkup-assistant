@@ -30,7 +30,6 @@ public partial class CheckupTaskListCard : UserControl
         InitializeComponent();
 
         AddCompletionCheckPanel();
-        AddStatusEditor();
 
         Loaded +=
             CheckupTaskListCard_OnLoaded;
@@ -293,30 +292,6 @@ public partial class CheckupTaskListCard : UserControl
 
         rootStackPanel.Children.Add(
             panel);
-    }
-
-    private void AddStatusEditor()
-    {
-        if (Content is not Border rootBorder
-            || rootBorder.Child
-                is not StackPanel rootStackPanel)
-        {
-            return;
-        }
-
-        var statusEditor =
-            new CheckupTaskStatusEditor
-            {
-                Margin =
-                    new Thickness(
-                        0,
-                        18,
-                        0,
-                        0)
-            };
-
-        rootStackPanel.Children.Add(
-            statusEditor);
     }
 
     private async void ActionDetailsButton_OnClick(
