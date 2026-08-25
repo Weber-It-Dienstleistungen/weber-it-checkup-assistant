@@ -101,6 +101,34 @@ public class CheckupSession
                 visit.IsCompleted);
 
     [JsonIgnore]
+    public IReadOnlyList<CustomerCheckupVisit>
+        CustomerCheckupHistory =>
+            CustomerCheckupVisits
+                .Where(
+                    visit =>
+                        !visit.IsInProgress)
+                .OrderByDescending(
+                    visit =>
+                        visit.CompletedAt
+                        ?? visit.StartedAt)
+                .ToList();
+
+    [JsonIgnore]
+    public bool HasCustomerCheckupHistory =>
+        CustomerCheckupHistory.Count > 0;
+
+    [JsonIgnore]
+    public int CustomerCheckupHistoryCount =>
+        CustomerCheckupHistory.Count;
+
+    [JsonIgnore]
+    public string CustomerCheckupHistoryTitle =>
+        CustomerCheckupHistoryCount == 1
+            ? "Checkup-Historie · 1 Vorgang"
+            : $"Checkup-Historie · "
+              + $"{CustomerCheckupHistoryCount} Vorgänge";
+
+    [JsonIgnore]
     public int CustomerCheckupVisitCount =>
         CustomerCheckupVisits.Count;
 

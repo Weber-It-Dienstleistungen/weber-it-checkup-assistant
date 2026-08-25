@@ -535,6 +535,10 @@
                         CheckupSession="{Binding DataContext.SelectedDevice.CheckupSession, RelativeSource={RelativeSource AncestorType=Window}}"
                         DataContext="{Binding SelectedDevice.CheckupSession.TaskList}" />
 
+                    <checkup:CustomerCheckupHistoryCard
+                        Margin="0,24,0,0"
+                        DataContext="{Binding SelectedDevice.CheckupSession}" />
+
                 </StackPanel>
 
             </Grid>
