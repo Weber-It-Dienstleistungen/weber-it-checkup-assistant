@@ -26,6 +26,29 @@ public class CustomerDevicesViewModel : BaseViewModel
     private CustomerDevice? _selectedDevice;
     private CheckupTaskList? _subscribedTaskList;
 
+    private bool _isScanRunning;
+
+    private int _scanProgressPercentage;
+
+    private string _scanContextTitle =
+        "Systemscan";
+
+    private string _scanContextDescription =
+        "Der Computer wird vollständig ausgelesen und bewertet.";
+
+    private string _scanProgressTitle =
+        "Systemscan";
+
+    private string _scanCurrentStepText =
+        "Noch kein Systemscan gestartet.";
+
+    private string _scanProgressSummaryText =
+        "0 von 12 Bereichen verarbeitet.";
+
+    private IReadOnlyList<CheckupScanProgress>
+        _scanSteps =
+            CreatePendingScanSteps();
+
     public CustomerDevicesViewModel(
         ICustomerService customerService,
         ICheckupScanner checkupScanner,
@@ -87,19 +110,19 @@ public class CustomerDevicesViewModel : BaseViewModel
             dialogService;
 
         AddDeviceCommand =
-            new RelayCommand(
-                _ =>
-                    AddDevice(),
-                _ =>
-                    SelectedCustomer is not null);
+            new AsyncRelayCommand(
+                AddDeviceAsync,
+                () =>
+                    SelectedCustomer is not null
+                    && !IsScanRunning);
 
         RescanDeviceCommand =
-            new RelayCommand(
-                _ =>
-                    ExecuteCustomerCheckupAction(),
-                _ =>
+            new AsyncRelayCommand(
+                ExecuteCustomerCheckupActionAsync,
+                () =>
                     SelectedCustomer is not null
-                    && SelectedDevice is not null);
+                    && SelectedDevice is not null
+                    && !IsScanRunning);
 
         ExportCustomerCheckupReportCommand =
             new RelayCommand(
@@ -108,7 +131,8 @@ public class CustomerDevicesViewModel : BaseViewModel
                 _ =>
                     SelectedCustomer is not null
                     && SelectedDevice is not null
-                    && HasSelectedDevicePreparedCompletion);
+                    && HasSelectedDevicePreparedCompletion
+                    && !IsScanRunning);
 
         CompleteCustomerCheckupCommand =
             new RelayCommand(
@@ -117,7 +141,8 @@ public class CustomerDevicesViewModel : BaseViewModel
                 _ =>
                     SelectedCustomer is not null
                     && SelectedDevice is not null
-                    && HasSelectedDevicePreparedCompletion);
+                    && HasSelectedDevicePreparedCompletion
+                    && !IsScanRunning);
 
         DeleteDeviceCommand =
             new RelayCommand(
@@ -126,12 +151,13 @@ public class CustomerDevicesViewModel : BaseViewModel
                 _ =>
                     SelectedCustomer is not null
                     && SelectedDevice is not null
-                    && !HasSelectedDeviceInProgressCheckup);
+                    && !HasSelectedDeviceInProgressCheckup
+                    && !IsScanRunning);
     }
 
-    public RelayCommand AddDeviceCommand { get; }
+    public AsyncRelayCommand AddDeviceCommand { get; }
 
-    public RelayCommand RescanDeviceCommand { get; }
+    public AsyncRelayCommand RescanDeviceCommand { get; }
 
     public RelayCommand ExportCustomerCheckupReportCommand
     {
@@ -265,30 +291,249 @@ public class CustomerDevicesViewModel : BaseViewModel
         ?? false;
 
     public string RescanDeviceButtonText =>
-        HasSelectedDevicePreparedCompletion
-            ? "Abschluss fortsetzen"
-            : HasSelectedDeviceInProgressCheckup
-                ? "Abschlusskontrolle"
-                : "Checkup starten";
+        IsScanRunning
+            ? "Systemscan läuft …"
+            : HasSelectedDevicePreparedCompletion
+                ? "Abschluss fortsetzen"
+                : HasSelectedDeviceInProgressCheckup
+                    ? "Abschlusskontrolle"
+                    : "Checkup starten";
 
-    private void AddDevice()
+    public bool IsScanRunning
     {
-        if (SelectedCustomer is null)
+        get =>
+            _isScanRunning;
+
+        private set
+        {
+            if (_isScanRunning == value)
+            {
+                return;
+            }
+
+            _isScanRunning =
+                value;
+
+            OnPropertyChanged();
+
+            OnPropertyChanged(
+                nameof(RescanDeviceButtonText));
+
+            AddDeviceCommand
+                .RaiseCanExecuteChanged();
+
+            RescanDeviceCommand
+                .RaiseCanExecuteChanged();
+
+            ExportCustomerCheckupReportCommand
+                .RaiseCanExecuteChanged();
+
+            CompleteCustomerCheckupCommand
+                .RaiseCanExecuteChanged();
+
+            DeleteDeviceCommand
+                .RaiseCanExecuteChanged();
+        }
+    }
+
+    public string ScanContextTitle
+    {
+        get =>
+            _scanContextTitle;
+
+        private set
+        {
+            if (string.Equals(
+                    _scanContextTitle,
+                    value,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _scanContextTitle =
+                value;
+
+            OnPropertyChanged();
+        }
+    }
+
+    public string ScanContextDescription
+    {
+        get =>
+            _scanContextDescription;
+
+        private set
+        {
+            if (string.Equals(
+                    _scanContextDescription,
+                    value,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _scanContextDescription =
+                value;
+
+            OnPropertyChanged();
+        }
+    }
+
+    public int ScanProgressPercentage
+    {
+        get =>
+            _scanProgressPercentage;
+
+        private set
+        {
+            var normalizedValue =
+                Math.Clamp(
+                    value,
+                    0,
+                    100);
+
+            if (_scanProgressPercentage
+                == normalizedValue)
+            {
+                return;
+            }
+
+            _scanProgressPercentage =
+                normalizedValue;
+
+            OnPropertyChanged();
+
+            OnPropertyChanged(
+                nameof(ScanProgressPercentageText));
+        }
+    }
+
+    public string ScanProgressPercentageText =>
+        $"{ScanProgressPercentage} %";
+
+    public string ScanProgressTitle
+    {
+        get =>
+            _scanProgressTitle;
+
+        private set
+        {
+            if (string.Equals(
+                    _scanProgressTitle,
+                    value,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _scanProgressTitle =
+                value;
+
+            OnPropertyChanged();
+        }
+    }
+
+    public string ScanCurrentStepText
+    {
+        get =>
+            _scanCurrentStepText;
+
+        private set
+        {
+            if (string.Equals(
+                    _scanCurrentStepText,
+                    value,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _scanCurrentStepText =
+                value;
+
+            OnPropertyChanged();
+        }
+    }
+
+    public string ScanProgressSummaryText
+    {
+        get =>
+            _scanProgressSummaryText;
+
+        private set
+        {
+            if (string.Equals(
+                    _scanProgressSummaryText,
+                    value,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _scanProgressSummaryText =
+                value;
+
+            OnPropertyChanged();
+        }
+    }
+
+    public IReadOnlyList<CheckupScanProgress> ScanSteps
+    {
+        get =>
+            _scanSteps;
+
+        private set
+        {
+            if (ReferenceEquals(
+                    _scanSteps,
+                    value))
+            {
+                return;
+            }
+
+            _scanSteps =
+                value;
+
+            OnPropertyChanged();
+        }
+    }
+
+    private async Task AddDeviceAsync()
+    {
+        var customer =
+            SelectedCustomer;
+
+        if (customer is null)
         {
             return;
         }
 
         var checkupSession =
-            TryCreateCheckupSession();
+            await TryCreateCheckupSessionAsync(
+                "Gerät hinzufügen",
+                "Der angeschlossene Computer wird vollständig "
+                + "ausgelesen und bewertet. Bei einem neuen Gerät "
+                + "wird dieser Scan anschließend als "
+                + "Vorher-Zustand des ersten Kundencheckups "
+                + "gesichert.");
 
         if (checkupSession is null)
         {
             return;
         }
 
+        if (!IsCurrentScanContext(
+                customer))
+        {
+            ShowChangedScanContextError();
+
+            return;
+        }
+
         var matchingDevice =
             _deviceIdentityService.FindMatchingDevice(
-                SelectedCustomer.Devices,
+                customer.Devices,
                 checkupSession.DeviceInformation);
 
         if (matchingDevice is not null)
@@ -475,7 +720,7 @@ public class CustomerDevicesViewModel : BaseViewModel
         RefreshDeviceDisplay();
     }
 
-    private void ExecuteCustomerCheckupAction()
+    private async Task ExecuteCustomerCheckupActionAsync()
     {
         if (SelectedCustomer is null
             || SelectedDevice is null)
@@ -485,12 +730,12 @@ public class CustomerDevicesViewModel : BaseViewModel
 
         if (HasSelectedDeviceInProgressCheckup)
         {
-            ContinueCustomerCheckupCompletion();
+            await ContinueCustomerCheckupCompletionAsync();
 
             return;
         }
 
-        StartCustomerCheckup();
+        await StartCustomerCheckupAsync();
     }
 
     private void ExportPreparedCustomerCheckupReport()
@@ -807,16 +1052,19 @@ public class CustomerDevicesViewModel : BaseViewModel
         RefreshDeviceDisplay();
     }
 
-    private void StartCustomerCheckup()
+    private async Task StartCustomerCheckupAsync()
     {
-        if (SelectedCustomer is null
-            || SelectedDevice is null)
-        {
-            return;
-        }
+        var customer =
+            SelectedCustomer;
 
         var selectedDevice =
             SelectedDevice;
+
+        if (customer is null
+            || selectedDevice is null)
+        {
+            return;
+        }
 
         if (selectedDevice
             .CheckupSession
@@ -829,16 +1077,31 @@ public class CustomerDevicesViewModel : BaseViewModel
         }
 
         var checkupSession =
-            TryCreateCheckupSession();
+            await TryCreateCheckupSessionAsync(
+                "Kundencheckup starten",
+                $"Für das Gerät \"{selectedDevice.DisplayName}\" "
+                + "wird ein vollständiger Eingangsscan "
+                + "durchgeführt. Der erfolgreiche Scan bildet "
+                + "anschließend den unveränderlichen "
+                + "Vorher-Zustand des neuen Kundencheckups.");
 
         if (checkupSession is null)
         {
             return;
         }
 
+        if (!IsCurrentScanContext(
+                customer,
+                selectedDevice))
+        {
+            ShowChangedScanContextError();
+
+            return;
+        }
+
         var matchingDevice =
             _deviceIdentityService.FindMatchingDevice(
-                SelectedCustomer.Devices,
+                customer.Devices,
                 checkupSession.DeviceInformation);
 
         if (matchingDevice is not null
@@ -895,7 +1158,7 @@ public class CustomerDevicesViewModel : BaseViewModel
             checkupSession);
     }
 
-    private void ContinueCustomerCheckupCompletion()
+    private async Task ContinueCustomerCheckupCompletionAsync()
     {
         if (SelectedCustomer is null
             || SelectedDevice is null)
@@ -927,16 +1190,19 @@ public class CustomerDevicesViewModel : BaseViewModel
             return;
         }
 
-        RunCustomerCheckupCompletionScan(
+        await RunCustomerCheckupCompletionScanAsync(
             selectedDevice,
             currentVisit);
     }
 
-    private void RunCustomerCheckupCompletionScan(
+    private async Task RunCustomerCheckupCompletionScanAsync(
         CustomerDevice selectedDevice,
         CustomerCheckupVisit currentVisit)
     {
-        if (SelectedCustomer is null)
+        var customer =
+            SelectedCustomer;
+
+        if (customer is null)
         {
             return;
         }
@@ -968,16 +1234,31 @@ public class CustomerDevicesViewModel : BaseViewModel
         }
 
         var afterCheckup =
-            TryCreateCheckupSession();
+            await TryCreateCheckupSessionAsync(
+                "Abschlusskontrolle",
+                $"Für das Gerät \"{selectedDevice.DisplayName}\" "
+                + "wird der aktuelle Nachher-Zustand vollständig "
+                + "ausgelesen und bewertet. Eingangsscan und "
+                + "bisherige Aktionsdokumentation bleiben "
+                + "währenddessen unverändert.");
 
         if (afterCheckup is null)
         {
             return;
         }
 
+        if (!IsCurrentScanContext(
+                customer,
+                selectedDevice))
+        {
+            ShowChangedScanContextError();
+
+            return;
+        }
+
         var matchingDevice =
             _deviceIdentityService.FindMatchingDevice(
-                SelectedCustomer.Devices,
+                customer.Devices,
                 afterCheckup.DeviceInformation);
 
         if (matchingDevice is not null
@@ -1491,21 +1772,69 @@ public class CustomerDevicesViewModel : BaseViewModel
         RefreshDeviceDisplay();
     }
 
-    private CheckupSession? TryCreateCheckupSession()
+    private async Task<CheckupSession?>
+        TryCreateCheckupSessionAsync(
+            string contextTitle,
+            string contextDescription)
     {
+        BeginScanProgress(
+            contextTitle,
+            contextDescription);
+
+        IProgress<CheckupScanProgress> progress =
+            new Progress<CheckupScanProgress>(
+                ApplyScanProgress);
+
         try
         {
             var checkupSession =
-                _checkupScanner.Scan();
+                await Task.Run(
+                    () =>
+                    {
+                        var session =
+                            _checkupScanner.Scan(
+                                progress);
 
-            checkupSession.Assessment =
-                _checkupAssessmentService.Assess(
-                    checkupSession);
+                        progress.Report(
+                            CheckupScanProgress.CreateRunning(
+                                CheckupScanStepCatalog.Assessment));
+
+                        try
+                        {
+                            session.Assessment =
+                                _checkupAssessmentService.Assess(
+                                    session);
+
+                            progress.Report(
+                                CheckupScanProgress.CreateSuccessful(
+                                    CheckupScanStepCatalog.Assessment));
+                        }
+                        catch (Exception exception)
+                        {
+                            progress.Report(
+                                CheckupScanProgress.CreateFailed(
+                                    CheckupScanStepCatalog.Assessment,
+                                    BuildProgressErrorMessage(
+                                        exception)));
+
+                            throw new InvalidOperationException(
+                                "Die Bewertung und Aufgabenerzeugung "
+                                + "konnte nicht abgeschlossen werden.",
+                                exception);
+                        }
+
+                        return session;
+                    });
+
+            CompleteScanProgress();
 
             return checkupSession;
         }
         catch (Exception exception)
         {
+            FailScanProgress(
+                exception);
+
             _dialogService.ShowError(
                 "Systemscan fehlgeschlagen",
                 BuildScanErrorMessage(
@@ -1513,6 +1842,276 @@ public class CustomerDevicesViewModel : BaseViewModel
 
             return null;
         }
+        finally
+        {
+            IsScanRunning =
+                false;
+        }
+    }
+
+    private void BeginScanProgress(
+        string contextTitle,
+        string contextDescription)
+    {
+        ScanContextTitle =
+            contextTitle;
+
+        ScanContextDescription =
+            contextDescription;
+
+        ScanSteps =
+            CreatePendingScanSteps();
+
+        ScanProgressPercentage =
+            0;
+
+        ScanProgressTitle =
+            "Systemscan wird vorbereitet";
+
+        ScanCurrentStepText =
+            "Die einzelnen Scanbereiche werden vorbereitet …";
+
+        UpdateScanProgressSummary();
+
+        IsScanRunning =
+            true;
+    }
+
+    private void ApplyScanProgress(
+        CheckupScanProgress progress)
+    {
+        ArgumentNullException.ThrowIfNull(
+            progress);
+
+        ScanSteps =
+            ScanSteps
+                .Select(
+                    existingStep =>
+                        string.Equals(
+                            existingStep.StepCode,
+                            progress.StepCode,
+                            StringComparison.Ordinal)
+                            ? progress
+                            : existingStep)
+                .ToList();
+
+        ScanProgressPercentage =
+            Math.Max(
+                ScanProgressPercentage,
+                progress.ProgressPercentage);
+
+        ScanProgressTitle =
+            progress.Status
+                == CheckupScanStepStatus.Failed
+                    ? "Systemscan fehlgeschlagen"
+                    : "Systemscan läuft";
+
+        ScanCurrentStepText =
+            progress.Status switch
+            {
+                CheckupScanStepStatus.Running =>
+                    progress.StepTitle
+                    + " wird ausgelesen …",
+
+                CheckupScanStepStatus.Successful =>
+                    progress.StepTitle
+                    + " wurde abgeschlossen.",
+
+                CheckupScanStepStatus.Warning =>
+                    progress.StepTitle
+                    + " wurde mit einem Hinweis abgeschlossen.",
+
+                CheckupScanStepStatus.Failed =>
+                    "Fehler bei: "
+                    + progress.StepTitle,
+
+                _ =>
+                    progress.StepTitle
+            };
+
+        UpdateScanProgressSummary();
+    }
+
+    private void CompleteScanProgress()
+    {
+        ScanProgressPercentage =
+            100;
+
+        ScanProgressTitle =
+            "Systemscan erfolgreich abgeschlossen";
+
+        ScanCurrentStepText =
+            "Alle Scanbereiche wurden verarbeitet. "
+            + "Die Ergebnisse und Aufgaben stehen jetzt bereit.";
+
+        UpdateScanProgressSummary();
+    }
+
+    private void FailScanProgress(
+        Exception exception)
+    {
+        var errorMessage =
+            BuildProgressErrorMessage(
+                exception);
+
+        if (!ScanSteps.Any(
+                step =>
+                    step.Status
+                    == CheckupScanStepStatus.Failed))
+        {
+            var activeStep =
+                ScanSteps.FirstOrDefault(
+                    step =>
+                        step.Status
+                        == CheckupScanStepStatus.Running);
+
+            if (activeStep is not null)
+            {
+                var failedStep =
+                    activeStep with
+                    {
+                        Status =
+                            CheckupScanStepStatus.Failed,
+
+                        ProgressPercentage =
+                            Math.Max(
+                                activeStep.ProgressPercentage,
+                                ScanProgressPercentage),
+
+                        Message =
+                            errorMessage
+                    };
+
+                ScanSteps =
+                    ScanSteps
+                        .Select(
+                            step =>
+                                string.Equals(
+                                    step.StepCode,
+                                    failedStep.StepCode,
+                                    StringComparison.Ordinal)
+                                    ? failedStep
+                                    : step)
+                        .ToList();
+            }
+        }
+
+        ScanProgressTitle =
+            "Systemscan fehlgeschlagen";
+
+        ScanCurrentStepText =
+            "Der Systemscan wurde nicht vollständig "
+            + "abgeschlossen. Der gespeicherte Gerätestand "
+            + "und ein eventuell laufender Kundencheckup "
+            + "bleiben unverändert.";
+
+        UpdateScanProgressSummary();
+    }
+
+    private void UpdateScanProgressSummary()
+    {
+        var processedStepCount =
+            ScanSteps.Count(
+                step =>
+                    step.Status
+                        is CheckupScanStepStatus.Successful
+                        or CheckupScanStepStatus.Warning
+                        or CheckupScanStepStatus.Failed);
+
+        var warningCount =
+            ScanSteps.Count(
+                step =>
+                    step.Status
+                    == CheckupScanStepStatus.Warning);
+
+        var failureCount =
+            ScanSteps.Count(
+                step =>
+                    step.Status
+                    == CheckupScanStepStatus.Failed);
+
+        var summary =
+            $"{processedStepCount} von "
+            + $"{CheckupScanStepCatalog.TotalStepCount} "
+            + "Bereichen verarbeitet";
+
+        if (warningCount == 0
+            && failureCount == 0)
+        {
+            ScanProgressSummaryText =
+                summary
+                + " · keine Hinweise";
+
+            return;
+        }
+
+        var statusParts =
+            new List<string>();
+
+        if (warningCount > 0)
+        {
+            statusParts.Add(
+                warningCount == 1
+                    ? "1 Hinweis"
+                    : $"{warningCount} Hinweise");
+        }
+
+        if (failureCount > 0)
+        {
+            statusParts.Add(
+                failureCount == 1
+                    ? "1 Fehler"
+                    : $"{failureCount} Fehler");
+        }
+
+        ScanProgressSummaryText =
+            summary
+            + " · "
+            + string.Join(
+                " · ",
+                statusParts);
+    }
+
+    private static IReadOnlyList<CheckupScanProgress>
+        CreatePendingScanSteps()
+    {
+        return CheckupScanStepCatalog
+            .AllSteps
+            .Select(
+                CheckupScanProgress.CreatePending)
+            .ToList();
+    }
+
+    private bool IsCurrentScanContext(
+        Customer customer,
+        CustomerDevice? device = null)
+    {
+        if (SelectedCustomer?.Id
+            != customer.Id)
+        {
+            return false;
+        }
+
+        if (device is null)
+        {
+            return true;
+        }
+
+        return SelectedDevice?.Id
+            == device.Id;
+    }
+
+    private void ShowChangedScanContextError()
+    {
+        _dialogService.ShowError(
+            "Kundenauswahl wurde verändert",
+            "Während des Systemscans hat sich die aktive "
+            + "Kunden- oder Geräteauswahl verändert."
+            + Environment.NewLine
+            + Environment.NewLine
+            + "Der neue Scan wird deshalb vorsorglich nicht "
+            + "einem Kundengerät zugeordnet. Bereits gespeicherte "
+            + "Checkup-Daten bleiben unverändert.");
     }
 
     private void SubscribeToSelectedTaskList()
@@ -1631,6 +2230,9 @@ public class CustomerDevicesViewModel : BaseViewModel
 
         OnPropertyChanged(
             nameof(RescanDeviceButtonText));
+
+        AddDeviceCommand
+            .RaiseCanExecuteChanged();
 
         RescanDeviceCommand
             .RaiseCanExecuteChanged();
@@ -1935,9 +2537,50 @@ public class CustomerDevicesViewModel : BaseViewModel
             + "laufender Kundencheckup bleiben unverändert."
             + Environment.NewLine
             + Environment.NewLine
-            + $"Technische Details: "
+            + "Technische Details: "
             + BuildErrorDetails(
                 exception);
+    }
+
+    private static string BuildProgressErrorMessage(
+        Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(
+            exception);
+
+        var messages =
+            new List<string>();
+
+        Exception? currentException =
+            exception;
+
+        while (currentException is not null
+               && messages.Count < 5)
+        {
+            if (!string.IsNullOrWhiteSpace(
+                    currentException.Message))
+            {
+                var message =
+                    currentException.Message.Trim();
+
+                if (!messages.Contains(
+                        message,
+                        StringComparer.OrdinalIgnoreCase))
+                {
+                    messages.Add(
+                        message);
+                }
+            }
+
+            currentException =
+                currentException.InnerException;
+        }
+
+        return messages.Count > 0
+            ? string.Join(
+                " → ",
+                messages)
+            : "Keine weiteren Fehlerdetails verfügbar.";
     }
 
     private static string BuildErrorDetails(
