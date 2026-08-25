@@ -2,8 +2,7 @@
     x:Class="WeberIT.Checkup.App.Views.Controls.CustomerDevicesView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-    xmlns:checkup="clr-namespace:WeberIT.Checkup.App.Views.Controls.Checkup">
+    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
 
     <Border
         Padding="24"
@@ -16,8 +15,6 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="20" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="20" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- Kopfbereich -->
@@ -26,14 +23,6 @@
 
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
@@ -79,98 +68,6 @@
                     Grid.Column="1"
                     Width="150"
                     VerticalAlignment="Center"
-                    Command="{Binding RescanDeviceCommand}"
-                    Content="{Binding RescanDeviceButtonText}"
-                    ToolTip="Startet oder setzt den Kundencheckup für das ausgewählte Gerät fort." />
-
-                <Button
-                    Grid.Column="3"
-                    Width="180"
-                    VerticalAlignment="Center"
-                    Command="{Binding ExportCustomerCheckupReportCommand}"
-                    Content="Kundenbericht erstellen"
-                    ToolTip="Erzeugt den Kundencheckup-Bericht als PDF. Der Vorgang bleibt weiterhin in Bearbeitung.">
-
-                    <Button.Style>
-
-                        <Style
-                            TargetType="Button"
-                            BasedOn="{StaticResource {x:Type Button}}">
-
-                            <Setter
-                                Property="Visibility"
-                                Value="Collapsed" />
-
-                            <Style.Triggers>
-
-                                <DataTrigger
-                                    Binding="{Binding HasSelectedDevicePreparedCompletion}"
-                                    Value="True">
-
-                                    <Setter
-                                        Property="Visibility"
-                                        Value="Visible" />
-
-                                </DataTrigger>
-
-                            </Style.Triggers>
-
-                        </Style>
-
-                    </Button.Style>
-
-                </Button>
-
-                <Button
-                    Grid.Column="5"
-                    Width="210"
-                    VerticalAlignment="Center"
-                    Command="{Binding CompleteCustomerCheckupCommand}"
-                    Content="Kundencheckup abschließen"
-                    ToolTip="Speichert zuerst den PDF-Bericht und schließt den Kundencheckup anschließend endgültig ab.">
-
-                    <Button.Style>
-
-                        <Style
-                            TargetType="Button"
-                            BasedOn="{StaticResource AccentButtonStyle}">
-
-                            <Setter
-                                Property="Visibility"
-                                Value="Collapsed" />
-
-                            <Style.Triggers>
-
-                                <DataTrigger
-                                    Binding="{Binding HasSelectedDevicePreparedCompletion}"
-                                    Value="True">
-
-                                    <Setter
-                                        Property="Visibility"
-                                        Value="Visible" />
-
-                                </DataTrigger>
-
-                            </Style.Triggers>
-
-                        </Style>
-
-                    </Button.Style>
-
-                </Button>
-
-                <Button
-                    Grid.Column="7"
-                    Width="105"
-                    VerticalAlignment="Center"
-                    Command="{Binding DeleteDeviceCommand}"
-                    Content="Löschen"
-                    Foreground="{StaticResource DangerBrush}" />
-
-                <Button
-                    Grid.Column="9"
-                    Width="150"
-                    VerticalAlignment="Center"
                     Command="{Binding AddDeviceCommand}"
                     Content="Gerät hinzufügen"
                     Style="{StaticResource AccentButtonStyle}" />
@@ -181,12 +78,40 @@
 
             <Grid Grid.Row="2">
 
+                <!-- Noch kein Gerät -->
+
                 <Border
                     Padding="18"
                     Background="{StaticResource SurfaceSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="1"
                     CornerRadius="9">
+
+                    <Border.Style>
+
+                        <Style TargetType="Border">
+
+                            <Setter
+                                Property="Visibility"
+                                Value="Collapsed" />
+
+                            <Style.Triggers>
+
+                                <DataTrigger
+                                    Binding="{Binding SelectedCustomer.Devices.Count}"
+                                    Value="0">
+
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Visible" />
+
+                                </DataTrigger>
+
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </Border.Style>
 
                     <StackPanel
                         HorizontalAlignment="Center"
@@ -226,33 +151,9 @@
 
                     </StackPanel>
 
-                    <Border.Style>
-
-                        <Style TargetType="Border">
-
-                            <Setter
-                                Property="Visibility"
-                                Value="Collapsed" />
-
-                            <Style.Triggers>
-
-                                <DataTrigger
-                                    Binding="{Binding SelectedCustomer.Devices.Count}"
-                                    Value="0">
-
-                                    <Setter
-                                        Property="Visibility"
-                                        Value="Visible" />
-
-                                </DataTrigger>
-
-                            </Style.Triggers>
-
-                        </Style>
-
-                    </Border.Style>
-
                 </Border>
+
+                <!-- Geräte -->
 
                 <ListBox
                     ItemsSource="{Binding Devices}"
@@ -315,6 +216,10 @@
                                 Property="VerticalContentAlignment"
                                 Value="Stretch" />
 
+                            <Setter
+                                Property="ToolTip"
+                                Value="Doppelklick öffnet das Gerät." />
+
                         </Style>
 
                     </ListBox.ItemContainerStyle>
@@ -347,6 +252,8 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
 
+                                        <!-- Gerätestatus -->
+
                                         <Border
                                             Grid.Column="0"
                                             Width="28"
@@ -360,8 +267,55 @@
                                                 VerticalAlignment="Center"
                                                 FontFamily="Segoe MDL2 Assets"
                                                 FontSize="13"
-                                                Foreground="{StaticResource AccentBrush}"
-                                                Text="&#xE7F8;" />
+                                                Text="&#xE7F8;">
+
+                                                <TextBlock.Style>
+
+                                                    <Style TargetType="TextBlock">
+
+                                                        <Setter
+                                                            Property="Foreground"
+                                                            Value="{StaticResource AccentBrush}" />
+
+                                                        <Style.Triggers>
+
+                                                            <MultiDataTrigger>
+
+                                                                <MultiDataTrigger.Conditions>
+
+                                                                    <Condition
+                                                                        Binding="{Binding CheckupSession.HasCompletedCustomerCheckupVisit}"
+                                                                        Value="True" />
+
+                                                                    <Condition
+                                                                        Binding="{Binding CheckupSession.HasInProgressCustomerCheckupVisit}"
+                                                                        Value="False" />
+
+                                                                </MultiDataTrigger.Conditions>
+
+                                                                <Setter
+                                                                    Property="Foreground"
+                                                                    Value="{StaticResource SuccessBrush}" />
+
+                                                            </MultiDataTrigger>
+
+                                                            <DataTrigger
+                                                                Binding="{Binding CheckupSession.HasInProgressCustomerCheckupVisit}"
+                                                                Value="True">
+
+                                                                <Setter
+                                                                    Property="Foreground"
+                                                                    Value="{StaticResource WarningBrush}" />
+
+                                                            </DataTrigger>
+
+                                                        </Style.Triggers>
+
+                                                    </Style>
+
+                                                </TextBlock.Style>
+
+                                            </TextBlock>
 
                                         </Border>
 
@@ -375,6 +329,8 @@
                                             TextTrimming="CharacterEllipsis" />
 
                                     </Grid>
+
+                                    <!-- Hersteller / Modell -->
 
                                     <StackPanel
                                         Grid.Row="1"
@@ -474,6 +430,8 @@
 
                                     </StackPanel>
 
+                                    <!-- Laufender Checkup -->
+
                                     <Border
                                         Grid.Row="2"
                                         Margin="36,10,0,0"
@@ -481,7 +439,7 @@
                                         HorizontalAlignment="Left"
                                         VerticalAlignment="Top"
                                         Background="{StaticResource SurfaceBrush}"
-                                        BorderBrush="{StaticResource AccentBrush}"
+                                        BorderBrush="{StaticResource WarningBrush}"
                                         BorderThickness="1"
                                         CornerRadius="5">
 
@@ -518,19 +476,21 @@
                                                 VerticalAlignment="Center"
                                                 FontFamily="Segoe MDL2 Assets"
                                                 FontSize="11"
-                                                Foreground="{StaticResource AccentBrush}"
+                                                Foreground="{StaticResource WarningBrush}"
                                                 Text="&#xE895;" />
 
                                             <TextBlock
                                                 VerticalAlignment="Center"
                                                 FontSize="10"
                                                 FontWeight="SemiBold"
-                                                Foreground="{StaticResource AccentBrush}"
+                                                Foreground="{StaticResource WarningBrush}"
                                                 Text="KUNDENCHECKUP LÄUFT" />
 
                                         </StackPanel>
 
                                     </Border>
+
+                                    <!-- Scanzeitpunkt -->
 
                                     <Border
                                         Grid.Row="3"
@@ -567,234 +527,6 @@
                 </ListBox>
 
             </Grid>
-
-            <!-- Hinweis ohne Geräteauswahl -->
-
-            <Border
-                Grid.Row="4"
-                Padding="18"
-                Background="{StaticResource SurfaceSecondaryBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="1"
-                CornerRadius="9">
-
-                <Border.Style>
-
-                    <Style TargetType="Border">
-
-                        <Setter
-                            Property="Visibility"
-                            Value="Visible" />
-
-                        <Style.Triggers>
-
-                            <DataTrigger
-                                Binding="{Binding SelectedDevice}"
-                                Value="{x:Null}">
-
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Visible" />
-
-                            </DataTrigger>
-
-                            <DataTrigger Binding="{Binding SelectedDevice}">
-
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Collapsed" />
-
-                            </DataTrigger>
-
-                        </Style.Triggers>
-
-                    </Style>
-
-                </Border.Style>
-
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    Foreground="{StaticResource TextSecondaryBrush}"
-                    Text="Wählen Sie ein Gerät aus, um den gespeicherten Systemcheck anzuzeigen."
-                    TextAlignment="Center"
-                    TextWrapping="Wrap" />
-
-            </Border>
-
-            <!-- Gerätedetails -->
-
-            <StackPanel
-                Grid.Row="4"
-                DataContext="{Binding SelectedDevice.CheckupSession}">
-
-                <StackPanel.Style>
-
-                    <Style TargetType="StackPanel">
-
-                        <Setter
-                            Property="Visibility"
-                            Value="Visible" />
-
-                        <Style.Triggers>
-
-                            <DataTrigger
-                                Binding="{Binding DataContext.SelectedDevice, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                Value="{x:Null}">
-
-                                <Setter
-                                    Property="Visibility"
-                                    Value="Collapsed" />
-
-                            </DataTrigger>
-
-                        </Style.Triggers>
-
-                    </Style>
-
-                </StackPanel.Style>
-
-                <Border
-                    Margin="0,0,0,20"
-                    Padding="18"
-                    Background="{StaticResource SurfaceBrush}"
-                    BorderBrush="{StaticResource AccentBrush}"
-                    BorderThickness="1"
-                    CornerRadius="9">
-
-                    <Border.Style>
-
-                        <Style TargetType="Border">
-
-                            <Setter
-                                Property="Visibility"
-                                Value="Collapsed" />
-
-                            <Style.Triggers>
-
-                                <DataTrigger
-                                    Binding="{Binding HasInProgressCustomerCheckupVisit}"
-                                    Value="True">
-
-                                    <Setter
-                                        Property="Visibility"
-                                        Value="Visible" />
-
-                                </DataTrigger>
-
-                            </Style.Triggers>
-
-                        </Style>
-
-                    </Border.Style>
-
-                    <Grid>
-
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="50" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <Border
-                            Grid.Column="0"
-                            Width="36"
-                            Height="36"
-                            VerticalAlignment="Top"
-                            Background="{StaticResource SurfaceSecondaryBrush}"
-                            CornerRadius="9">
-
-                            <TextBlock
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                FontFamily="Segoe MDL2 Assets"
-                                FontSize="17"
-                                Foreground="{StaticResource AccentBrush}"
-                                Text="&#xE895;" />
-
-                        </Border>
-
-                        <StackPanel Grid.Column="1">
-
-                            <TextBlock
-                                FontSize="16"
-                                FontWeight="SemiBold"
-                                Foreground="{StaticResource TextPrimaryBrush}"
-                                Text="Kundencheckup läuft" />
-
-                            <TextBlock
-                                Margin="0,5,0,0"
-                                Foreground="{StaticResource TextSecondaryBrush}"
-                                Text="{Binding CustomerCheckupWorkflowText}"
-                                TextWrapping="Wrap" />
-
-                            <Border
-                                Margin="0,12,0,0"
-                                Padding="10,7"
-                                HorizontalAlignment="Left"
-                                Background="{StaticResource SurfaceSecondaryBrush}"
-                                CornerRadius="6">
-
-                                <StackPanel Orientation="Horizontal">
-
-                                    <TextBlock
-                                        Margin="0,0,7,0"
-                                        VerticalAlignment="Center"
-                                        FontFamily="Segoe MDL2 Assets"
-                                        FontSize="12"
-                                        Foreground="{StaticResource SuccessBrush}"
-                                        Text="&#xE73E;" />
-
-                                    <TextBlock
-                                        VerticalAlignment="Center"
-                                        FontSize="11"
-                                        FontWeight="SemiBold"
-                                        Foreground="{StaticResource TextPrimaryBrush}"
-                                        Text="Vorher-Zustand unveränderlich gesichert" />
-
-                                </StackPanel>
-
-                            </Border>
-
-                        </StackPanel>
-
-                    </Grid>
-
-                </Border>
-
-                <Border
-                    Padding="18"
-                    Background="{StaticResource SurfaceSecondaryBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="9">
-
-                    <StackPanel>
-
-                        <TextBlock
-                            Text="{Binding CurrentCheckupTitle}"
-                            Style="{StaticResource SectionTitleTextStyle}" />
-
-                        <TextBlock
-                            Margin="0,4,0,18"
-                            Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="{Binding CurrentCheckupDescription}"
-                            TextWrapping="Wrap" />
-
-                        <checkup:CheckupDetailsView />
-
-                    </StackPanel>
-
-                </Border>
-
-                <checkup:ProgramUpdatesCard
-                    Margin="0,20,0,0"
-                    DataContext="{Binding ProgramUpdateInformation}" />
-
-                <checkup:CheckupTaskListCard
-                    Margin="0,20,0,0"
-                    CheckupSession="{Binding DataContext.SelectedDevice.CheckupSession, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                    DataContext="{Binding TaskList}" />
-
-            </StackPanel>
 
         </Grid>
 

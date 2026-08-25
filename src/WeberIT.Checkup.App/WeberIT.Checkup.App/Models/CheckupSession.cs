@@ -95,6 +95,12 @@ public class CheckupSession
         CurrentCustomerCheckupVisit is not null;
 
     [JsonIgnore]
+    public bool HasCompletedCustomerCheckupVisit =>
+        CustomerCheckupVisits.Any(
+            visit =>
+                visit.IsCompleted);
+
+    [JsonIgnore]
     public int CustomerCheckupVisitCount =>
         CustomerCheckupVisits.Count;
 
