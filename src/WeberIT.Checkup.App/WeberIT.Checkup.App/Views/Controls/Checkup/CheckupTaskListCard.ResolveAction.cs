@@ -76,9 +76,9 @@ public partial class CheckupTaskListCard
 
         /*
          * Wartungsaktionen:
-         * SFC und DISM verwenden vollständig die bereits
-         * vorhandene Ausführungs-, Bestätigungs-,
-         * Koordinations- und Persistenzlogik.
+         *
+         * SFC und DISM verwenden weiterhin ausschließlich
+         * die vorhandene technische Ausführungsstrecke.
          */
         if (CheckupStandardTaskCatalog
             .IsMaintenanceActionCode(
@@ -95,8 +95,10 @@ public partial class CheckupTaskListCard
 
         /*
          * Programmupdates:
-         * Der universelle Beheben-Button öffnet die bereits
-         * vorhandene Auswahl-, Plan- und Ausführungsstrecke.
+         *
+         * Der universelle Beheben-Button öffnet weiterhin
+         * die vorhandene Auswahl-, Plan- und
+         * Ausführungsstrecke.
          */
         if (string.Equals(
                 definition.ActionCode,
@@ -112,8 +114,9 @@ public partial class CheckupTaskListCard
 
         /*
          * Bereinigung:
-         * Auch hier wird ausschließlich der bereits vorhandene
-         * Auswahl- und Ausführungsworkflow wiederverwendet.
+         *
+         * Auch hier bleibt die vorhandene Auswahl- und
+         * Ausführungslogik maßgeblich.
          */
         if (string.Equals(
                 definition.ActionCode,
@@ -130,24 +133,54 @@ public partial class CheckupTaskListCard
         /*
          * Geführte und manuelle Aufgaben:
          *
-         * In diesem ersten Schritt öffnet "Beheben" die bereits
-         * vorhandenen Aktionsdetails mit Risiko- und
-         * Handlungshinweisen.
+         * Der Dialog zeigt Anleitung beziehungsweise
+         * Prüfansicht und sammelt anschließend ausschließlich
+         * die Entscheidung des Technikers.
          *
-         * Die abschließende manuelle Statusdokumentation bleibt
-         * zunächst weiterhin über den bestehenden Statuseditor
-         * möglich. Dadurch führen wir an dieser Stelle keine
-         * zweite Status- oder Geschäftslogik ein.
+         * Die eigentliche Statusänderung erfolgt weiterhin
+         * zentral über CheckupTaskList.ChangeTaskStatus(...).
+         * Damit bleiben Validierung, Benachrichtigung und
+         * Persistenz an genau einer Stelle.
          */
         var detailsDialog =
             new TaskActionDetailsDialog(
-                definition)
+                definition,
+                allowStatusDecision: true)
             {
                 Owner =
                     Window.GetWindow(
                         this)
             };
 
-        detailsDialog.ShowDialog();
+        var dialogResult =
+            detailsDialog.ShowDialog();
+
+        if (dialogResult != true
+            || !detailsDialog
+                .SelectedTaskStatus
+                .HasValue)
+        {
+            return;
+        }
+
+        try
+        {
+            taskList.ChangeTaskStatus(
+                task,
+                detailsDialog
+                    .SelectedTaskStatus
+                    .Value,
+                detailsDialog.StatusReason,
+                detailsDialog.TechnicianNote);
+        }
+        catch (Exception exception)
+        {
+            ShowPreparationError(
+                string.IsNullOrWhiteSpace(
+                    exception.Message)
+                    ? "Das dokumentierte Ergebnis konnte "
+                      + "nicht gespeichert werden."
+                    : exception.Message);
+        }
     }
 }

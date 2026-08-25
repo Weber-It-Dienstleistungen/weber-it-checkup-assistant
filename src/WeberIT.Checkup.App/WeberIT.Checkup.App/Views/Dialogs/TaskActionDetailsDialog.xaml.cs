@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
+using System.Windows.Controls;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
@@ -16,14 +17,29 @@ public partial class TaskActionDetailsDialog : Window
     private readonly bool
         _guidedLaunchAvailable;
 
+    private readonly bool
+        _allowStatusDecision;
+
     public TaskActionDetailsDialog(
         CheckupTaskActionDefinition definition)
+        : this(
+            definition,
+            false)
+    {
+    }
+
+    public TaskActionDetailsDialog(
+        CheckupTaskActionDefinition definition,
+        bool allowStatusDecision)
     {
         ArgumentNullException.ThrowIfNull(
             definition);
 
         _definition =
             definition;
+
+        _allowStatusDecision =
+            allowStatusDecision;
 
         _guidedTaskActionLauncher =
             ResolveGuidedTaskActionLauncher();
@@ -39,7 +55,26 @@ public partial class TaskActionDetailsDialog : Window
             definition;
 
         ApplyGuidedSupportState();
+        ApplyResolutionState();
     }
+
+    public CheckupTaskStatus? SelectedTaskStatus
+    {
+        get;
+        private set;
+    }
+
+    public string StatusReason
+    {
+        get;
+        private set;
+    } = string.Empty;
+
+    public string TechnicianNote
+    {
+        get;
+        private set;
+    } = string.Empty;
 
     private static IGuidedTaskActionLauncher
         ResolveGuidedTaskActionLauncher()
@@ -73,7 +108,10 @@ public partial class TaskActionDetailsDialog : Window
                 Visibility.Collapsed;
 
             FooterStatusTextBlock.Text =
-                "Noch keine Ausführung oder Bestätigung";
+                _allowStatusDecision
+                    ? "Manuelle Bearbeitung – "
+                      + "noch kein Ergebnis dokumentiert"
+                    : "Noch keine Ausführung oder Bestätigung";
 
             return;
         }
@@ -103,6 +141,46 @@ public partial class TaskActionDetailsDialog : Window
             targetDescription;
     }
 
+    private void ApplyResolutionState()
+    {
+        if (!_allowStatusDecision)
+        {
+            ResolutionPanel.Visibility =
+                Visibility.Collapsed;
+
+            ApplyResolutionButton.Visibility =
+                Visibility.Collapsed;
+
+            return;
+        }
+
+        ResolutionPanel.Visibility =
+            Visibility.Visible;
+
+        ApplyResolutionButton.Visibility =
+            Visibility.Visible;
+
+        if (!_guidedLaunchAvailable)
+        {
+            PreparationOnlyNoticeTextBlock.Text =
+                "Für diesen Punkt erfolgt keine automatische "
+                + "Änderung durch das Checkup-Tool. Führen Sie "
+                + "die erforderliche Prüfung oder Maßnahme "
+                + "manuell durch und dokumentieren Sie das "
+                + "Ergebnis anschließend unten.";
+        }
+        else
+        {
+            GuidedSupportDescriptionTextBlock.Text =
+                "Die geführte Unterstützung öffnet "
+                + "ausschließlich die passende "
+                + "Windows-Prüfansicht. Dort erfolgt keine "
+                + "automatische Änderung. Prüfen oder bearbeiten "
+                + "Sie den Punkt dort und dokumentieren Sie das "
+                + "Ergebnis anschließend unten.";
+        }
+    }
+
     private void OpenGuidedViewButton_OnClick(
         object sender,
         RoutedEventArgs e)
@@ -118,7 +196,11 @@ public partial class TaskActionDetailsDialog : Window
                 _definition.ActionCode);
 
             FooterStatusTextBlock.Text =
-                "Prüfansicht geöffnet – keine Behebung dokumentiert";
+                _allowStatusDecision
+                    ? "Prüfansicht geöffnet – "
+                      + "Ergebnis anschließend dokumentieren"
+                    : "Prüfansicht geöffnet – "
+                      + "keine Behebung dokumentiert";
         }
         catch (Exception exception)
         {
@@ -142,10 +224,87 @@ public partial class TaskActionDetailsDialog : Window
         }
     }
 
+    private void ApplyResolutionButton_OnClick(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (!_allowStatusDecision)
+        {
+            return;
+        }
+
+        ValidationTextBlock.Text =
+            string.Empty;
+
+        if (!TryGetSelectedResolutionStatus(
+                out var selectedStatus))
+        {
+            ValidationTextBlock.Text =
+                "Bitte wählen Sie aus, ob die Aufgabe "
+                + "erledigt, nicht durchführbar oder "
+                + "übersprungen wurde.";
+
+            return;
+        }
+
+        var statusReason =
+            StatusReasonTextBox.Text.Trim();
+
+        if (string.IsNullOrWhiteSpace(
+                statusReason))
+        {
+            ValidationTextBlock.Text =
+                "Für die Ergebnisdokumentation ist eine "
+                + "Begründung erforderlich.";
+
+            StatusReasonTextBox.Focus();
+
+            return;
+        }
+
+        SelectedTaskStatus =
+            selectedStatus;
+
+        StatusReason =
+            statusReason;
+
+        TechnicianNote =
+            TechnicianNoteTextBox.Text.Trim();
+
+        DialogResult =
+            true;
+    }
+
+    private bool TryGetSelectedResolutionStatus(
+        out CheckupTaskStatus status)
+    {
+        foreach (var child
+                 in ResolutionStatusOptionsPanel.Children)
+        {
+            if (child is RadioButton
+                {
+                    IsChecked: true,
+                    Tag: CheckupTaskStatus selectedStatus
+                })
+            {
+                status =
+                    selectedStatus;
+
+                return true;
+            }
+        }
+
+        status =
+            CheckupTaskStatus.Open;
+
+        return false;
+    }
+
     private void CloseButton_OnClick(
         object sender,
         RoutedEventArgs e)
     {
-        Close();
+        DialogResult =
+            false;
     }
 }
