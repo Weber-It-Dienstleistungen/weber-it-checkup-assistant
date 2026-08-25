@@ -18,4 +18,11 @@
 		<PackageReference Include="System.Management" Version="10.0.9" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<None Update="Resources\Branding\WeberIT-Logo.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</None>
+	</ItemGroup>
+
 </Project>

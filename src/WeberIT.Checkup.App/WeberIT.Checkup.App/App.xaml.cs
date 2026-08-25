@@ -68,9 +68,25 @@ public partial class App : Application
                             IDiagnosticPdfReportService,
                             DiagnosticPdfReportService>();
 
+                        /*
+                         * Der bisherige fachliche PDF-Dienst
+                         * bleibt unverändert erhalten.
+                         */
+                        services.AddSingleton<
+                            CustomerCheckupPdfReportService>();
+
+                        /*
+                         * Nach außen bleibt weiterhin nur
+                         * ICustomerCheckupPdfReportService
+                         * maßgeblich.
+                         *
+                         * Der Branding-Dienst ergänzt den
+                         * bestehenden Bericht anschließend
+                         * vollständig offline.
+                         */
                         services.AddSingleton<
                             ICustomerCheckupPdfReportService,
-                            CustomerCheckupPdfReportService>();
+                            BrandedCustomerCheckupPdfReportService>();
 
                         services.AddSingleton<
                             ICustomerCheckupComparisonService,
