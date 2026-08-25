@@ -370,17 +370,30 @@ public class SecurityInformationProvider : ISecurityInformationProvider
 
             scope.Connect();
 
+            /*
+             * EncryptionPercentage ist keine direkt
+             * abfragbare Eigenschaft von
+             * Win32_EncryptableVolume.
+             *
+             * Der Prozentwert wird über die WMI-Methode
+             * GetConversionStatus geliefert.
+             *
+             * DeviceID wird mit abgefragt, damit das
+             * zurückgegebene ManagementObject eindeutig
+             * an die WMI-Instanz gebunden bleibt und
+             * Instanzmethoden sicher aufgerufen werden können.
+             */
             using var searcher =
                 new ManagementObjectSearcher(
                     scope,
                     new ObjectQuery(
-                        "SELECT DriveLetter, "
+                        "SELECT DeviceID, "
+                        + "DriveLetter, "
                         + "ProtectionStatus, "
-                        + "ConversionStatus, "
-                        + "EncryptionPercentage "
+                        + "ConversionStatus "
                         + "FROM Win32_EncryptableVolume"));
 
-            foreach (var result in searcher.Get())
+            foreach (ManagementObject result in searcher.Get())
             {
                 var driveLetter =
                     result["DriveLetter"]
@@ -402,19 +415,20 @@ public class SecurityInformationProvider : ISecurityInformationProvider
                     MapProtectionState(
                         result["ProtectionStatus"]);
 
+                /*
+                 * ConversionStatus existiert auch als
+                 * WMI-Eigenschaft. Dieser Wert dient als
+                 * belastbarer Fallback, falls der Methodenaufruf
+                 * auf einem einzelnen Windows-System nicht
+                 * verfügbar sein sollte.
+                 */
                 encryptionInformation.ConversionStatus =
                     MapConversionStatus(
                         result["ConversionStatus"]);
 
-                if (int.TryParse(
-                        result["EncryptionPercentage"]
-                            ?.ToString(),
-                        out var encryptionPercentage))
-                {
-                    encryptionInformation
-                            .EncryptionPercentage =
-                        encryptionPercentage;
-                }
+                ApplyCurrentConversionStatus(
+                    result,
+                    encryptionInformation);
 
                 return encryptionInformation;
             }
@@ -438,6 +452,86 @@ public class SecurityInformationProvider : ISecurityInformationProvider
         }
 
         return encryptionInformation;
+    }
+
+    private static void ApplyCurrentConversionStatus(
+        ManagementObject volume,
+        DriveEncryptionInformation encryptionInformation)
+    {
+        ArgumentNullException.ThrowIfNull(
+            volume);
+
+        ArgumentNullException.ThrowIfNull(
+            encryptionInformation);
+
+        try
+        {
+            using var inputParameters =
+                volume.GetMethodParameters(
+                    "GetConversionStatus");
+
+            if (inputParameters is null)
+            {
+                return;
+            }
+
+            /*
+             * PrecisionFactor 0 reicht für unseren Checkup.
+             * Wir benötigen keine hochfrequente
+             * Fortschrittsmessung, sondern den aktuellen
+             * Zustand zum Zeitpunkt des Scans.
+             */
+            inputParameters["PrecisionFactor"] =
+                0u;
+
+            using var outputParameters =
+                volume.InvokeMethod(
+                    "GetConversionStatus",
+                    inputParameters,
+                    null);
+
+            if (outputParameters is null)
+            {
+                return;
+            }
+
+            if (!uint.TryParse(
+                    outputParameters["ReturnValue"]
+                        ?.ToString(),
+                    out var returnValue)
+                || returnValue != 0)
+            {
+                return;
+            }
+
+            encryptionInformation.ConversionStatus =
+                MapConversionStatus(
+                    outputParameters[
+                        "ConversionStatus"]);
+
+            if (int.TryParse(
+                    outputParameters[
+                            "EncryptionPercentage"]
+                        ?.ToString(),
+                    out var encryptionPercentage))
+            {
+                encryptionInformation
+                        .EncryptionPercentage =
+                    Math.Clamp(
+                        encryptionPercentage,
+                        0,
+                        100);
+            }
+        }
+        catch
+        {
+            /*
+             * ConversionStatus aus der direkten
+             * WMI-Eigenschaft bleibt als Fallback erhalten.
+             * Ein Fehler bei der Detailabfrage darf den
+             * gesamten Sicherheits-Scan nicht abbrechen.
+             */
+        }
     }
 
     private static SecurityState MapProtectionState(
