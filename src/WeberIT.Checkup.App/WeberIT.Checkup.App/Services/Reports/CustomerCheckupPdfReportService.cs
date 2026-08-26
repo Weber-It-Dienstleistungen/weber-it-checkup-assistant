@@ -1927,7 +1927,7 @@ public sealed class CustomerCheckupPdfReportService :
 
             CustomerCheckupTaskComparisonStatus
                 .CompletedButStillDetected =>
-                    "Abgeschlossen – Befund weiterhin vorhanden",
+                    "Abgeschlossen",
 
             CustomerCheckupTaskComparisonStatus
                 .StillOpen =>
@@ -1969,7 +1969,7 @@ public sealed class CustomerCheckupPdfReportService :
 
             CustomerCheckupTaskComparisonStatus
                 .CompletedButStillDetected =>
-                    WarningColor,
+                    SuccessColor,
 
             CustomerCheckupTaskComparisonStatus
                 .StillOpen =>

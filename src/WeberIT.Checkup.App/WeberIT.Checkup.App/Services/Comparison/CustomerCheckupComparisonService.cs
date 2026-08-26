@@ -407,7 +407,9 @@ public sealed class CustomerCheckupComparisonService :
                 : CustomerCheckupFindingComparisonStatus.NotReevaluatable;
         }
 
-        return CustomerCheckupFindingComparisonStatus.NewlyDetected;
+        return isAfterEvaluable
+            ? CustomerCheckupFindingComparisonStatus.NewlyDetected
+            : CustomerCheckupFindingComparisonStatus.NotReevaluatable;
     }
 
     private static List<CustomerCheckupTaskComparison> CompareTasks(

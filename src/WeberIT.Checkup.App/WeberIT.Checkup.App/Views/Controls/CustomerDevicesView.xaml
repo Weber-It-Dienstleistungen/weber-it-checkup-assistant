@@ -98,8 +98,8 @@
                             <Style.Triggers>
 
                                 <DataTrigger
-                                    Binding="{Binding SelectedCustomer.Devices.Count}"
-                                    Value="0">
+                                    Binding="{Binding HasItems, ElementName=DeviceList}"
+                                    Value="False">
 
                                     <Setter
                                         Property="Visibility"
@@ -156,6 +156,7 @@
                 <!-- Geräte -->
 
                 <ListBox
+                    x:Name="DeviceList"
                     ItemsSource="{Binding Devices}"
                     SelectedItem="{Binding SelectedDevice, Mode=TwoWay}"
                     Background="Transparent"
@@ -175,8 +176,8 @@
                             <Style.Triggers>
 
                                 <DataTrigger
-                                    Binding="{Binding SelectedCustomer.Devices.Count}"
-                                    Value="0">
+                                    Binding="{Binding HasItems, RelativeSource={RelativeSource Self}}"
+                                    Value="False">
 
                                     <Setter
                                         Property="Visibility"

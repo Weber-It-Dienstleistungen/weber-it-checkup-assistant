@@ -7,6 +7,7 @@ using System.Windows.Media;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.Services.Tasks;
+using WeberIT.Checkup.App.ViewModels;
 using WeberIT.Checkup.App.Views.Dialogs;
 
 namespace WeberIT.Checkup.App.Views.Controls.Checkup;
@@ -192,10 +193,11 @@ public partial class CheckupTaskListCard : UserControl
                         0),
 
                 Text =
-                    "Ein neuer lesender Systemscan prüft, "
-                    + "ob erfolgreich bearbeitete Befunde "
-                    + "weiterhin vorhanden sind. Der "
-                    + "ursprüngliche Checkup bleibt erhalten.",
+                    "Startet denselben vollständigen "
+                    + "Kontrollscan wie die Checkupsteuerung "
+                    + "oben. Danach wird der aktuelle "
+                    + "Nachher-Zustand mit dem Eingangsscan "
+                    + "verglichen.",
 
                 TextWrapping =
                     TextWrapping.Wrap
@@ -1225,51 +1227,61 @@ public partial class CheckupTaskListCard : UserControl
             return;
         }
 
-        var application =
-            Application.Current as App;
+        var ownerWindow =
+            Window.GetWindow(
+                this);
 
-        if (application is null)
+        if (ownerWindow?.DataContext
+            is not CustomerDevicesViewModel
+                customerDevicesViewModel)
         {
             ShowCompletionCheckError(
-                "Der zentrale Anwendungsdienst ist "
-                + "nicht verfügbar.");
+                "Der vollständige Kundencheckup-Workflow "
+                + "ist in dieser Ansicht nicht verfügbar.");
 
             return;
         }
 
-        var dialogService =
-            application.Services
-                .GetRequiredService<
-                    IDialogService>();
-
-        var confirmed =
-            dialogService.Confirm(
-                "Abschlusskontrolle starten",
-                "Es wird jetzt ein neuer, vollständig "
-                + "lesender Systemscan durchgeführt."
-                + Environment.NewLine
-                + Environment.NewLine
-                + "Der ursprüngliche Checkup wird nicht "
-                + "ersetzt. Automatisch verändert werden "
-                + "ausschließlich die Status der Aufgaben, "
-                + "für die bereits eine erfolgreiche "
-                + "technische Aktion dokumentiert ist."
-                + Environment.NewLine
-                + Environment.NewLine
-                + "Abgeschlossene Befunde werden als "
-                + "erledigt markiert. Weiterhin vorhandene "
-                + "Befunde bleiben offen."
-                + Environment.NewLine
-                + Environment.NewLine
-                + "Abschlusskontrolle jetzt starten?");
-
-        if (!confirmed)
+        if (customerDevicesViewModel.SelectedDevice is null
+            || !ReferenceEquals(
+                customerDevicesViewModel
+                    .SelectedDevice
+                    .CheckupSession,
+                CheckupSession))
         {
+            ShowCompletionCheckError(
+                "Die angezeigte Aufgabenliste gehört nicht "
+                + "eindeutig zum aktuell ausgewählten Gerät. "
+                + "Die Abschlusskontrolle wurde deshalb "
+                + "nicht gestartet.");
+
             return;
         }
 
-        var sourceCheckup =
-            CheckupSession;
+        if (!CheckupSession
+                .HasInProgressCustomerCheckupVisit)
+        {
+            ShowCompletionCheckError(
+                "Für dieses Gerät läuft aktuell kein "
+                + "Kundencheckup, der abgeschlossen werden "
+                + "kann.");
+
+            return;
+        }
+
+        if (!customerDevicesViewModel
+                .RescanDeviceCommand
+                .CanExecute(
+                    null))
+        {
+            ShowCompletionCheckError(
+                "Die Abschlusskontrolle kann aktuell nicht "
+                + "gestartet werden. Möglicherweise läuft "
+                + "bereits ein anderer Systemscan oder der "
+                + "Gerätekontext ist nicht vollständig.");
+
+            return;
+        }
 
         _isCompletionCheckRunning =
             true;
@@ -1282,36 +1294,23 @@ public partial class CheckupTaskListCard : UserControl
 
         try
         {
-            var completionCheckService =
-                ActivatorUtilities.CreateInstance<
-                    CheckupCompletionCheckService>(
-                    application.Services);
-
-            var completionCheckResult =
-                await Task.Run(
-                    () =>
-                        completionCheckService.Run(
-                            sourceCheckup));
-
-            if (!ReferenceEquals(
-                    CheckupSession,
-                    sourceCheckup)
-                || !ReferenceEquals(
-                    DataContext,
-                    taskList))
-            {
-                throw new InvalidOperationException(
-                    "Der angezeigte Checkup wurde während "
-                    + "des Kontrollscans gewechselt. Das "
-                    + "Ergebnis wurde nicht übernommen.");
-            }
-
-            taskList.ApplyCompletionCheck(
-                completionCheckResult);
-
-            ShowCompletionCheckResult(
-                taskList
-                    .LastCompletionCheckSummary);
+            /*
+             * Es gibt bewusst nur noch einen fachlichen
+             * Abschlussworkflow.
+             *
+             * Sowohl der Button in der Geräte-Kopfzeile als auch
+             * dieser geführte Button verwenden denselben
+             * RescanDeviceCommand des CustomerDevicesViewModel.
+             *
+             * Dadurch werden Fortschrittsanzeige,
+             * Geräteprüfung, vollständiger Nachher-Scan,
+             * Vorher-/Nachher-Vergleich und Abschlussentwurf
+             * nicht mehr in zwei voneinander abweichenden
+             * Kontrollmechanismen ausgeführt.
+             */
+            await customerDevicesViewModel
+                .RescanDeviceCommand
+                .ExecuteAsync();
         }
         catch (Exception exception)
         {

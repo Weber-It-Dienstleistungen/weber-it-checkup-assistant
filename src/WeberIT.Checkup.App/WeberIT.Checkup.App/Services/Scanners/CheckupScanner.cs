@@ -195,7 +195,11 @@ public class CheckupScanner : ICheckupScanner
                 CheckupScanStepCatalog.WindowsUpdateInformation,
                 () =>
                     _windowsUpdateInformationScanner.Scan(),
-                progress);
+                progress,
+                result =>
+                    result.Data is null
+                    || !result.Data.IsUpdateSearchPerformed
+                    || !result.Data.IsUpdateSearchSuccessful);
 
         var programUpdateInformationResult =
             ExecuteStep(

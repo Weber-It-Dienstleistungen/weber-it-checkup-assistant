@@ -34,6 +34,9 @@ public class CustomersViewModel : BaseViewModel
 
         CustomersView.Filter = FilterCustomer;
 
+        CustomerDevices.PropertyChanged +=
+            CustomerDevices_OnPropertyChanged;
+
         AddCustomerCommand =
             new RelayCommand(_ => AddCustomer());
 
@@ -168,6 +171,21 @@ public class CustomersViewModel : BaseViewModel
 
         SelectedCustomer =
             Customers.FirstOrDefault();
+
+        CustomersView.Refresh();
+    }
+
+    private void CustomerDevices_OnPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs e)
+    {
+        if (!string.Equals(
+                e.PropertyName,
+                nameof(CustomerDevicesViewModel.DeviceCountText),
+                StringComparison.Ordinal))
+        {
+            return;
+        }
 
         CustomersView.Refresh();
     }

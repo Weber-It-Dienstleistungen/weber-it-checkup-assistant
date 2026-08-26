@@ -25,6 +25,11 @@ public class WindowsUpdateInformationScanner :
         return new ScanResult<WindowsUpdateInformation>
         {
             IsSuccessful = true,
+
+            Message =
+                windowsUpdateInformation
+                    .UpdateSearchDetails,
+
             Data = windowsUpdateInformation
         };
     }
