@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿
+using System.Text.Json.Serialization;
 
 namespace WeberIT.Checkup.App.Models;
 
@@ -57,6 +58,11 @@ public sealed class CustomerCheckupComparison
     public int NotReevaluatableFindingCount =>
         Findings.Count(finding =>
             finding.Status == CustomerCheckupFindingComparisonStatus.NotReevaluatable);
+
+    [JsonIgnore]
+    public int InformationalFindingCount =>
+        Findings.Count(finding =>
+            finding.Status == CustomerCheckupFindingComparisonStatus.Informational);
 
     [JsonIgnore]
     public int SuccessfulActionCount =>
@@ -253,10 +259,15 @@ public sealed class CustomerCheckupAreaComparison
 
 public enum CustomerCheckupFindingComparisonStatus
 {
-    Resolved,
-    StillOpen,
-    NewlyDetected,
-    NotReevaluatable
+    Resolved = 0,
+    StillOpen = 1,
+    NewlyDetected = 2,
+    NotReevaluatable = 3,
+
+    // Neutraler Informationsbefund.
+    // Darf nicht als offenes technisches Problem
+    // oder als behobener Fehler gezählt werden.
+    Informational = 4
 }
 
 public enum CustomerCheckupTaskComparisonStatus

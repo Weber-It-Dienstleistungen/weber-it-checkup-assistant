@@ -1,4 +1,5 @@
-﻿using WeberIT.Checkup.App.Models;
+﻿
+using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
 namespace WeberIT.Checkup.App.Services.Comparison;
@@ -354,9 +355,9 @@ public sealed class CustomerCheckupComparisonService :
             representative,
             area);
 
-        var status = DetermineFindingStatus(
-            beforeFindings.Count,
-            afterFindings.Count,
+        var status = CustomerCheckupFindingStatusPolicy.Determine(
+            beforeFindings,
+            afterFindings,
             afterEvaluation.IsEvaluable);
 
         return new CustomerCheckupFindingComparison
@@ -387,29 +388,6 @@ public sealed class CustomerCheckupComparisonService :
             IsAfterAreaEvaluable = afterEvaluation.IsEvaluable,
             Status = status
         };
-    }
-
-    private static CustomerCheckupFindingComparisonStatus
-        DetermineFindingStatus(
-            int beforeCount,
-            int afterCount,
-            bool isAfterEvaluable)
-    {
-        if (beforeCount > 0 && afterCount > 0)
-        {
-            return CustomerCheckupFindingComparisonStatus.StillOpen;
-        }
-
-        if (beforeCount > 0)
-        {
-            return isAfterEvaluable
-                ? CustomerCheckupFindingComparisonStatus.Resolved
-                : CustomerCheckupFindingComparisonStatus.NotReevaluatable;
-        }
-
-        return isAfterEvaluable
-            ? CustomerCheckupFindingComparisonStatus.NewlyDetected
-            : CustomerCheckupFindingComparisonStatus.NotReevaluatable;
     }
 
     private static List<CustomerCheckupTaskComparison> CompareTasks(
@@ -1467,7 +1445,9 @@ public sealed class CustomerCheckupComparisonService :
             CustomerCheckupFindingComparisonStatus.NewlyDetected => 0,
             CustomerCheckupFindingComparisonStatus.StillOpen => 1,
             CustomerCheckupFindingComparisonStatus.NotReevaluatable => 2,
-            _ => 3
+            CustomerCheckupFindingComparisonStatus.Resolved => 3,
+            CustomerCheckupFindingComparisonStatus.Informational => 4,
+            _ => 5
         };
     }
 

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿
+using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -556,7 +557,10 @@ public partial class CustomerCheckupCompletionDialog :
                 finding =>
                     finding.Status
                     != CustomerCheckupFindingComparisonStatus
-                        .Resolved)
+                        .Resolved
+                    && finding.Status
+                    != CustomerCheckupFindingComparisonStatus
+                        .Informational)
             .Select(
                 finding =>
                     new CustomerCheckupFindingPreviewItem
@@ -815,8 +819,14 @@ public partial class CustomerCheckupCompletionDialog :
                 .NotReevaluatable =>
                     "Nicht erneut auswertbar",
 
+            CustomerCheckupFindingComparisonStatus.Informational =>
+                "Information",
+
+            CustomerCheckupFindingComparisonStatus.Resolved =>
+                "Behoben",
+
             _ =>
-                "Behoben"
+                "Unbekannter Status"
         };
     }
 
@@ -888,8 +898,14 @@ public partial class CustomerCheckupCompletionDialog :
                 .NotReevaluatable =>
                     2,
 
+            CustomerCheckupFindingComparisonStatus.Resolved =>
+                3,
+
+            CustomerCheckupFindingComparisonStatus.Informational =>
+                4,
+
             _ =>
-                3
+                5
         };
     }
 
