@@ -825,7 +825,15 @@ public sealed class CustomerCheckupComparisonService :
         var fallbackCount = comparison.Findings.Count(finding =>
             finding.MatchBasis != CustomerCheckupMatchBasis.Code);
 
-        if (fallbackCount > 0)
+        // Singular und Plural korrekt unterscheiden.
+        if (fallbackCount == 1)
+        {
+            notes.Add(
+                "1 Befundvergleich konnte nicht "
+                + "ausschließlich über einen stabilen Befundcode "
+                + "zugeordnet werden.");
+        }
+        else if (fallbackCount > 1)
         {
             notes.Add(
                 $"{fallbackCount} Befundvergleiche konnten nicht "

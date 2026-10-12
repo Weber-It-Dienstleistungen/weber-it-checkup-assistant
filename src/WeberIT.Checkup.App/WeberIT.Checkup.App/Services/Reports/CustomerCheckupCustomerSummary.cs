@@ -7,7 +7,8 @@ namespace WeberIT.Checkup.App.Services.Reports;
 /// Erstellt eine verständliche Kundenzusammenfassung
 /// auf Basis des gespeicherten Vorher-/Nachher-Vergleichs.
 ///
-/// Die Klasse verändert keine Scan- oder Bewertungsdaten.
+/// Scan-, Bewertungs- und Vergleichsdaten werden
+/// dabei nicht verändert.
 /// </summary>
 public sealed class CustomerCheckupCustomerSummary
 {
@@ -59,12 +60,8 @@ public sealed class CustomerCheckupCustomerSummary
 
         var summary = new CustomerCheckupCustomerSummary
         {
-            OpenFindingCount = findings.Count(finding =>
-                finding.Status is
-                    CustomerCheckupFindingComparisonStatus.StillOpen
-                    or CustomerCheckupFindingComparisonStatus.NewlyDetected
-                    or CustomerCheckupFindingComparisonStatus
-                        .NotReevaluatable),
+            OpenFindingCount = findings.Count(
+                IsCurrentlyOpen),
 
             ResolvedFindingCount = findings.Count(finding =>
                 finding.Status ==
@@ -100,13 +97,13 @@ public sealed class CustomerCheckupCustomerSummary
         IReadOnlyCollection<CustomerCheckupFindingComparison> findings)
     {
         var hasCriticalFindings = findings.Any(finding =>
-            IsCurrentlyOpen(finding)
-            && (finding.AfterSeverity ?? finding.BeforeSeverity)
+            IsConfirmedOpen(finding)
+            && GetFindingSeverity(finding)
                 == FindingSeverity.Critical);
 
         var hasWarnings = findings.Any(finding =>
-            IsCurrentlyOpen(finding)
-            && (finding.AfterSeverity ?? finding.BeforeSeverity)
+            IsConfirmedOpen(finding)
+            && GetFindingSeverity(finding)
                 == FindingSeverity.Warning);
 
         if (hasCriticalFindings)
@@ -147,6 +144,7 @@ public sealed class CustomerCheckupCustomerSummary
 
         var parts = new List<string>();
 
+        // Aktueller Zustand.
         if (systemScore.AfterScore.HasValue)
         {
             parts.Add(
@@ -166,22 +164,65 @@ public sealed class CustomerCheckupCustomerSummary
                 "Die Hardware erreicht "
                 + $"{hardwareScore.AfterScore.Value} von 100 Punkten.");
         }
-
-        if (systemScore.IsComparable)
-        {
-            parts.Add(
-                CustomerCheckupReportWording
-                    .GetScoreChangeText(systemScore));
-        }
         else
         {
             parts.Add(
-                "Eine zuverlässige Aussage über eine "
-                + "Verbesserung oder Verschlechterung "
-                + "ist anhand der beiden Scans nicht möglich.");
+                "Für die Hardware liegt keine vollständige "
+                + "Punktbewertung vor.");
         }
 
+        // Die Veränderungen werden getrennt bewertet.
+        //
+        // Beispiel:
+        // System unverändert, Hardware verbessert.
+        //
+        // Eine unveränderte Systembewertung darf nicht
+        // automatisch für die Hardware gelten.
+        parts.Add(
+            BuildScoreChangeText(
+                systemScore,
+                "Die Systembewertung"));
+
+        parts.Add(
+            BuildScoreChangeText(
+                hardwareScore,
+                "Die Hardwarebewertung"));
+
         return string.Join(" ", parts);
+    }
+
+    private static string BuildScoreChangeText(
+        CustomerCheckupScoreComparison score,
+        string label)
+    {
+        if (!score.IsComparable
+            || !score.Difference.HasValue)
+        {
+            return label
+                   + " lässt sich nicht zuverlässig "
+                   + "mit dem Eingangsscan vergleichen.";
+        }
+
+        var difference = score.Difference.Value;
+
+        if (difference > 0)
+        {
+            return label
+                   + " hat sich um "
+                   + difference
+                   + " Punkte verbessert.";
+        }
+
+        if (difference < 0)
+        {
+            return label
+                   + " hat sich um "
+                   + Math.Abs(difference)
+                   + " Punkte verschlechtert.";
+        }
+
+        return label
+               + " ist unverändert geblieben.";
     }
 
     private static string BuildWorkResultText(
@@ -236,72 +277,128 @@ public sealed class CustomerCheckupCustomerSummary
     private static string BuildRecommendationText(
         IReadOnlyCollection<CustomerCheckupFindingComparison> findings)
     {
+        // Nachgewiesene offene Befunde.
         var openFindings = findings
-            .Where(IsCurrentlyOpen)
+            .Where(IsConfirmedOpen)
             .ToList();
 
-        if (openFindings.Count == 0)
+        // Befunde ohne verlässliche erneute Auswertung
+        // gesondert behandeln.
+        var uncertainCount = findings.Count(finding =>
+            finding.Status ==
+            CustomerCheckupFindingComparisonStatus.NotReevaluatable);
+
+        if (openFindings.Count == 0
+            && uncertainCount == 0)
         {
-            return "Aus dem technischen Vergleich ergeben "
-                   + "sich derzeit keine offenen Befundempfehlungen.";
+            return "Aus der Abschlusskontrolle ergeben "
+                   + "sich derzeit keine offenen "
+                   + "technischen Befundempfehlungen.";
         }
 
         var urgentCount = openFindings.Count(finding =>
-            (finding.AfterSeverity ?? finding.BeforeSeverity)
+            GetFindingSeverity(finding)
                 == FindingSeverity.Critical);
 
         var warningCount = openFindings.Count(finding =>
-            (finding.AfterSeverity ?? finding.BeforeSeverity)
+            GetFindingSeverity(finding)
                 == FindingSeverity.Warning);
 
         var recommendationCount = openFindings.Count(finding =>
-            (finding.AfterSeverity ?? finding.BeforeSeverity)
+            GetFindingSeverity(finding)
                 == FindingSeverity.Recommendation);
 
-        var uncertainCount = openFindings.Count(finding =>
-            finding.Status ==
-                CustomerCheckupFindingComparisonStatus.NotReevaluatable);
+        var categorizedCount =
+            urgentCount
+            + warningCount
+            + recommendationCount;
 
-        var parts = new List<string>();
+        var otherCount =
+            openFindings.Count - categorizedCount;
+
+        var categories = new List<string>();
 
         if (urgentCount > 0)
         {
-            parts.Add(
+            categories.Add(
                 urgentCount == 1
-                    ? "Ein Punkt sollte dringend überprüft werden."
-                    : $"{urgentCount} Punkte sollten dringend "
-                      + "überprüft werden.");
+                    ? "1 dringender Hinweis"
+                    : $"{urgentCount} dringende Hinweise");
         }
 
         if (warningCount > 0)
         {
-            parts.Add(
+            categories.Add(
                 warningCount == 1
-                    ? "Ein weiterer Punkt ist als wichtig eingestuft."
-                    : $"{warningCount} Punkte sind als wichtig eingestuft.");
+                    ? "1 wichtiger Hinweis"
+                    : $"{warningCount} wichtige Hinweise");
         }
 
         if (recommendationCount > 0)
         {
-            parts.Add(
+            categories.Add(
                 recommendationCount == 1
-                    ? "Eine weitere Verbesserung wird empfohlen."
-                    : $"{recommendationCount} weitere Verbesserungen "
-                      + "werden empfohlen.");
+                    ? "1 Empfehlung"
+                    : $"{recommendationCount} Empfehlungen");
+        }
+
+        if (otherCount > 0)
+        {
+            categories.Add(
+                otherCount == 1
+                    ? "1 weiterer technischer Hinweis"
+                    : $"{otherCount} weitere technische Hinweise");
+        }
+
+        var parts = new List<string>();
+
+        if (categories.Count > 0)
+        {
+            parts.Add(
+                "Bei der Abschlusskontrolle blieben "
+                + "folgende Punkte offen: "
+                + JoinNaturalLanguage(categories)
+                + ".");
         }
 
         if (uncertainCount > 0)
         {
             parts.Add(
-                "Bei einzelnen Punkten ist eine erneute "
-                + "technische Kontrolle sinnvoll.");
+                uncertainCount == 1
+                    ? "Zusätzlich konnte 1 Befund bei "
+                      + "der Abschlusskontrolle nicht "
+                      + "zuverlässig überprüft werden."
+                    : $"Zusätzlich konnten {uncertainCount} "
+                      + "Befunde bei der Abschlusskontrolle "
+                      + "nicht zuverlässig überprüft werden.");
         }
 
-        return parts.Count > 0
-            ? string.Join(" ", parts)
-            : "Es bestehen noch technische Hinweise, "
-              + "die im weiteren Vorgehen berücksichtigt "
-              + "werden sollten.";
+        return string.Join(" ", parts);
+    }
+
+    private static string JoinNaturalLanguage(
+        IReadOnlyList<string> values)
+    {
+        if (values.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        if (values.Count == 1)
+        {
+            return values[0];
+        }
+
+        if (values.Count == 2)
+        {
+            return values[0] + " und " + values[1];
+        }
+
+        return string.Join(
+                   ", ",
+                   values.Take(values.Count - 1))
+               + " und "
+               + values[^1];
     }
 
     private static string BuildCoverageText(
@@ -321,20 +418,36 @@ public sealed class CustomerCheckupCustomerSummary
 
         return notComparable.Count == 1
             ? "Ein Prüfbereich konnte nicht vollständig "
-              + "miteinander verglichen werden. Das bedeutet "
-              + "nicht automatisch, dass dort ein Fehler vorliegt."
+              + "zwischen Eingangsscan und Abschlusskontrolle "
+              + "verglichen werden. Das bedeutet nicht "
+              + "automatisch, dass dort ein Fehler vorliegt."
             : $"{notComparable.Count} Prüfbereiche konnten "
-              + "nicht vollständig miteinander verglichen werden. "
+              + "nicht vollständig zwischen Eingangsscan "
+              + "und Abschlusskontrolle verglichen werden. "
               + "Das bedeutet nicht automatisch, dass dort "
               + "Fehler vorliegen.";
+    }
+
+    private static FindingSeverity? GetFindingSeverity(
+        CustomerCheckupFindingComparison finding)
+    {
+        return finding.AfterSeverity
+               ?? finding.BeforeSeverity;
+    }
+
+    private static bool IsConfirmedOpen(
+        CustomerCheckupFindingComparison finding)
+    {
+        return finding.Status is
+            CustomerCheckupFindingComparisonStatus.StillOpen
+            or CustomerCheckupFindingComparisonStatus.NewlyDetected;
     }
 
     private static bool IsCurrentlyOpen(
         CustomerCheckupFindingComparison finding)
     {
-        return finding.Status is
-            CustomerCheckupFindingComparisonStatus.StillOpen
-            or CustomerCheckupFindingComparisonStatus.NewlyDetected
-            or CustomerCheckupFindingComparisonStatus.NotReevaluatable;
+        return IsConfirmedOpen(finding)
+               || finding.Status ==
+                   CustomerCheckupFindingComparisonStatus.NotReevaluatable;
     }
 }

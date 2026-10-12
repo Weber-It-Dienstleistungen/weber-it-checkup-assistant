@@ -82,9 +82,7 @@ public sealed class CustomerCheckupPdfReportService :
         renderer.PdfDocument.PageLayout =
             PdfPageLayout.SinglePage;
 
-        renderer.PdfDocument
-            .ViewerPreferences
-            .FitWindow = true;
+        renderer.PdfDocument.ViewerPreferences.FitWindow = true;
 
         renderer.RenderDocument();
 
@@ -104,67 +102,61 @@ public sealed class CustomerCheckupPdfReportService :
         if (!reportFile.Exists || reportFile.Length == 0)
         {
             throw new IOException(
-                "Der Kundencheckup-Bericht wurde nicht als gültige "
-                + "PDF-Datei gespeichert.");
+                "Der Kundencheckup-Bericht wurde nicht "
+                + "als gültige PDF-Datei gespeichert.");
         }
     }
 
     private static void ValidateReportVisit(
-        CustomerCheckupVisit customerCheckupVisit)
+        CustomerCheckupVisit visit)
     {
-        if ((!customerCheckupVisit.IsInProgress
-             && !customerCheckupVisit.IsCompleted)
-            || !customerCheckupVisit.HasAfterCheckup
-            || !customerCheckupVisit.HasComparison)
+        if ((!visit.IsInProgress && !visit.IsCompleted)
+            || !visit.HasAfterCheckup
+            || !visit.HasComparison)
         {
             throw new InvalidOperationException(
-                "Der Kundencheckup-Bericht kann erst erstellt werden, "
-                + "wenn Nachher-Scan, Vergleich und Technikerangaben "
-                + "vollständig gespeichert wurden.");
+                "Der Bericht benötigt einen gespeicherten "
+                + "Nachher-Scan und einen vollständigen Vergleich.");
         }
 
-        var afterCheckup = customerCheckupVisit.AfterCheckup;
-        var comparison = customerCheckupVisit.Comparison;
+        var afterCheckup = visit.AfterCheckup;
+        var comparison = visit.Comparison;
 
         if (afterCheckup?.ScanDate is null
             || comparison is null)
         {
             throw new InvalidOperationException(
-                "Der gespeicherte Abschlussentwurf enthält keinen "
-                + "vollständigen Nachher-Zustand.");
+                "Der gespeicherte Abschluss enthält "
+                + "keinen vollständigen Nachher-Zustand.");
         }
 
-        if (comparison.CustomerCheckupVisitId
-                != customerCheckupVisit.Id
+        if (comparison.CustomerCheckupVisitId != visit.Id
             || comparison.BeforeScanDate
-                != customerCheckupVisit.BeforeCheckup.ScanDate
+                != visit.BeforeCheckup.ScanDate
             || comparison.AfterScanDate
                 != afterCheckup.ScanDate)
         {
             throw new InvalidOperationException(
-                "Der gespeicherte Vorher-/Nachher-Vergleich gehört "
+                "Der gespeicherte Vergleich gehört "
                 + "nicht vollständig zu diesem Kundencheckup.");
         }
 
-        if (string.IsNullOrWhiteSpace(
-                customerCheckupVisit.TechnicianSummary)
-            || string.IsNullOrWhiteSpace(
-                customerCheckupVisit.NextSteps)
-            || !customerCheckupVisit.NextCheckupDate.HasValue)
+        if (string.IsNullOrWhiteSpace(visit.TechnicianSummary)
+            || string.IsNullOrWhiteSpace(visit.NextSteps)
+            || !visit.NextCheckupDate.HasValue)
         {
             throw new InvalidOperationException(
-                "Der Abschlussentwurf enthält keine vollständigen "
-                + "Technikerangaben.");
+                "Der Abschluss enthält noch keine "
+                + "vollständigen Technikerangaben.");
         }
     }
 
     private static Document CreateDocument(
         Customer customer,
         CustomerDevice device,
-        CustomerCheckupVisit customerCheckupVisit)
+        CustomerCheckupVisit visit)
     {
-        var comparison =
-            customerCheckupVisit.Comparison!;
+        var comparison = visit.Comparison!;
 
         var document = new Document();
 
@@ -175,86 +167,141 @@ public sealed class CustomerCheckupPdfReportService :
             "Weber IT-Dienstleistungen";
 
         document.Info.Subject =
-            "Kundenspezifischer Vorher-/Nachher-Bericht eines "
-            + "Windows-PC-Checkups";
+            "Kundenbericht mit technischer Dokumentation";
 
         document.Info.Keywords =
-            "Windows, Kundencheckup, Vorher-Nachher, "
-            + "Wartung, Weber IT";
+            "Kundencheckup, Windows, Wartung, Weber IT";
 
         ConfigureStyles(document);
 
-        var section = document.AddSection();
+        // =================================================
+        // TEIL 1: KUNDENVERSTÄNDLICHER HAUPTBERICHT
+        // =================================================
 
-        ConfigurePage(section);
-        AddHeaderAndFooter(section, customer);
+        var customerSection = document.AddSection();
 
-        AddTitle(
-            section,
+        ConfigurePage(customerSection);
+
+        AddHeaderAndFooter(
+            customerSection,
+            customer,
+            "Kundenbericht");
+
+        AddCustomerTitle(
+            customerSection,
             customer,
             device,
-            customerCheckupVisit);
+            visit);
 
-        // Neue kundenverständliche Ergebnisübersicht.
-        // Sie steht bewusst vor den technischen Einzelheiten.
         AddCustomerSummary(
-            section,
+            customerSection,
             comparison);
 
         AddTechnicianSummary(
-            section,
-            customerCheckupVisit);
+            customerSection,
+            visit);
 
-        AddResultOverview(section, comparison);
-        AddScoreComparison(section, comparison);
-        AddAreaComparison(section, comparison);
-        AddActions(section, comparison);
-        AddFindings(section, comparison);
-        AddTasks(section, comparison);
-        AddComparisonNotes(section, comparison);
-        AddReportNotice(section);
+        AddCustomerRecommendations(
+            customerSection,
+            comparison);
+
+        AddPositiveFindings(
+            customerSection,
+            comparison);
+
+        // V1.1: Der bisherige zusätzliche Übergangssatz
+        // entfällt. Er hatte auf einer eigenen, ansonsten
+        // leeren PDF-Seite gestanden.
+        //
+        // Der folgende Abschnitt ist bereits eindeutig
+        // als technischer Anhang gekennzeichnet.
+
+        // =================================================
+        // TEIL 2: TECHNISCHER ANHANG
+        // =================================================
+
+        var appendixSection = document.AddSection();
+
+        ConfigurePage(appendixSection);
+
+        AddHeaderAndFooter(
+            appendixSection,
+            customer,
+            "Technischer Anhang");
+
+        AddTechnicalAppendixIntroduction(
+            appendixSection);
+
+        AddTechnicalDeviceDetails(
+            appendixSection,
+            customer,
+            device,
+            visit);
+
+        AddResultOverview(
+            appendixSection,
+            comparison);
+
+        AddScoreComparison(
+            appendixSection,
+            comparison);
+
+        AddAreaComparison(
+            appendixSection,
+            comparison);
+
+        AddActions(
+            appendixSection,
+            comparison);
+
+        AddFindings(
+            appendixSection,
+            comparison);
+
+        AddTasks(
+            appendixSection,
+            comparison);
+
+        AddComparisonNotes(
+            appendixSection,
+            comparison);
+
+        AddReportNotice(appendixSection);
 
         return document;
     }
 
-    private static void ConfigureStyles(
-        Document document)
+    private static void ConfigureStyles(Document document)
     {
-        var normalStyle =
-            document.Styles[StyleNames.Normal]!;
+        var normal = document.Styles[StyleNames.Normal]!;
 
-        normalStyle.Font.Name = "Arial";
-        normalStyle.Font.Size = Unit.FromPoint(9);
-        normalStyle.Font.Color = TextColor;
+        normal.Font.Name = "Arial";
+        normal.Font.Size = Unit.FromPoint(9);
+        normal.Font.Color = TextColor;
 
-        normalStyle.ParagraphFormat.SpaceAfter =
+        normal.ParagraphFormat.SpaceAfter =
             Unit.FromPoint(3);
 
-        var headingStyle =
-            document.Styles[StyleNames.Heading1]!;
+        var heading = document.Styles[StyleNames.Heading1]!;
 
-        headingStyle.Font.Name = "Arial";
-        headingStyle.Font.Size = Unit.FromPoint(15);
-        headingStyle.Font.Bold = true;
-        headingStyle.Font.Color = HeadingColor;
+        heading.Font.Name = "Arial";
+        heading.Font.Size = Unit.FromPoint(15);
+        heading.Font.Bold = true;
+        heading.Font.Color = HeadingColor;
 
-        headingStyle.ParagraphFormat.SpaceBefore =
+        heading.ParagraphFormat.SpaceBefore =
             Unit.FromPoint(12);
 
-        headingStyle.ParagraphFormat.SpaceAfter =
+        heading.ParagraphFormat.SpaceAfter =
             Unit.FromPoint(7);
 
-        headingStyle.ParagraphFormat.KeepWithNext = true;
+        heading.ParagraphFormat.KeepWithNext = true;
     }
 
-    private static void ConfigurePage(
-        Section section)
+    private static void ConfigurePage(Section section)
     {
-        section.PageSetup.PageFormat =
-            PageFormat.A4;
-
-        section.PageSetup.Orientation =
-            Orientation.Portrait;
+        section.PageSetup.PageFormat = PageFormat.A4;
+        section.PageSetup.Orientation = Orientation.Portrait;
 
         section.PageSetup.TopMargin =
             Unit.FromCentimeter(1.7);
@@ -271,19 +318,19 @@ public sealed class CustomerCheckupPdfReportService :
 
     private static void AddHeaderAndFooter(
         Section section,
-        Customer customer)
+        Customer customer,
+        string reportPart)
     {
-        var header =
-            section.Headers.Primary.AddParagraph(
-                "Weber IT-Dienstleistungen · Kundencheckup");
+        var header = section.Headers.Primary.AddParagraph(
+            "Weber IT-Dienstleistungen · " + reportPart);
 
         header.Format.Font.Name = "Arial";
         header.Format.Font.Size = Unit.FromPoint(8);
         header.Format.Font.Color = MutedTextColor;
-        header.Format.Alignment = ParagraphAlignment.Right;
+        header.Format.Alignment =
+            ParagraphAlignment.Right;
 
-        var footer =
-            section.Footers.Primary.AddParagraph();
+        var footer = section.Footers.Primary.AddParagraph();
 
         footer.AddText(
             "Kundencheckup "
@@ -297,55 +344,422 @@ public sealed class CustomerCheckupPdfReportService :
         footer.Format.Font.Name = "Arial";
         footer.Format.Font.Size = Unit.FromPoint(8);
         footer.Format.Font.Color = MutedTextColor;
-        footer.Format.Alignment = ParagraphAlignment.Center;
+        footer.Format.Alignment =
+            ParagraphAlignment.Center;
     }
 
-    private static void AddTitle(
+    // =====================================================
+    // TEIL 1 – KUNDENBERICHT
+    // =====================================================
+
+    private static void AddCustomerTitle(
         Section section,
         Customer customer,
         CustomerDevice device,
-        CustomerCheckupVisit customerCheckupVisit)
+        CustomerCheckupVisit visit)
     {
-        var afterCheckup =
-            customerCheckupVisit.AfterCheckup!;
-
-        var deviceInformation =
-            afterCheckup.DeviceInformation;
-
-        var operatingSystem =
-            afterCheckup.OperatingSystemInformation;
-
-        var title =
-            section.AddParagraph(
-                "Kundencheckup-Abschlussbericht");
+        var title = section.AddParagraph(
+            "Ihr Weber IT Kundencheckup");
 
         title.Format.Font.Name = "Arial";
-        title.Format.Font.Size = Unit.FromPoint(22);
+        title.Format.Font.Size = Unit.FromPoint(21);
         title.Format.Font.Bold = true;
         title.Format.Font.Color = HeadingColor;
-        title.Format.SpaceAfter = Unit.FromPoint(3);
 
-        var subtitle =
-            section.AddParagraph(
-                "Dokumentation des Ausgangszustands, der "
-                + "Aufgabenbearbeitung, der technischen Maßnahmen "
-                + "und der abschließenden Kontrollprüfung");
+        title.Format.SpaceAfter =
+            Unit.FromPoint(4);
 
-        subtitle.Format.Font.Size = Unit.FromPoint(11);
-        subtitle.Format.Font.Color = MutedTextColor;
-        subtitle.Format.SpaceAfter = Unit.FromPoint(12);
+        var subtitle = section.AddParagraph(
+            "Die Ergebnisse der Computerprüfung "
+            + "verständlich zusammengefasst.");
+
+        subtitle.Format.Font.Size =
+            Unit.FromPoint(11);
+
+        subtitle.Format.Font.Color =
+            MutedTextColor;
+
+        subtitle.Format.SpaceAfter =
+            Unit.FromPoint(10);
+
+        AddKeyValueTable(
+            section,
+            new[]
+            {
+                (
+                    "Kunde",
+                    SafeText(customer.DisplayName)
+                ),
+                (
+                    "Geprüftes Gerät",
+                    SafeText(device.DisplayName)
+                ),
+                (
+                    "Datum der Kontrolle",
+                    FormatDateTime(
+                        visit.AfterCheckup!.ScanDate)
+                )
+            });
+    }
+
+    private static void AddCustomerSummary(
+        Section section,
+        CustomerCheckupComparison comparison)
+    {
+        var summary =
+            CustomerCheckupCustomerSummary.Create(
+                comparison);
+
+        AddSectionHeading(
+            section,
+            "Ihr Ergebnis auf einen Blick");
+
+        var headlineColor =
+            HasCriticalOpenFindings(comparison)
+                ? DangerColor
+                : summary.HasOpenFindings
+                    ? WarningColor
+                    : SuccessColor;
 
         AddCallout(
             section,
-            "Kundenspezifischer Abschlussbericht",
-            "Dieser Bericht gehört zum Kundencheckup für "
-            + SafeText(
-                customer.DisplayName,
-                "den ausgewählten Kunden")
-            + ". Er fasst den gesicherten Vorher-Zustand, "
-            + "die dokumentierte Bearbeitung und den technischen "
-            + "Zustand nach der Abschlusskontrolle zusammen.",
+            "Gesamtergebnis",
+            summary.Headline,
+            headlineColor);
+
+        AddCallout(
+            section,
+            "Wie geht es Ihrem Rechner?",
+            summary.ConditionText,
             AccentColor);
+
+        AddCallout(
+            section,
+            "Was wurde erreicht?",
+            summary.WorkResultText,
+            summary.HasResolvedFindings
+                ? SuccessColor
+                : MutedTextColor);
+
+        AddCallout(
+            section,
+            "Was empfehlen wir als Nächstes?",
+            summary.RecommendationText,
+            summary.HasOpenFindings
+                ? WarningColor
+                : SuccessColor);
+
+        if (comparison.Areas.Any(area =>
+                area.Status ==
+                CustomerCheckupAreaComparisonStatus.NotComparable))
+        {
+            AddCallout(
+                section,
+                "Hinweis zur Prüfung",
+                summary.CheckupCoverageText,
+                MutedTextColor);
+        }
+    }
+
+    private static bool HasCriticalOpenFindings(
+        CustomerCheckupComparison comparison)
+    {
+        return comparison.Findings.Any(finding =>
+            IsOpenFinding(finding)
+            && (finding.AfterSeverity
+                ?? finding.BeforeSeverity)
+                == FindingSeverity.Critical);
+    }
+
+    private static void AddTechnicianSummary(
+        Section section,
+        CustomerCheckupVisit visit)
+    {
+        AddSectionHeading(
+            section,
+            "Einschätzung und weiteres Vorgehen");
+
+        AddCallout(
+            section,
+            "Einschätzung Ihres Technikers",
+            visit.TechnicianSummary,
+            AccentColor);
+
+        AddCallout(
+            section,
+            "Die nächsten Schritte",
+            visit.NextSteps,
+            WarningColor);
+
+        var paragraph = section.AddParagraph(
+            "Empfohlener nächster Checkup: "
+            + FormatDate(visit.NextCheckupDate));
+
+        paragraph.Format.Font.Bold = true;
+        paragraph.Format.Font.Color = HeadingColor;
+
+        paragraph.Format.SpaceAfter =
+            Unit.FromPoint(6);
+    }
+
+    private static void AddCustomerRecommendations(
+        Section section,
+        CustomerCheckupComparison comparison)
+    {
+        AddSectionHeading(
+            section,
+            "Unsere Empfehlungen für Sie");
+
+        var findings = comparison.Findings
+            .Where(IsOpenFinding)
+            .OrderByDescending(finding =>
+                GetSeverityOrder(
+                    finding.AfterSeverity
+                    ?? finding.BeforeSeverity))
+            .ThenBy(finding =>
+                GetFindingStatusOrder(finding.Status))
+            .ThenBy(
+                finding => finding.Title,
+                StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        if (findings.Count == 0)
+        {
+            AddCallout(
+                section,
+                "Keine offenen Befundempfehlungen",
+                "Die Abschlusskontrolle hat keine "
+                + "offenen technischen Befunde ergeben.",
+                SuccessColor);
+
+            return;
+        }
+
+        const int maxCustomerRecommendations = 5;
+
+        var visibleFindings = findings
+            .Take(maxCustomerRecommendations)
+            .ToList();
+
+        var table = CreateTable(
+            section,
+            2.8,
+            11.7,
+            3.3);
+
+        AddHeaderRow(
+            table,
+            "Wichtigkeit",
+            "Was wir empfehlen",
+            "Status");
+
+        var rowIndex = 0;
+
+        foreach (var finding in visibleFindings)
+        {
+            var severity =
+                finding.AfterSeverity
+                ?? finding.BeforeSeverity;
+
+            var row = AddDataRow(
+                table,
+                CustomerCheckupReportWording
+                    .GetFindingPriorityText(severity),
+                SafeText(finding.Title),
+                CustomerCheckupReportWording
+                    .GetFindingStatusText(finding.Status));
+
+            row.Cells[0].Format.Font.Color =
+                GetSeverityColor(severity);
+
+            row.Cells[1].Format.Font.Bold = true;
+
+            row.Cells[2].Format.Font.Color =
+                GetFindingStatusColor(finding.Status);
+
+            ShadeAlternatingRow(
+                row,
+                rowIndex++);
+        }
+
+        AddSpacer(section, 4);
+
+        var remainingCount =
+            findings.Count - visibleFindings.Count;
+
+        var note = remainingCount > 0
+            ? $"Weitere {remainingCount} Hinweise "
+              + "und alle Einzelheiten finden Sie "
+              + "im technischen Anhang."
+            : "Die ausführlichen Erläuterungen "
+              + "zu diesen Hinweisen finden Sie "
+              + "im technischen Anhang.";
+
+        var paragraph = section.AddParagraph(note);
+
+        paragraph.Format.Font.Size =
+            Unit.FromPoint(8.5);
+
+        paragraph.Format.Font.Color =
+            MutedTextColor;
+
+        paragraph.Format.SpaceAfter =
+            Unit.FromPoint(6);
+    }
+
+    // =====================================================
+    // V1.1: NUR BESTÄTIGTE SCHUTZFUNKTIONEN
+    // =====================================================
+
+    private static void AddPositiveFindings(
+        Section section,
+        CustomerCheckupComparison comparison)
+    {
+        // Nicht jeder neutrale Informationsbefund ist
+        // automatisch eine positive Systemeigenschaft.
+        //
+        // Deshalb verwenden wir hier nur ausdrücklich
+        // bekannte, positive Sicherheitsbefunde.
+        //
+        // Die Auswertung verwendet stabile Befundcodes
+        // statt von der Sprache abhängiger Titel.
+
+        var positiveFindings = comparison.Findings
+            .Where(finding =>
+                finding.Status ==
+                    CustomerCheckupFindingComparisonStatus.Informational
+                && finding.AfterSeverity ==
+                    FindingSeverity.Information
+                && finding.AfterOccurrenceCount > 0
+                && GetPositiveSecurityFindingOrder(
+                    finding.Code) < int.MaxValue)
+            .OrderBy(finding =>
+                GetPositiveSecurityFindingOrder(
+                    finding.Code))
+            .ThenBy(
+                finding => finding.Title,
+                StringComparer.CurrentCultureIgnoreCase)
+            .Take(3)
+            .ToList();
+
+        if (positiveFindings.Count == 0)
+        {
+            return;
+        }
+
+        AddSectionHeading(
+            section,
+            "Bestätigte Schutzfunktionen");
+
+        var paragraph = section.AddParagraph(
+            "Bei der Kontrolle wurden unter anderem "
+            + "folgende aktivierte Schutzfunktionen erkannt:");
+
+        paragraph.Format.SpaceAfter =
+            Unit.FromPoint(4);
+
+        foreach (var finding in positiveFindings)
+        {
+            var item = section.AddParagraph(
+                "• " + SafeText(finding.Title));
+
+            item.Format.LeftIndent =
+                Unit.FromCentimeter(0.3);
+
+            item.Format.FirstLineIndent =
+                Unit.FromCentimeter(-0.3);
+
+            item.Format.SpaceAfter =
+                Unit.FromPoint(2);
+
+            item.Format.Font.Color = TextColor;
+        }
+
+        // Kein zusätzlicher Abschlusshinweis:
+        // Dadurch wird der Hauptbericht nicht künstlich
+        // um eine ansonsten leere Seite verlängert.
+    }
+
+    private static int GetPositiveSecurityFindingOrder(
+        string? code)
+    {
+        // Nur ausdrücklich bestätigte Schutzfunktionen.
+        // Unbekannte Codes und bloße Prüfhinweise
+        // erscheinen hier nicht.
+
+        return code switch
+        {
+            "system.security.antivirus-enabled" => 0,
+
+            "system.security.active-firewall-enabled" => 1,
+
+            "system.security.secure-boot-enabled" => 2,
+
+            "hardware.tpm.version-2-active" => 3,
+
+            "system.security.uac-enabled" => 4,
+
+            _ => int.MaxValue
+        };
+    }
+
+    private static bool IsOpenFinding(
+        CustomerCheckupFindingComparison finding)
+    {
+        return finding.Status is
+            CustomerCheckupFindingComparisonStatus.StillOpen
+            or CustomerCheckupFindingComparisonStatus.NewlyDetected
+            or CustomerCheckupFindingComparisonStatus.NotReevaluatable;
+    }
+
+    // =====================================================
+    // TEIL 2 – TECHNISCHER ANHANG
+    // =====================================================
+
+    private static void AddTechnicalAppendixIntroduction(
+        Section section)
+    {
+        var heading = section.AddParagraph(
+            "Technischer Anhang");
+
+        heading.Format.Font.Name = "Arial";
+        heading.Format.Font.Size = Unit.FromPoint(19);
+        heading.Format.Font.Bold = true;
+        heading.Format.Font.Color = HeadingColor;
+
+        heading.Format.SpaceAfter =
+            Unit.FromPoint(5);
+
+        var introduction = section.AddParagraph(
+            "Dieser Teil enthält die ausführlichen "
+            + "Prüfergebnisse, den Vergleich vor und nach "
+            + "der Bearbeitung sowie die dokumentierten "
+            + "technischen Maßnahmen.");
+
+        introduction.Format.Font.Color =
+            MutedTextColor;
+
+        introduction.Format.SpaceAfter =
+            Unit.FromPoint(10);
+    }
+
+    private static void AddTechnicalDeviceDetails(
+        Section section,
+        Customer customer,
+        CustomerDevice device,
+        CustomerCheckupVisit visit)
+    {
+        AddSectionHeading(
+            section,
+            "A. Gerät und Prüfdaten");
+
+        var after = visit.AfterCheckup!;
+
+        var deviceInformation =
+            after.DeviceInformation;
+
+        var operatingSystem =
+            after.OperatingSystemInformation;
 
         AddKeyValueTable(
             section,
@@ -396,128 +810,15 @@ public sealed class CustomerCheckupPdfReportService :
                 (
                     "Eingangsscan",
                     FormatDateTime(
-                        customerCheckupVisit
-                            .BeforeCheckup
-                            .ScanDate)
+                        visit.BeforeCheckup.ScanDate)
                 ),
                 (
                     "Abschlusskontrolle",
-                    FormatDateTime(afterCheckup.ScanDate)
+                    FormatDateTime(after.ScanDate)
                 ),
                 (
                     "Bericht erstellt",
                     FormatDateTime(DateTime.Now)
-                )
-            });
-    }
-
-    /// <summary>
-    /// Neu in V1.1:
-    /// Verständliche Ergebnisübersicht für Privatkunden.
-    ///
-    /// Verwendet ausschließlich die vorhandenen,
-    /// bereits berechneten und gespeicherten Vergleichsdaten.
-    /// </summary>
-    private static void AddCustomerSummary(
-        Section section,
-        CustomerCheckupComparison comparison)
-    {
-        var summary =
-            CustomerCheckupCustomerSummary.Create(comparison);
-
-        AddSectionHeading(
-            section,
-            "Ihr Ergebnis auf einen Blick");
-
-        var headlineColor =
-            HasCriticalOpenFindings(comparison)
-                ? DangerColor
-                : summary.HasOpenFindings
-                    ? WarningColor
-                    : SuccessColor;
-
-        AddCallout(
-            section,
-            "Gesamtergebnis",
-            summary.Headline,
-            headlineColor);
-
-        AddCallout(
-            section,
-            "Wie geht es Ihrem Rechner?",
-            summary.ConditionText,
-            AccentColor);
-
-        AddCallout(
-            section,
-            "Was wurde erreicht?",
-            summary.WorkResultText,
-            summary.HasResolvedFindings
-                ? SuccessColor
-                : MutedTextColor);
-
-        AddCallout(
-            section,
-            "Was empfehlen wir als Nächstes?",
-            summary.RecommendationText,
-            summary.HasOpenFindings
-                ? WarningColor
-                : SuccessColor);
-
-        // Nur anzeigen, wenn mindestens ein Prüfbereich
-        // nicht direkt vergleichbar ist.
-        if (comparison.Areas.Any(area =>
-                area.Status ==
-                CustomerCheckupAreaComparisonStatus.NotComparable))
-        {
-            AddCallout(
-                section,
-                "Hinweis zum Prüfumfang",
-                summary.CheckupCoverageText,
-                MutedTextColor);
-        }
-    }
-
-    private static bool HasCriticalOpenFindings(
-        CustomerCheckupComparison comparison)
-    {
-        return comparison.Findings.Any(finding =>
-            finding.Status is
-                CustomerCheckupFindingComparisonStatus.StillOpen
-                or CustomerCheckupFindingComparisonStatus.NewlyDetected
-                or CustomerCheckupFindingComparisonStatus.NotReevaluatable
-            && (finding.AfterSeverity ?? finding.BeforeSeverity)
-                == FindingSeverity.Critical);
-    }
-
-    private static void AddTechnicianSummary(
-        Section section,
-        CustomerCheckupVisit customerCheckupVisit)
-    {
-        AddSectionHeading(
-            section,
-            "1. Zusammenfassung und weiteres Vorgehen");
-
-        AddCallout(
-            section,
-            "Technikerzusammenfassung",
-            customerCheckupVisit.TechnicianSummary,
-            AccentColor);
-
-        AddCallout(
-            section,
-            "Nächste Schritte",
-            customerCheckupVisit.NextSteps,
-            WarningColor);
-
-        AddKeyValueTable(
-            section,
-            new[]
-            {
-                (
-                    "Empfohlener nächster Checkup",
-                    FormatDate(
-                        customerCheckupVisit.NextCheckupDate)
                 )
             });
     }
@@ -528,15 +829,14 @@ public sealed class CustomerCheckupPdfReportService :
     {
         AddSectionHeading(
             section,
-            "2. Technische Ergebnisübersicht");
+            "B. Technische Ergebnisübersicht");
 
-        var table =
-            CreateTable(
-                section,
-                4.45,
-                4.45,
-                4.45,
-                4.45);
+        var table = CreateTable(
+            section,
+            4.45,
+            4.45,
+            4.45,
+            4.45);
 
         AddHeaderRow(
             table,
@@ -545,13 +845,12 @@ public sealed class CustomerCheckupPdfReportService :
             "Neu erkannt",
             "Nicht erneut auswertbar");
 
-        var row =
-            AddDataRow(
-                table,
-                comparison.ResolvedFindingCount.ToString(),
-                comparison.StillOpenFindingCount.ToString(),
-                comparison.NewlyDetectedFindingCount.ToString(),
-                comparison.NotReevaluatableFindingCount.ToString());
+        var row = AddDataRow(
+            table,
+            comparison.ResolvedFindingCount.ToString(),
+            comparison.StillOpenFindingCount.ToString(),
+            comparison.NewlyDetectedFindingCount.ToString(),
+            comparison.NotReevaluatableFindingCount.ToString());
 
         SetCellHighlight(
             row.Cells[0],
@@ -569,19 +868,17 @@ public sealed class CustomerCheckupPdfReportService :
             row.Cells[3],
             MutedTextColor);
 
-        AddSpacer(section, 6);
+        AddSpacer(section, 5);
 
         AddCallout(
             section,
             "Einordnung der Ergebnisübersicht",
-            "Diese vier Werte beschreiben ausschließlich die "
-            + "technische Befundlage nach der Abschlusskontrolle. "
-            + "Neutrale Informationsbefunde werden nicht als "
-            + "offene oder behobene Probleme gezählt. "
-            + "Die Werte sagen nicht aus, ob ein zugehöriger "
-            + "Arbeitspunkt unbearbeitet war. "
-            + "Aufgabenbearbeitung und technischer Befund "
-            + "werden bewusst getrennt dokumentiert.",
+            "Die Werte beschreiben ausschließlich "
+            + "die technische Befundlage nach der "
+            + "Abschlusskontrolle. Neutrale Informationen "
+            + "werden nicht als offene oder behobene "
+            + "Probleme gezählt. Der Aufgabenstatus "
+            + "wird separat dokumentiert.",
             AccentColor);
 
         var actionSummary =
@@ -597,13 +894,9 @@ public sealed class CustomerCheckupPdfReportService :
             "Dokumentierte technische Aktionen",
             actionSummary
             + (comparison.HasRestartRequirement
-                ? ". Mindestens eine technische Aktion meldet "
-                  + "Neustartbedarf."
+                ? ". Mindestens eine Aktion meldet Neustartbedarf."
                 : ". Kein ausdrücklicher Neustartbedarf "
-                  + "dokumentiert.")
-            + " Manuell oder geführt bearbeitete Aufgaben "
-            + "werden separat in der Aufgabendokumentation "
-            + "ausgewiesen.",
+                  + "dokumentiert."),
             comparison.FailedActionCount > 0
                 ? DangerColor
                 : AccentColor);
@@ -615,16 +908,15 @@ public sealed class CustomerCheckupPdfReportService :
     {
         AddSectionHeading(
             section,
-            "3. Vergleich der Zustandsbewertungen");
+            "C. Vergleich der Zustandsbewertungen");
 
-        var table =
-            CreateTable(
-                section,
-                3.8,
-                2.6,
-                2.6,
-                3.0,
-                5.8);
+        var table = CreateTable(
+            section,
+            3.8,
+            2.6,
+            2.6,
+            3.0,
+            5.8);
 
         AddHeaderRow(
             table,
@@ -652,18 +944,17 @@ public sealed class CustomerCheckupPdfReportService :
         string title,
         CustomerCheckupScoreComparison score)
     {
-        var row =
-            AddDataRow(
-                table,
-                title,
-                FormatScore(score.BeforeScore),
-                FormatScore(score.AfterScore),
-                GetScoreChangeText(score),
-                SafeText(
-                    score.ComparisonReason,
-                    score.IsComparable
-                        ? "Direkt vergleichbar"
-                        : "Nicht direkt vergleichbar"));
+        var row = AddDataRow(
+            table,
+            title,
+            FormatScore(score.BeforeScore),
+            FormatScore(score.AfterScore),
+            GetScoreChangeText(score),
+            SafeText(
+                score.ComparisonReason,
+                score.IsComparable
+                    ? "Direkt vergleichbar"
+                    : "Nicht direkt vergleichbar"));
 
         row.Cells[0].Format.Font.Bold = true;
 
@@ -677,37 +968,35 @@ public sealed class CustomerCheckupPdfReportService :
     {
         AddSectionHeading(
             section,
-            "4. Vergleich nach technischen Bereichen");
+            "D. Vergleich nach technischen Bereichen");
 
-        var areas =
-            comparison.Areas
-                .OrderBy(area =>
-                    GetAreaStatusOrder(area.Status))
-                .ThenBy(
-                    area => area.Title,
-                    StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
+        var areas = comparison.Areas
+            .OrderBy(area =>
+                GetAreaStatusOrder(area.Status))
+            .ThenBy(
+                area => area.Title,
+                StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
 
         if (areas.Count == 0)
         {
             AddCallout(
                 section,
                 "Keine Bereichsauswertung verfügbar",
-                "Der gespeicherte Vergleich enthält keine "
-                + "technischen Bereichsergebnisse.",
+                "Der gespeicherte Vergleich enthält "
+                + "keine technischen Bereichsergebnisse.",
                 WarningColor);
 
             return;
         }
 
-        var table =
-            CreateTable(
-                section,
-                4.6,
-                2.2,
-                2.2,
-                4.0,
-                4.8);
+        var table = CreateTable(
+            section,
+            4.6,
+            2.2,
+            2.2,
+            4.0,
+            4.8);
 
         AddHeaderRow(
             table,
@@ -721,25 +1010,22 @@ public sealed class CustomerCheckupPdfReportService :
 
         foreach (var area in areas)
         {
-            var row =
-                AddDataRow(
-                    table,
-                    SafeText(area.Title),
-                    FormatFindingCount(
-                        area.BeforeActionableFindingCount),
-                    FormatFindingCount(
-                        area.AfterActionableFindingCount),
-                    GetAreaStatusText(area.Status),
-                    GetAreaEvaluationText(area));
+            var row = AddDataRow(
+                table,
+                SafeText(area.Title),
+                FormatFindingCount(
+                    area.BeforeActionableFindingCount),
+                FormatFindingCount(
+                    area.AfterActionableFindingCount),
+                GetAreaStatusText(area.Status),
+                GetAreaEvaluationText(area));
 
             row.Cells[0].Format.Font.Bold = true;
 
             row.Cells[3].Format.Font.Color =
                 GetAreaStatusColor(area.Status);
 
-            ShadeAlternatingRow(
-                row,
-                rowIndex++);
+            ShadeAlternatingRow(row, rowIndex++);
         }
 
         AddSpacer(section, 5);
@@ -751,40 +1037,38 @@ public sealed class CustomerCheckupPdfReportService :
     {
         AddSectionHeading(
             section,
-            "5. Dokumentierte technische Aktionen");
+            "E. Dokumentierte technische Aktionen");
 
-        var actions =
-            comparison.Actions
-                .OrderBy(action =>
-                    action.StartedAt
-                    ?? DateTimeOffset.MaxValue)
-                .ThenBy(
-                    action => action.ActionTitle,
-                    StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
+        var actions = comparison.Actions
+            .OrderBy(action =>
+                action.StartedAt
+                ?? DateTimeOffset.MaxValue)
+            .ThenBy(
+                action => action.ActionTitle,
+                StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
 
         if (actions.Count == 0)
         {
             AddCallout(
                 section,
                 "Keine technischen Aktionen dokumentiert",
-                "Im Arbeitsstand dieses Kundencheckups sind "
-                + "keine ausgeführten technischen Aktionen "
-                + "gespeichert. Manuell oder geführt bearbeitete "
-                + "Aufgaben können dennoch in Abschnitt 7 "
+                "In diesem Kundencheckup sind keine "
+                + "ausgeführten technischen Aktionen "
+                + "gespeichert. Manuell bearbeitete "
+                + "Aufgaben können dennoch in Abschnitt G "
                 + "dokumentiert sein.",
                 MutedTextColor);
 
             return;
         }
 
-        var table =
-            CreateTable(
-                section,
-                4.6,
-                2.8,
-                3.0,
-                7.4);
+        var table = CreateTable(
+            section,
+            4.6,
+            2.8,
+            3.0,
+            7.4);
 
         AddHeaderRow(
             table,
@@ -797,26 +1081,23 @@ public sealed class CustomerCheckupPdfReportService :
 
         foreach (var action in actions)
         {
-            var row =
-                AddDataRow(
-                    table,
-                    SafeText(
-                        action.ActionTitle,
-                        action.TaskTitle),
-                    GetActionStatusText(action.Status),
-                    FormatDateTimeOffset(
-                        action.FinishedAt
-                        ?? action.StartedAt),
-                    BuildActionResultText(action));
+            var row = AddDataRow(
+                table,
+                SafeText(
+                    action.ActionTitle,
+                    action.TaskTitle),
+                GetActionStatusText(action.Status),
+                FormatDateTimeOffset(
+                    action.FinishedAt
+                    ?? action.StartedAt),
+                BuildActionResultText(action));
 
             row.Cells[0].Format.Font.Bold = true;
 
             row.Cells[1].Format.Font.Color =
                 GetActionStatusColor(action.Status);
 
-            ShadeAlternatingRow(
-                row,
-                rowIndex++);
+            ShadeAlternatingRow(row, rowIndex++);
         }
 
         AddSpacer(section, 5);
@@ -828,56 +1109,47 @@ public sealed class CustomerCheckupPdfReportService :
     {
         AddSectionHeading(
             section,
-            "6. Verbleibende, neue oder nicht erneut "
-            + "auswertbare Befunde");
+            "F. Verbleibende und neue Befunde");
 
-        var findings =
-            comparison.Findings
-                .Where(finding =>
-                    finding.Status
-                        != CustomerCheckupFindingComparisonStatus
-                            .Resolved
-                    && finding.Status
-                        != CustomerCheckupFindingComparisonStatus
-                            .Informational)
-                .OrderBy(finding =>
-                    GetFindingStatusOrder(finding.Status))
-                .ThenByDescending(finding =>
-                    GetSeverityOrder(
-                        finding.AfterSeverity
-                        ?? finding.BeforeSeverity))
-                .ThenBy(
-                    finding => finding.Title,
-                    StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
+        var findings = comparison.Findings
+            .Where(IsOpenFinding)
+            .OrderBy(finding =>
+                GetFindingStatusOrder(finding.Status))
+            .ThenByDescending(finding =>
+                GetSeverityOrder(
+                    finding.AfterSeverity
+                    ?? finding.BeforeSeverity))
+            .ThenBy(
+                finding => finding.Title,
+                StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
 
         if (findings.Count == 0)
         {
             AddCallout(
                 section,
                 "Keine verbleibenden technischen Befunde",
-                "Es wurden keine verbleibenden, neuen oder "
-                + "nicht erneut auswertbaren technischen Befunde "
-                + "festgestellt.",
+                "Es wurden keine verbleibenden, "
+                + "neuen oder nicht erneut auswertbaren "
+                + "technischen Befunde festgestellt.",
                 SuccessColor);
 
             return;
         }
 
-        var table =
-            CreateTable(
-                section,
-                4.8,
-                2.4,
-                3.0,
-                7.6);
+        var table = CreateTable(
+            section,
+            4.8,
+            2.4,
+            3.0,
+            7.6);
 
         AddHeaderRow(
             table,
             "Befund",
             "Einstufung",
             "Befundstatus",
-            "Beschreibung nach Abschlusskontrolle");
+            "Technische Beschreibung");
 
         var rowIndex = 0;
 
@@ -887,15 +1159,14 @@ public sealed class CustomerCheckupPdfReportService :
                 finding.AfterSeverity
                 ?? finding.BeforeSeverity;
 
-            var row =
-                AddDataRow(
-                    table,
-                    SafeText(finding.Title),
-                    GetSeverityText(severity),
-                    GetFindingStatusText(finding.Status),
-                    SafeText(
-                        finding.AfterDescription,
-                        finding.BeforeDescription));
+            var row = AddDataRow(
+                table,
+                SafeText(finding.Title),
+                GetSeverityText(severity),
+                GetFindingStatusText(finding.Status),
+                SafeText(
+                    finding.AfterDescription,
+                    finding.BeforeDescription));
 
             row.Cells[0].Format.Font.Bold = true;
 
@@ -905,9 +1176,7 @@ public sealed class CustomerCheckupPdfReportService :
             row.Cells[2].Format.Font.Color =
                 GetFindingStatusColor(finding.Status);
 
-            ShadeAlternatingRow(
-                row,
-                rowIndex++);
+            ShadeAlternatingRow(row, rowIndex++);
         }
 
         AddSpacer(section, 5);
@@ -919,18 +1188,17 @@ public sealed class CustomerCheckupPdfReportService :
     {
         AddSectionHeading(
             section,
-            "7. Aufgabenbearbeitung und Dokumentation");
+            "G. Aufgabenbearbeitung und Dokumentation");
 
-        var tasks =
-            comparison.Tasks
-                .OrderBy(task =>
-                    GetTaskStatusOrder(task.Status))
-                .ThenByDescending(task =>
-                    GetTaskPriorityOrder(task.Priority))
-                .ThenBy(
-                    task => task.Title,
-                    StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
+        var tasks = comparison.Tasks
+            .OrderBy(task =>
+                GetTaskStatusOrder(task.Status))
+            .ThenByDescending(task =>
+                GetTaskPriorityOrder(task.Priority))
+            .ThenBy(
+                task => task.Title,
+                StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
 
         if (tasks.Count == 0)
         {
@@ -947,20 +1215,19 @@ public sealed class CustomerCheckupPdfReportService :
         AddCallout(
             section,
             "Aufgabenstatus und technischer Befund",
-            "Der Aufgabenstatus dokumentiert, wie ein Arbeitspunkt "
-            + "bearbeitet wurde. Er ist nicht automatisch mit dem "
-            + "technischen Befund identisch. Ob ein Befund nach der "
-            + "Bearbeitung weiterhin vorhanden ist, ergibt sich aus "
-            + "der Abschlusskontrolle.",
+            "Der Aufgabenstatus dokumentiert, wie "
+            + "ein Arbeitspunkt bearbeitet wurde. "
+            + "Ob der zugehörige technische Befund "
+            + "weiterhin vorhanden ist, ergibt sich "
+            + "aus der Abschlusskontrolle.",
             AccentColor);
 
-        var table =
-            CreateTable(
-                section,
-                4.8,
-                2.4,
-                3.6,
-                7.0);
+        var table = CreateTable(
+            section,
+            4.8,
+            2.4,
+            3.6,
+            7.0);
 
         AddHeaderRow(
             table,
@@ -973,13 +1240,12 @@ public sealed class CustomerCheckupPdfReportService :
 
         foreach (var task in tasks)
         {
-            var row =
-                AddDataRow(
-                    table,
-                    SafeText(task.Title),
-                    GetTaskPriorityText(task.Priority),
-                    GetTaskStatusText(task.Status),
-                    BuildTaskNoteText(task));
+            var row = AddDataRow(
+                table,
+                SafeText(task.Title),
+                GetTaskPriorityText(task.Priority),
+                GetTaskStatusText(task.Status),
+                BuildTaskNoteText(task));
 
             row.Cells[0].Format.Font.Bold = true;
 
@@ -989,9 +1255,7 @@ public sealed class CustomerCheckupPdfReportService :
             row.Cells[2].Format.Font.Color =
                 GetTaskStatusColor(task.Status);
 
-            ShadeAlternatingRow(
-                row,
-                rowIndex++);
+            ShadeAlternatingRow(row, rowIndex++);
         }
 
         AddSpacer(section, 5);
@@ -1001,12 +1265,11 @@ public sealed class CustomerCheckupPdfReportService :
         Section section,
         CustomerCheckupComparison comparison)
     {
-        var notes =
-            comparison.ComparisonNotes
-                .Where(note =>
-                    !string.IsNullOrWhiteSpace(note))
-                .Select(note => note.Trim())
-                .ToList();
+        var notes = comparison.ComparisonNotes
+            .Where(note =>
+                !string.IsNullOrWhiteSpace(note))
+            .Select(note => note.Trim())
+            .ToList();
 
         if (notes.Count == 0)
         {
@@ -1015,12 +1278,12 @@ public sealed class CustomerCheckupPdfReportService :
 
         AddSectionHeading(
             section,
-            "8. Hinweise zur Vergleichbarkeit");
+            "H. Hinweise zur Vergleichbarkeit");
 
         foreach (var note in notes)
         {
-            var paragraph =
-                section.AddParagraph("• " + note);
+            var paragraph = section.AddParagraph(
+                "• " + note);
 
             paragraph.Format.LeftIndent =
                 Unit.FromCentimeter(0.3);
@@ -1041,24 +1304,29 @@ public sealed class CustomerCheckupPdfReportService :
     private static void AddReportNotice(
         Section section)
     {
-        AddSectionHeading(
-            section,
-            "Berichtshinweis");
+        var paragraph = section.AddParagraph(
+            "Hinweis: Die technische Dokumentation "
+            + "beschreibt den zu den Scanzeitpunkten "
+            + "aus Windows auslesbaren Zustand sowie "
+            + "die gespeicherten Arbeitsschritte. "
+            + "Sie ersetzt keine Datensicherung, "
+            + "Herstellergarantie oder physische "
+            + "Laborprüfung. Nicht auswertbare Bereiche "
+            + "sind entsprechend gekennzeichnet.");
 
-        AddCallout(
-            section,
-            "Technische Dokumentation",
-            "Dieser Bericht dokumentiert den zu den "
-            + "Scanzeitpunkten aus Windows auslesbaren Zustand "
-            + "sowie die im Kundencheckup gespeicherten "
-            + "Aufgabenbearbeitungen und technischen Aktionen. "
-            + "Er ersetzt keine Datensicherung, Herstellergarantie "
-            + "oder physische Laborprüfung. Nicht auswertbare "
-            + "Bereiche und nicht direkt vergleichbare Bewertungen "
-            + "sind gekennzeichnet. Aufgabenstatus und technische "
-            + "Befundlage werden bewusst getrennt ausgewiesen.",
-            MutedTextColor);
+        paragraph.Format.Font.Size =
+            Unit.FromPoint(8);
+
+        paragraph.Format.Font.Color =
+            MutedTextColor;
+
+        paragraph.Format.SpaceBefore =
+            Unit.FromPoint(7);
     }
+
+    // =====================================================
+    // GEMEINSAME LAYOUT-HILFSMETHODEN
+    // =====================================================
 
     private static void AddSectionHeading(
         Section section,
@@ -1072,18 +1340,19 @@ public sealed class CustomerCheckupPdfReportService :
         Section section,
         IEnumerable<(string Label, string Value)> values)
     {
-        var table =
-            CreateTable(section, 4.5, 13.3);
+        var table = CreateTable(
+            section,
+            4.5,
+            13.3);
 
         var rowIndex = 0;
 
         foreach (var value in values)
         {
-            var row =
-                AddDataRow(
-                    table,
-                    value.Label,
-                    SafeText(value.Value));
+            var row = AddDataRow(
+                table,
+                value.Label,
+                SafeText(value.Value));
 
             row.Cells[0].Format.Font.Bold = true;
 
@@ -1104,29 +1373,31 @@ public sealed class CustomerCheckupPdfReportService :
         string message,
         Color accentColor)
     {
-        var table =
-            CreateTable(
-                section,
-                ContentWidthCentimeters);
+        var table = CreateTable(
+            section,
+            ContentWidthCentimeters);
 
-        var cell =
-            table.AddRow().Cells[0];
+        var cell = table.AddRow().Cells[0];
 
         cell.Shading.Color = SurfaceColor;
         cell.Borders.Color = accentColor;
-        cell.Borders.Width = Unit.FromPoint(0.8);
 
-        var titleParagraph =
-            cell.AddParagraph(SafeText(title));
+        cell.Borders.Width =
+            Unit.FromPoint(0.8);
+
+        var titleParagraph = cell.AddParagraph(
+            SafeText(title));
 
         titleParagraph.Format.Font.Bold = true;
-        titleParagraph.Format.Font.Color = accentColor;
+
+        titleParagraph.Format.Font.Color =
+            accentColor;
 
         titleParagraph.Format.SpaceAfter =
             Unit.FromPoint(3);
 
-        var messageParagraph =
-            cell.AddParagraph(SafeText(message));
+        var messageParagraph = cell.AddParagraph(
+            SafeText(message));
 
         messageParagraph.Format.Font.Color =
             TextColor;
@@ -1141,9 +1412,14 @@ public sealed class CustomerCheckupPdfReportService :
         var table = section.AddTable();
 
         table.Borders.Color = BorderColor;
-        table.Borders.Width = Unit.FromPoint(0.5);
+
+        table.Borders.Width =
+            Unit.FromPoint(0.5);
+
         table.Format.Font.Name = "Arial";
-        table.Format.Font.Size = Unit.FromPoint(8.5);
+
+        table.Format.Font.Size =
+            Unit.FromPoint(8.5);
 
         foreach (var width in columnWidthsCentimeters)
         {
@@ -1159,6 +1435,7 @@ public sealed class CustomerCheckupPdfReportService :
         params string[] headings)
     {
         var row = table.AddRow();
+
         row.HeadingFormat = true;
 
         for (var index = 0;
@@ -1168,7 +1445,9 @@ public sealed class CustomerCheckupPdfReportService :
             var cell = row.Cells[index];
 
             cell.Shading.Color = HeadingColor;
+
             cell.Format.Font.Bold = true;
+
             cell.Format.Font.Color = Colors.White;
 
             cell.AddParagraph(
@@ -1186,10 +1465,9 @@ public sealed class CustomerCheckupPdfReportService :
              index < values.Length;
              index++)
         {
-            var paragraph =
-                row.Cells[index]
-                    .AddParagraph(
-                        SafeText(values[index]));
+            var paragraph = row.Cells[index]
+                .AddParagraph(
+                    SafeText(values[index]));
 
             paragraph.Format.SpaceAfter =
                 Unit.FromPoint(0);
@@ -1203,7 +1481,10 @@ public sealed class CustomerCheckupPdfReportService :
         Color color)
     {
         cell.Format.Font.Bold = true;
-        cell.Format.Font.Size = Unit.FromPoint(15);
+
+        cell.Format.Font.Size =
+            Unit.FromPoint(15);
+
         cell.Format.Font.Color = color;
 
         cell.Format.Alignment =
@@ -1234,8 +1515,7 @@ public sealed class CustomerCheckupPdfReportService :
     {
         if (rowIndex % 2 == 1)
         {
-            cell.Shading.Color =
-                SurfaceColor;
+            cell.Shading.Color = SurfaceColor;
         }
     }
 
@@ -1243,12 +1523,14 @@ public sealed class CustomerCheckupPdfReportService :
         Section section,
         double points)
     {
-        section
-            .AddParagraph()
-            .Format
-            .SpaceAfter =
+        section.AddParagraph()
+            .Format.SpaceAfter =
                 Unit.FromPoint(points);
     }
+
+    // =====================================================
+    // TEXT- UND DATENAUFBEREITUNG
+    // =====================================================
 
     private static string BuildCustomerContactText(
         Customer customer)
@@ -1261,11 +1543,10 @@ public sealed class CustomerCheckupPdfReportService :
     private static string BuildCustomerAddressText(
         Customer customer)
     {
-        var cityLine =
-            JoinAvailable(
-                customer.PostalCode,
-                customer.City,
-                " ");
+        var cityLine = JoinAvailable(
+            customer.PostalCode,
+            customer.City,
+            " ");
 
         return JoinAvailable(
             customer.Street,
@@ -1278,12 +1559,11 @@ public sealed class CustomerCheckupPdfReportService :
         string? second,
         string separator = " · ")
     {
-        var values =
-            new[] { first, second }
-                .Where(value =>
-                    !string.IsNullOrWhiteSpace(value))
-                .Select(value => value!.Trim())
-                .ToList();
+        var values = new[] { first, second }
+            .Where(value =>
+                !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!.Trim())
+            .ToList();
 
         return values.Count == 0
             ? "Nicht hinterlegt"
@@ -1295,7 +1575,9 @@ public sealed class CustomerCheckupPdfReportService :
     {
         var values = new List<string>();
 
-        AddIfPresent(values, action.Summary);
+        AddIfPresent(
+            values,
+            action.Summary);
 
         if (!string.IsNullOrWhiteSpace(
                 action.TargetDescription))
@@ -1308,8 +1590,7 @@ public sealed class CustomerCheckupPdfReportService :
         if (action.ExitCode.HasValue)
         {
             values.Add(
-                "Exitcode: "
-                + action.ExitCode.Value);
+                "Exitcode: " + action.ExitCode.Value);
         }
 
         if (action.RestartRequired)
@@ -1368,8 +1649,8 @@ public sealed class CustomerCheckupPdfReportService :
         if (!area.WasBeforeEvaluable
             && !area.IsAfterEvaluable)
         {
-            return
-                "In beiden Scans nicht belastbar auswertbar";
+            return "In beiden Scans nicht "
+                   + "belastbar auswertbar";
         }
 
         return area.IsAfterEvaluable
@@ -1388,14 +1669,9 @@ public sealed class CustomerCheckupPdfReportService :
 
         return score.Difference.Value switch
         {
-            > 0 =>
-                "+" + score.Difference.Value,
-
-            < 0 =>
-                score.Difference.Value.ToString(),
-
-            _ =>
-                "±0"
+            > 0 => "+" + score.Difference.Value,
+            < 0 => score.Difference.Value.ToString(),
+            _ => "±0"
         };
     }
 
@@ -1413,8 +1689,7 @@ public sealed class CustomerCheckupPdfReportService :
             CustomerCheckupScoreChange.Unchanged =>
                 MutedTextColor,
 
-            _ =>
-                WarningColor
+            _ => WarningColor
         };
     }
 
@@ -1444,8 +1719,7 @@ public sealed class CustomerCheckupPdfReportService :
                 .NewlyNeedsAttention =>
                     "Neuer technischer Befund",
 
-            _ =>
-                "Technisch nicht direkt vergleichbar"
+            _ => "Technisch nicht direkt vergleichbar"
         };
     }
 
@@ -1475,8 +1749,7 @@ public sealed class CustomerCheckupPdfReportService :
                 .NewlyNeedsAttention =>
                     DangerColor,
 
-            _ =>
-                MutedTextColor
+            _ => MutedTextColor
         };
     }
 
@@ -1485,27 +1758,21 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return status switch
         {
-            CustomerCheckupAreaComparisonStatus.Worsened =>
-                0,
+            CustomerCheckupAreaComparisonStatus.Worsened => 0,
 
-            CustomerCheckupAreaComparisonStatus.NewlyNeedsAttention =>
-                1,
-
-            CustomerCheckupAreaComparisonStatus.UnchangedNeedsAttention =>
-                2,
+            CustomerCheckupAreaComparisonStatus.NewlyNeedsAttention => 1,
 
             CustomerCheckupAreaComparisonStatus
-                .ImprovedButStillNeedsAttention =>
-                    3,
+                .UnchangedNeedsAttention => 2,
 
-            CustomerCheckupAreaComparisonStatus.NotComparable =>
-                4,
+            CustomerCheckupAreaComparisonStatus
+                .ImprovedButStillNeedsAttention => 3,
 
-            CustomerCheckupAreaComparisonStatus.Improved =>
-                5,
+            CustomerCheckupAreaComparisonStatus.NotComparable => 4,
 
-            _ =>
-                6
+            CustomerCheckupAreaComparisonStatus.Improved => 5,
+
+            _ => 6
         };
     }
 
@@ -1533,8 +1800,7 @@ public sealed class CustomerCheckupPdfReportService :
             CustomerCheckupFindingComparisonStatus.Informational =>
                 MutedTextColor,
 
-            _ =>
-                MutedTextColor
+            _ => MutedTextColor
         };
     }
 
@@ -1543,23 +1809,17 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return status switch
         {
-            CustomerCheckupFindingComparisonStatus.NewlyDetected =>
-                0,
+            CustomerCheckupFindingComparisonStatus.NewlyDetected => 0,
 
-            CustomerCheckupFindingComparisonStatus.StillOpen =>
-                1,
+            CustomerCheckupFindingComparisonStatus.StillOpen => 1,
 
-            CustomerCheckupFindingComparisonStatus.NotReevaluatable =>
-                2,
+            CustomerCheckupFindingComparisonStatus.NotReevaluatable => 2,
 
-            CustomerCheckupFindingComparisonStatus.Resolved =>
-                3,
+            CustomerCheckupFindingComparisonStatus.Resolved => 3,
 
-            CustomerCheckupFindingComparisonStatus.Informational =>
-                4,
+            CustomerCheckupFindingComparisonStatus.Informational => 4,
 
-            _ =>
-                5
+            _ => 5
         };
     }
 
@@ -1568,20 +1828,11 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return severity switch
         {
-            FindingSeverity.Critical =>
-                "Kritisch",
-
-            FindingSeverity.Warning =>
-                "Warnung",
-
-            FindingSeverity.Recommendation =>
-                "Empfehlung",
-
-            FindingSeverity.Information =>
-                "Information",
-
-            _ =>
-                "Nicht eingestuft"
+            FindingSeverity.Critical => "Kritisch",
+            FindingSeverity.Warning => "Warnung",
+            FindingSeverity.Recommendation => "Empfehlung",
+            FindingSeverity.Information => "Information",
+            _ => "Nicht eingestuft"
         };
     }
 
@@ -1590,17 +1841,10 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return severity switch
         {
-            FindingSeverity.Critical =>
-                DangerColor,
-
-            FindingSeverity.Warning =>
-                WarningColor,
-
-            FindingSeverity.Recommendation =>
-                AccentColor,
-
-            _ =>
-                MutedTextColor
+            FindingSeverity.Critical => DangerColor,
+            FindingSeverity.Warning => WarningColor,
+            FindingSeverity.Recommendation => AccentColor,
+            _ => MutedTextColor
         };
     }
 
@@ -1609,20 +1853,11 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return severity switch
         {
-            FindingSeverity.Critical =>
-                4,
-
-            FindingSeverity.Warning =>
-                3,
-
-            FindingSeverity.Recommendation =>
-                2,
-
-            FindingSeverity.Information =>
-                1,
-
-            _ =>
-                0
+            FindingSeverity.Critical => 4,
+            FindingSeverity.Warning => 3,
+            FindingSeverity.Recommendation => 2,
+            FindingSeverity.Information => 1,
+            _ => 0
         };
     }
 
@@ -1631,17 +1866,10 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return status switch
         {
-            CheckupTaskActionStatus.Successful =>
-                "Erfolgreich",
-
-            CheckupTaskActionStatus.Failed =>
-                "Fehlgeschlagen",
-
-            CheckupTaskActionStatus.Cancelled =>
-                "Abgebrochen",
-
-            _ =>
-                "Unbekannt"
+            CheckupTaskActionStatus.Successful => "Erfolgreich",
+            CheckupTaskActionStatus.Failed => "Fehlgeschlagen",
+            CheckupTaskActionStatus.Cancelled => "Abgebrochen",
+            _ => "Unbekannt"
         };
     }
 
@@ -1650,17 +1878,10 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return status switch
         {
-            CheckupTaskActionStatus.Successful =>
-                SuccessColor,
-
-            CheckupTaskActionStatus.Failed =>
-                DangerColor,
-
-            CheckupTaskActionStatus.Cancelled =>
-                WarningColor,
-
-            _ =>
-                MutedTextColor
+            CheckupTaskActionStatus.Successful => SuccessColor,
+            CheckupTaskActionStatus.Failed => DangerColor,
+            CheckupTaskActionStatus.Cancelled => WarningColor,
+            _ => MutedTextColor
         };
     }
 
@@ -1690,8 +1911,7 @@ public sealed class CustomerCheckupPdfReportService :
             CustomerCheckupTaskComparisonStatus.NewlyDetected =>
                 "Neu erkannt – Aufgabe offen",
 
-            _ =>
-                "Nicht erneut auswertbar"
+            _ => "Nicht erneut auswertbar"
         };
     }
 
@@ -1719,8 +1939,7 @@ public sealed class CustomerCheckupPdfReportService :
             CustomerCheckupTaskComparisonStatus.NotFeasible =>
                 DangerColor,
 
-            _ =>
-                MutedTextColor
+            _ => MutedTextColor
         };
     }
 
@@ -1729,30 +1948,18 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return status switch
         {
-            CustomerCheckupTaskComparisonStatus.NewlyDetected =>
-                0,
-
-            CustomerCheckupTaskComparisonStatus.StillOpen =>
-                1,
+            CustomerCheckupTaskComparisonStatus.NewlyDetected => 0,
+            CustomerCheckupTaskComparisonStatus.StillOpen => 1,
 
             CustomerCheckupTaskComparisonStatus
-                .CompletedButStillDetected =>
-                    2,
+                .CompletedButStillDetected => 2,
 
-            CustomerCheckupTaskComparisonStatus.NotFeasible =>
-                3,
+            CustomerCheckupTaskComparisonStatus.NotFeasible => 3,
+            CustomerCheckupTaskComparisonStatus.NotReevaluatable => 4,
+            CustomerCheckupTaskComparisonStatus.Skipped => 5,
+            CustomerCheckupTaskComparisonStatus.Completed => 6,
 
-            CustomerCheckupTaskComparisonStatus.NotReevaluatable =>
-                4,
-
-            CustomerCheckupTaskComparisonStatus.Skipped =>
-                5,
-
-            CustomerCheckupTaskComparisonStatus.Completed =>
-                6,
-
-            _ =>
-                7
+            _ => 7
         };
     }
 
@@ -1761,14 +1968,9 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return priority switch
         {
-            CheckupTaskPriority.Required =>
-                "Erforderlich",
-
-            CheckupTaskPriority.Recommended =>
-                "Empfohlen",
-
-            _ =>
-                "Optional"
+            CheckupTaskPriority.Required => "Erforderlich",
+            CheckupTaskPriority.Recommended => "Empfohlen",
+            _ => "Optional"
         };
     }
 
@@ -1777,14 +1979,9 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return priority switch
         {
-            CheckupTaskPriority.Required =>
-                DangerColor,
-
-            CheckupTaskPriority.Recommended =>
-                WarningColor,
-
-            _ =>
-                AccentColor
+            CheckupTaskPriority.Required => DangerColor,
+            CheckupTaskPriority.Recommended => WarningColor,
+            _ => AccentColor
         };
     }
 
@@ -1793,51 +1990,37 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return priority switch
         {
-            CheckupTaskPriority.Required =>
-                3,
-
-            CheckupTaskPriority.Recommended =>
-                2,
-
-            _ =>
-                1
+            CheckupTaskPriority.Required => 3,
+            CheckupTaskPriority.Recommended => 2,
+            _ => 1
         };
     }
 
-    private static string FormatFindingCount(
-        int count)
+    private static string FormatFindingCount(int count)
     {
         return count switch
         {
-            0 =>
-                "Keine",
-
-            1 =>
-                "1 Befund",
-
-            _ =>
-                count + " Befunde"
+            0 => "Keine",
+            1 => "1 Befund",
+            _ => count + " Befunde"
         };
     }
 
-    private static string FormatScore(
-        int? score)
+    private static string FormatScore(int? score)
     {
         return score.HasValue
             ? score.Value + " / 100"
             : "Nicht verfügbar";
     }
 
-    private static string FormatDate(
-        DateTime? date)
+    private static string FormatDate(DateTime? date)
     {
         return date.HasValue
             ? date.Value.ToString("dd.MM.yyyy")
             : "Nicht festgelegt";
     }
 
-    private static string FormatDateTime(
-        DateTime? dateTime)
+    private static string FormatDateTime(DateTime? dateTime)
     {
         return dateTime.HasValue
             ? dateTime.Value.ToString("dd.MM.yyyy HH:mm")
@@ -1849,8 +2032,7 @@ public sealed class CustomerCheckupPdfReportService :
         DateTimeOffset? dateTime)
     {
         return dateTime.HasValue
-            ? dateTime.Value
-                .LocalDateTime
+            ? dateTime.Value.LocalDateTime
                 .ToString("dd.MM.yyyy HH:mm")
               + " Uhr"
             : "Nicht dokumentiert";
