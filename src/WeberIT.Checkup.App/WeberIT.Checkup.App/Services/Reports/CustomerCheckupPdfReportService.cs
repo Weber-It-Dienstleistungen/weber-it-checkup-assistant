@@ -182,9 +182,8 @@ public sealed class CustomerCheckupPdfReportService :
 
         ConfigurePage(customerSection);
 
-        AddHeaderAndFooter(
+        AddSectionHeader(
             customerSection,
-            customer,
             "Kundenbericht");
 
         AddCustomerTitle(
@@ -209,13 +208,6 @@ public sealed class CustomerCheckupPdfReportService :
             customerSection,
             comparison);
 
-        // V1.1: Der bisherige zusätzliche Übergangssatz
-        // entfällt. Er hatte auf einer eigenen, ansonsten
-        // leeren PDF-Seite gestanden.
-        //
-        // Der folgende Abschnitt ist bereits eindeutig
-        // als technischer Anhang gekennzeichnet.
-
         // =================================================
         // TEIL 2: TECHNISCHER ANHANG
         // =================================================
@@ -224,9 +216,8 @@ public sealed class CustomerCheckupPdfReportService :
 
         ConfigurePage(appendixSection);
 
-        AddHeaderAndFooter(
+        AddSectionHeader(
             appendixSection,
-            customer,
             "Technischer Anhang");
 
         AddTechnicalAppendixIntroduction(
@@ -316,9 +307,17 @@ public sealed class CustomerCheckupPdfReportService :
             Unit.FromCentimeter(1.6);
     }
 
-    private static void AddHeaderAndFooter(
+    /// <summary>
+    /// Fügt ausschließlich den Abschnittstitel im Seitenkopf ein.
+    ///
+    /// Die vollständige Unternehmensfußzeile einschließlich
+    /// Seitennummerierung wird nach dem PDF-Export zentral
+    /// durch BrandedCustomerCheckupPdfReportService erzeugt.
+    ///
+    /// Hier darf keine zweite Fußzeile angelegt werden.
+    /// </summary>
+    private static void AddSectionHeader(
         Section section,
-        Customer customer,
         string reportPart)
     {
         var header = section.Headers.Primary.AddParagraph(
@@ -329,23 +328,6 @@ public sealed class CustomerCheckupPdfReportService :
         header.Format.Font.Color = MutedTextColor;
         header.Format.Alignment =
             ParagraphAlignment.Right;
-
-        var footer = section.Footers.Primary.AddParagraph();
-
-        footer.AddText(
-            "Kundencheckup "
-            + SafeText(
-                customer.CustomerNumber,
-                "ohne Kundennummer")
-            + " · Seite ");
-
-        footer.AddPageField();
-
-        footer.Format.Font.Name = "Arial";
-        footer.Format.Font.Size = Unit.FromPoint(8);
-        footer.Format.Font.Color = MutedTextColor;
-        footer.Format.Alignment =
-            ParagraphAlignment.Center;
     }
 
     // =====================================================
@@ -608,21 +590,21 @@ public sealed class CustomerCheckupPdfReportService :
     }
 
     // =====================================================
-    // V1.1: NUR BESTÄTIGTE SCHUTZFUNKTIONEN
+    // NUR BESTÄTIGTE SCHUTZFUNKTIONEN
     // =====================================================
 
     private static void AddPositiveFindings(
         Section section,
         CustomerCheckupComparison comparison)
     {
-        // Nicht jeder neutrale Informationsbefund ist
-        // automatisch eine positive Systemeigenschaft.
+        // Neutrale Informationsbefunde sind nicht
+        // automatisch positive Systemeigenschaften.
         //
-        // Deshalb verwenden wir hier nur ausdrücklich
-        // bekannte, positive Sicherheitsbefunde.
+        // Im Kundenhauptteil erscheinen ausschließlich
+        // bekannte, bestätigte Sicherheitsbefunde.
         //
-        // Die Auswertung verwendet stabile Befundcodes
-        // statt von der Sprache abhängiger Titel.
+        // Verwendet werden stabile Befundcodes statt
+        // von der Sprache abhängiger Titel.
 
         var positiveFindings = comparison.Findings
             .Where(finding =>
@@ -674,19 +656,11 @@ public sealed class CustomerCheckupPdfReportService :
 
             item.Format.Font.Color = TextColor;
         }
-
-        // Kein zusätzlicher Abschlusshinweis:
-        // Dadurch wird der Hauptbericht nicht künstlich
-        // um eine ansonsten leere Seite verlängert.
     }
 
     private static int GetPositiveSecurityFindingOrder(
         string? code)
     {
-        // Nur ausdrücklich bestätigte Schutzfunktionen.
-        // Unbekannte Codes und bloße Prüfhinweise
-        // erscheinen hier nicht.
-
         return code switch
         {
             "system.security.antivirus-enabled" => 0,
