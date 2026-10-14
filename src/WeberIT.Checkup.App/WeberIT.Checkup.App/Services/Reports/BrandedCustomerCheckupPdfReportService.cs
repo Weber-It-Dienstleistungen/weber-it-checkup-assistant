@@ -1,4 +1,5 @@
-﻿using PdfSharp.Drawing;
+﻿
+using PdfSharp.Drawing;
 using PdfSharp.Pdf.IO;
 using System.IO;
 using System.Windows;
@@ -12,35 +13,21 @@ namespace WeberIT.Checkup.App.Services.Reports;
 public sealed class BrandedCustomerCheckupPdfReportService :
     ICustomerCheckupPdfReportService
 {
-    private const double HeaderHeightPoints =
-        44;
-
-    private const double FooterHeightPoints =
-        44;
-
-    private const double HorizontalMarginPoints =
-        42;
+    private const double HeaderHeightPoints = 44;
+    private const double FooterHeightPoints = 44;
+    private const double HorizontalMarginPoints = 42;
 
     private const string LogoRelativePath =
         "Resources\\Branding\\WeberIT-Logo.png";
 
     private static readonly XColor HeaderFooterColor =
-        XColor.FromArgb(
-            15,
-            23,
-            42);
+        XColor.FromArgb(15, 23, 42);
 
     private static readonly XColor AccentColor =
-        XColor.FromArgb(
-            37,
-            99,
-            235);
+        XColor.FromArgb(37, 99, 235);
 
     private static readonly XColor SecondaryTextColor =
-        XColor.FromArgb(
-            203,
-            213,
-            225);
+        XColor.FromArgb(203, 213, 225);
 
     private readonly CustomerCheckupPdfReportService
         _baseReportService;
@@ -60,17 +47,11 @@ public sealed class BrandedCustomerCheckupPdfReportService :
         CustomerCheckupVisit customerCheckupVisit,
         string filePath)
     {
-        ArgumentNullException.ThrowIfNull(
-            customer);
+        ArgumentNullException.ThrowIfNull(customer);
+        ArgumentNullException.ThrowIfNull(device);
+        ArgumentNullException.ThrowIfNull(customerCheckupVisit);
 
-        ArgumentNullException.ThrowIfNull(
-            device);
-
-        ArgumentNullException.ThrowIfNull(
-            customerCheckupVisit);
-
-        if (string.IsNullOrWhiteSpace(
-                filePath))
+        if (string.IsNullOrWhiteSpace(filePath))
         {
             throw new ArgumentException(
                 "Für den Kundencheckup-Bericht wurde "
@@ -79,11 +60,9 @@ public sealed class BrandedCustomerCheckupPdfReportService :
         }
 
         var finalFilePath =
-            NormalizePdfFilePath(
-                filePath);
+            NormalizePdfFilePath(filePath);
 
-        EnsureTargetDirectoryExists(
-            finalFilePath);
+        EnsureTargetDirectoryExists(finalFilePath);
 
         var originalLogoFilePath =
             ResolveLogoFilePath();
@@ -93,8 +72,7 @@ public sealed class BrandedCustomerCheckupPdfReportService :
                 originalLogoFilePath);
 
         var workingDirectory =
-            Path.GetDirectoryName(
-                finalFilePath)
+            Path.GetDirectoryName(finalFilePath)
             ?? Path.GetTempPath();
 
         var fileNameWithoutExtension =
@@ -102,9 +80,7 @@ public sealed class BrandedCustomerCheckupPdfReportService :
                 finalFilePath);
 
         var operationId =
-            Guid.NewGuid()
-                .ToString(
-                    "N");
+            Guid.NewGuid().ToString("N");
 
         var basePdfPath =
             Path.Combine(
@@ -127,24 +103,23 @@ public sealed class BrandedCustomerCheckupPdfReportService :
         try
         {
             /*
-             * Der bestehende PDF-Dienst erzeugt weiterhin
-             * ausschließlich den fachlichen Kundenbericht.
+             * Für abgeschlossene ältere Checkups
+             * erzeugen wir bei Bedarf eine korrigierte
+             * Berichtssicht.
+             *
+             * Die gespeicherten historischen Prüfdaten
+             * und Vergleichsergebnisse bleiben unverändert.
              */
+            var reportVisit =
+                PrepareHistoricalVisitForReport(
+                    customerCheckupVisit);
+
             _baseReportService.Export(
                 customer,
                 device,
-                customerCheckupVisit,
+                reportVisit,
                 basePdfPath);
 
-            /*
-             * Danach werden das lokal mitgelieferte Logo
-             * und die Unternehmensdaten ergänzt.
-             *
-             * Vor dem Rendern werden transparente Ränder
-             * des Original-Logos automatisch entfernt,
-             * damit der sichtbare Logoinhalt sauber und
-             * groß im Kopf erscheint.
-             */
             ApplyBranding(
                 basePdfPath,
                 brandedPdfPath,
@@ -154,10 +129,6 @@ public sealed class BrandedCustomerCheckupPdfReportService :
             ValidateBrandedReport(
                 brandedPdfPath);
 
-            /*
-             * Erst die vollständig erzeugte PDF wird
-             * an den endgültigen Zielpfad verschoben.
-             */
             File.Move(
                 brandedPdfPath,
                 finalFilePath,
@@ -165,22 +136,337 @@ public sealed class BrandedCustomerCheckupPdfReportService :
         }
         finally
         {
-            TryDeleteFile(
-                basePdfPath);
-
-            TryDeleteFile(
-                brandedPdfPath);
+            TryDeleteFile(basePdfPath);
+            TryDeleteFile(brandedPdfPath);
 
             if (!string.Equals(
-                    preparedLogoFilePath,
-                    originalLogoFilePath,
-                    StringComparison.OrdinalIgnoreCase))
+                preparedLogoFilePath,
+                originalLogoFilePath,
+                StringComparison.OrdinalIgnoreCase))
             {
-                TryDeleteFile(
-                    preparedLogoFilePath);
+                TryDeleteFile(preparedLogoFilePath);
             }
         }
     }
+
+    // =====================================================
+    // V1.1 – KOMPATIBILITÄT HISTORISCHER BEFUNDE
+    // =====================================================
+
+    /// <summary>
+    /// Erstellt bei Bedarf eine separate Berichtssicht
+    /// für einen abgeschlossenen Kundencheckup.
+    ///
+    /// In alten Vergleichsergebnissen können reine
+    /// Informationsbefunde fälschlich als offene
+    /// technische Probleme gespeichert sein.
+    ///
+    /// Die Originaldaten werden nicht verändert.
+    /// </summary>
+    private static CustomerCheckupVisit
+        PrepareHistoricalVisitForReport(
+            CustomerCheckupVisit source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        if (!source.IsCompleted
+            || source.Comparison is null)
+        {
+            return source;
+        }
+
+        var originalComparison =
+            source.Comparison;
+
+        var originalFindings =
+            originalComparison.Findings;
+
+        if (originalFindings is null
+            || originalFindings.Count == 0)
+        {
+            return source;
+        }
+
+        var requiresNormalization =
+            originalFindings.Any(
+                IsLegacyNeutralInformation);
+
+        if (!requiresNormalization)
+        {
+            return source;
+        }
+
+        /*
+         * Sämtliche Befundobjekte werden kopiert,
+         * damit kein gespeichertes Statusfeld
+         * verändert werden kann.
+         */
+        var reportFindings =
+            originalFindings
+                .Select(CreateReportFindingCopy)
+                .ToList();
+
+        /*
+         * Die übrigen Vergleichsdaten werden
+         * ausschließlich gelesen.
+         *
+         * Scores, Aufgaben, Aktionen und technische
+         * Bereichsauswertungen bleiben unverändert.
+         */
+        var reportComparison =
+            new CustomerCheckupComparison
+            {
+                ComparisonModelVersion =
+                    originalComparison.ComparisonModelVersion,
+
+                CustomerCheckupVisitId =
+                    originalComparison.CustomerCheckupVisitId,
+
+                CreatedAt =
+                    originalComparison.CreatedAt,
+
+                BeforeScanDate =
+                    originalComparison.BeforeScanDate,
+
+                AfterScanDate =
+                    originalComparison.AfterScanDate,
+
+                BeforeScoringVersion =
+                    originalComparison.BeforeScoringVersion,
+
+                AfterScoringVersion =
+                    originalComparison.AfterScoringVersion,
+
+                BeforeTaskListVersion =
+                    originalComparison.BeforeTaskListVersion,
+
+                WorkingTaskListVersion =
+                    originalComparison.WorkingTaskListVersion,
+
+                AfterTaskListVersion =
+                    originalComparison.AfterTaskListVersion,
+
+                SystemScore =
+                    originalComparison.SystemScore,
+
+                HardwareScore =
+                    originalComparison.HardwareScore,
+
+                Areas =
+                    originalComparison.Areas,
+
+                Findings =
+                    reportFindings,
+
+                Tasks =
+                    originalComparison.Tasks,
+
+                Actions =
+                    originalComparison.Actions,
+
+                ComparisonNotes =
+                    originalComparison.ComparisonNotes
+            };
+
+        /*
+         * Auch der Checkup-Vorgang erhält für die
+         * PDF-Ausgabe eine separate Objektinstanz.
+         *
+         * Die historischen Scans und alle
+         * Technikerangaben bleiben unverändert.
+         */
+        return new CustomerCheckupVisit
+        {
+            VisitModelVersion =
+                source.VisitModelVersion,
+
+            Id =
+                source.Id,
+
+            StartedAt =
+                source.StartedAt,
+
+            CompletedAt =
+                source.CompletedAt,
+
+            Status =
+                source.Status,
+
+            BeforeCheckup =
+                source.BeforeCheckup,
+
+            AfterCheckup =
+                source.AfterCheckup,
+
+            Comparison =
+                reportComparison,
+
+            TechnicianSummary =
+                source.TechnicianSummary,
+
+            NextSteps =
+                source.NextSteps,
+
+            NextCheckupDate =
+                source.NextCheckupDate,
+
+            CancellationReason =
+                source.CancellationReason
+        };
+    }
+
+    /// <summary>
+    /// Erkennt einen älteren neutralen Befund,
+    /// der noch einen problembezogenen Status hat.
+    ///
+    /// V1.1:
+    /// Die fachliche Einstufung erfolgt anhand
+    /// der Schweregrade, unabhängig davon,
+    /// welcher Bewertungskategorie der Befund
+    /// zugeordnet ist.
+    ///
+    /// AssessmentTarget bestimmt, ob ein Befund
+    /// beispielsweise in die System- oder
+    /// Hardwarebewertung einfließt.
+    ///
+    /// Es ist kein verlässliches Kriterium dafür,
+    /// ob tatsächlich Handlungsbedarf besteht.
+    /// </summary>
+    private static bool IsLegacyNeutralInformation(
+        CustomerCheckupFindingComparison finding)
+    {
+        if (finding.Status ==
+            CustomerCheckupFindingComparisonStatus.Informational)
+        {
+            return false;
+        }
+
+        /*
+         * Es muss mindestens ein gespeicherter
+         * Schweregrad vorhanden sein.
+         */
+        if (!finding.BeforeSeverity.HasValue
+            && !finding.AfterSeverity.HasValue)
+        {
+            return false;
+        }
+
+        /*
+         * Beide Seiten des Vergleichs dürfen
+         * ausschließlich Informationsbefunde
+         * enthalten.
+         *
+         * Fehlt ein Befund auf einer Seite,
+         * ist dies für sich genommen kein
+         * Grund für eine Warnung.
+         */
+        if (finding.BeforeSeverity.HasValue
+            && finding.BeforeSeverity.Value
+                != FindingSeverity.Information)
+        {
+            return false;
+        }
+
+        if (finding.AfterSeverity.HasValue
+            && finding.AfterSeverity.Value
+                != FindingSeverity.Information)
+        {
+            return false;
+        }
+
+        /*
+         * Wichtig:
+         *
+         * Keine Prüfung des AssessmentTarget.
+         *
+         * Auch ein Befund mit
+         * AssessmentTarget.SystemCondition oder
+         * AssessmentTarget.HardwareCondition kann
+         * eine neutrale Information sein.
+         *
+         * Beispiele:
+         * - Virenschutz aktiv
+         * - Secure Boot aktiv
+         * - TPM 2.0 aktiv
+         * - Windows 11 erkannt
+         */
+        return true;
+    }
+
+    /// <summary>
+    /// Kopiert einen Vergleichsbefund vollständig.
+    ///
+    /// Lediglich sein Status kann für die
+    /// temporäre Berichtsausgabe korrigiert werden.
+    /// </summary>
+    private static CustomerCheckupFindingComparison
+        CreateReportFindingCopy(
+            CustomerCheckupFindingComparison source)
+    {
+        var reportStatus =
+            IsLegacyNeutralInformation(source)
+                ? CustomerCheckupFindingComparisonStatus
+                    .Informational
+                : source.Status;
+
+        return new CustomerCheckupFindingComparison
+        {
+            MatchKey =
+                source.MatchKey,
+
+            MatchBasis =
+                source.MatchBasis,
+
+            AreaCode =
+                source.AreaCode,
+
+            Code =
+                source.Code,
+
+            CauseGroup =
+                source.CauseGroup,
+
+            Title =
+                source.Title,
+
+            BeforeDescription =
+                source.BeforeDescription,
+
+            AfterDescription =
+                source.AfterDescription,
+
+            Category =
+                source.Category,
+
+            AssessmentTarget =
+                source.AssessmentTarget,
+
+            BeforeSeverity =
+                source.BeforeSeverity,
+
+            AfterSeverity =
+                source.AfterSeverity,
+
+            BeforeOccurrenceCount =
+                source.BeforeOccurrenceCount,
+
+            AfterOccurrenceCount =
+                source.AfterOccurrenceCount,
+
+            WasBeforeAreaEvaluable =
+                source.WasBeforeAreaEvaluable,
+
+            IsAfterAreaEvaluable =
+                source.IsAfterAreaEvaluable,
+
+            Status =
+                reportStatus
+        };
+    }
+
+    // =====================================================
+    // WEBER-IT-LOGO
+    // =====================================================
 
     private static string ResolveLogoFilePath()
     {
@@ -189,8 +475,7 @@ public sealed class BrandedCustomerCheckupPdfReportService :
                 AppContext.BaseDirectory,
                 LogoRelativePath);
 
-        if (!File.Exists(
-                logoFilePath))
+        if (!File.Exists(logoFilePath))
         {
             throw new FileNotFoundException(
                 "Das Original-Logo von Weber IT ist "
@@ -204,8 +489,7 @@ public sealed class BrandedCustomerCheckupPdfReportService :
         }
 
         var fileInfo =
-            new FileInfo(
-                logoFilePath);
+            new FileInfo(logoFilePath);
 
         if (fileInfo.Length == 0)
         {
@@ -223,8 +507,7 @@ public sealed class BrandedCustomerCheckupPdfReportService :
         try
         {
             using var stream =
-                File.OpenRead(
-                    originalLogoFilePath);
+                File.OpenRead(originalLogoFilePath);
 
             var decoder =
                 BitmapDecoder.Create(
@@ -251,8 +534,7 @@ public sealed class BrandedCustomerCheckupPdfReportService :
             }
 
             var visibleBounds =
-                GetVisibleBounds(
-                    bitmap);
+                GetVisibleBounds(bitmap);
 
             if (visibleBounds.IsEmpty
                 || visibleBounds.Width <= 0
@@ -261,10 +543,6 @@ public sealed class BrandedCustomerCheckupPdfReportService :
                 return originalLogoFilePath;
             }
 
-            /*
-             * Wenn nahezu das gesamte Bild schon Inhalt ist,
-             * sparen wir uns eine temporäre Datei.
-             */
             if (visibleBounds.X == 0
                 && visibleBounds.Y == 0
                 && visibleBounds.Width == bitmap.PixelWidth
@@ -282,33 +560,28 @@ public sealed class BrandedCustomerCheckupPdfReportService :
                 Path.Combine(
                     Path.GetTempPath(),
                     "WeberIT-Logo-Prepared-"
-                    + Guid.NewGuid()
-                        .ToString(
-                            "N")
+                    + Guid.NewGuid().ToString("N")
                     + ".png");
 
             var encoder =
                 new PngBitmapEncoder();
 
             encoder.Frames.Add(
-                BitmapFrame.Create(
-                    croppedBitmap));
+                BitmapFrame.Create(croppedBitmap));
 
             using var outputStream =
-                File.Create(
-                    preparedLogoPath);
+                File.Create(preparedLogoPath);
 
-            encoder.Save(
-                outputStream);
+            encoder.Save(outputStream);
 
             return preparedLogoPath;
         }
         catch
         {
             /*
-             * Falls das automatische Freistellen aus irgendeinem
-             * Grund fehlschlägt, verwenden wir lieber weiterhin
-             * das Original-Logo statt den Bericht zu blockieren.
+             * Ein Fehler bei der automatischen
+             * Logoaufbereitung soll die
+             * PDF-Erstellung nicht blockieren.
              */
             return originalLogoFilePath;
         }
@@ -317,21 +590,16 @@ public sealed class BrandedCustomerCheckupPdfReportService :
     private static Int32Rect GetVisibleBounds(
         BitmapSource bitmap)
     {
-        var width =
-            bitmap.PixelWidth;
+        var width = bitmap.PixelWidth;
+        var height = bitmap.PixelHeight;
 
-        var height =
-            bitmap.PixelHeight;
-
-        if (width <= 0
-            || height <= 0)
+        if (width <= 0 || height <= 0)
         {
             return Int32Rect.Empty;
         }
 
         var bytesPerPixel =
-            (bitmap.Format.BitsPerPixel + 7)
-            / 8;
+            (bitmap.Format.BitsPerPixel + 7) / 8;
 
         var stride =
             width * bytesPerPixel;
@@ -344,35 +612,21 @@ public sealed class BrandedCustomerCheckupPdfReportService :
             stride,
             0);
 
-        var minX =
-            width;
+        var minX = width;
+        var minY = height;
+        var maxX = -1;
+        var maxY = -1;
 
-        var minY =
-            height;
+        const byte alphaThreshold = 8;
 
-        var maxX =
-            -1;
-
-        var maxY =
-            -1;
-
-        const byte alphaThreshold =
-            8;
-
-        for (var y = 0;
-             y < height;
-             y++)
+        for (var y = 0; y < height; y++)
         {
-            var rowOffset =
-                y * stride;
+            var rowOffset = y * stride;
 
-            for (var x = 0;
-                 x < width;
-                 x++)
+            for (var x = 0; x < width; x++)
             {
                 var pixelOffset =
-                    rowOffset
-                    + (x * bytesPerPixel);
+                    rowOffset + (x * bytesPerPixel);
 
                 var alpha =
                     bytesPerPixel >= 4
@@ -385,55 +639,31 @@ public sealed class BrandedCustomerCheckupPdfReportService :
                 }
 
                 if (x < minX)
-                {
                     minX = x;
-                }
 
                 if (y < minY)
-                {
                     minY = y;
-                }
 
                 if (x > maxX)
-                {
                     maxX = x;
-                }
 
                 if (y > maxY)
-                {
                     maxY = y;
-                }
             }
         }
 
-        if (maxX < minX
-            || maxY < minY)
+        if (maxX < minX || maxY < minY)
         {
             return Int32Rect.Empty;
         }
 
-        const int padding =
-            2;
+        const int padding = 2;
 
-        minX =
-            Math.Max(
-                0,
-                minX - padding);
+        minX = Math.Max(0, minX - padding);
+        minY = Math.Max(0, minY - padding);
 
-        minY =
-            Math.Max(
-                0,
-                minY - padding);
-
-        maxX =
-            Math.Min(
-                width - 1,
-                maxX + padding);
-
-        maxY =
-            Math.Min(
-                height - 1,
-                maxY + padding);
+        maxX = Math.Min(width - 1, maxX + padding);
+        maxY = Math.Min(height - 1, maxY + padding);
 
         return new Int32Rect(
             minX,
@@ -442,14 +672,17 @@ public sealed class BrandedCustomerCheckupPdfReportService :
             maxY - minY + 1);
     }
 
+    // =====================================================
+    // PDF-BRANDING
+    // =====================================================
+
     private static void ApplyBranding(
         string sourcePdfPath,
         string targetPdfPath,
         string logoFilePath,
         Customer customer)
     {
-        if (!File.Exists(
-                sourcePdfPath))
+        if (!File.Exists(sourcePdfPath))
         {
             throw new FileNotFoundException(
                 "Der technische Kundenbericht ist "
@@ -470,8 +703,7 @@ public sealed class BrandedCustomerCheckupPdfReportService :
         }
 
         using var logo =
-            XImage.FromFile(
-                logoFilePath);
+            XImage.FromFile(logoFilePath);
 
         var headerTitleFont =
             new XFont(
@@ -498,16 +730,13 @@ public sealed class BrandedCustomerCheckupPdfReportService :
                 XFontStyleEx.Regular);
 
         var headerFooterBrush =
-            new XSolidBrush(
-                HeaderFooterColor);
+            new XSolidBrush(HeaderFooterColor);
 
         var accentBrush =
-            new XSolidBrush(
-                AccentColor);
+            new XSolidBrush(AccentColor);
 
         var secondaryTextBrush =
-            new XSolidBrush(
-                SecondaryTextColor);
+            new XSolidBrush(SecondaryTextColor);
 
         var whiteBrush =
             XBrushes.White;
@@ -523,8 +752,7 @@ public sealed class BrandedCustomerCheckupPdfReportService :
              pageIndex++)
         {
             var page =
-                pdfDocument.Pages[
-                    pageIndex];
+                pdfDocument.Pages[pageIndex];
 
             var pageWidth =
                 page.Width.Point;
@@ -562,8 +790,7 @@ public sealed class BrandedCustomerCheckupPdfReportService :
                 whiteBrush);
         }
 
-        pdfDocument.Save(
-            targetPdfPath);
+        pdfDocument.Save(targetPdfPath);
     }
 
     private static void DrawHeader(
@@ -582,9 +809,7 @@ public sealed class BrandedCustomerCheckupPdfReportService :
             pageWidth,
             HeaderHeightPoints);
 
-        DrawLogo(
-            graphics,
-            logo);
+        DrawLogo(graphics, logo);
 
         graphics.DrawString(
             "KUNDENCHECKUP",
@@ -611,17 +836,11 @@ public sealed class BrandedCustomerCheckupPdfReportService :
         XGraphics graphics,
         XImage logo)
     {
-        const double maximumWidth =
-            235;
+        const double maximumWidth = 235;
+        const double maximumHeight = 28;
 
-        const double maximumHeight =
-            28;
-
-        var originalWidth =
-            logo.PointWidth;
-
-        var originalHeight =
-            logo.PointHeight;
+        var originalWidth = logo.PointWidth;
+        var originalHeight = logo.PointHeight;
 
         if (originalWidth <= 0
             || originalHeight <= 0)
@@ -672,8 +891,7 @@ public sealed class BrandedCustomerCheckupPdfReportService :
         XBrush whiteBrush)
     {
         var footerTop =
-            pageHeight
-            - FooterHeightPoints;
+            pageHeight - FooterHeightPoints;
 
         graphics.DrawRectangle(
             headerFooterBrush,
@@ -775,12 +993,15 @@ public sealed class BrandedCustomerCheckupPdfReportService :
             XStringFormats.TopRight);
     }
 
+    // =====================================================
+    // DATEIPRÜFUNG
+    // =====================================================
+
     private static void ValidateBrandedReport(
         string filePath)
     {
         var file =
-            new FileInfo(
-                filePath);
+            new FileInfo(filePath);
 
         if (!file.Exists
             || file.Length == 0)
@@ -808,12 +1029,10 @@ public sealed class BrandedCustomerCheckupPdfReportService :
         string filePath)
     {
         var normalizedPath =
-            Path.GetFullPath(
-                filePath.Trim());
+            Path.GetFullPath(filePath.Trim());
 
         return string.Equals(
-                Path.GetExtension(
-                    normalizedPath),
+                Path.GetExtension(normalizedPath),
                 ".pdf",
                 StringComparison.OrdinalIgnoreCase)
             ? normalizedPath
@@ -826,14 +1045,12 @@ public sealed class BrandedCustomerCheckupPdfReportService :
         string filePath)
     {
         var directoryPath =
-            Path.GetDirectoryName(
-                filePath);
+            Path.GetDirectoryName(filePath);
 
         if (!string.IsNullOrWhiteSpace(
-                directoryPath))
+            directoryPath))
         {
-            Directory.CreateDirectory(
-                directoryPath);
+            Directory.CreateDirectory(directoryPath);
         }
     }
 
@@ -842,17 +1059,15 @@ public sealed class BrandedCustomerCheckupPdfReportService :
     {
         try
         {
-            if (File.Exists(
-                    filePath))
+            if (File.Exists(filePath))
             {
-                File.Delete(
-                    filePath);
+                File.Delete(filePath);
             }
         }
         catch
         {
             /*
-             * Temporäre Aufräumfehler dürfen einen bereits
+             * Temporäre Aufräumfehler dürfen einen
              * erfolgreich erzeugten Bericht nicht
              * nachträglich ungültig machen.
              */

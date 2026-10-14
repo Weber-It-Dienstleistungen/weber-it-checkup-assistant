@@ -39,7 +39,7 @@
 
                 <TextBlock
                     Foreground="{StaticResource TextSecondaryBrush}"
-                    Text="Vergangene Kundencheckups dieses Geräts. Die Einträge sind rein lesend und zeigen den dokumentierten Stand des jeweiligen Vorgangs."
+                    Text="Berichtsarchiv und Historie aller bisherigen Kundencheckups dieses Geräts. Abgeschlossene Vorgänge bleiben unverändert gespeichert und können erneut als PDF ausgegeben werden."
                     TextWrapping="Wrap" />
 
                 <ItemsControl
@@ -333,7 +333,7 @@
                                                                     Margin="6,0"
                                                                     FontSize="13"
                                                                     Foreground="{StaticResource TextMutedBrush}"
-                                                                    Text="+"/>
+                                                                    Text="+" />
 
                                                                 <TextBlock
                                                                     FontSize="16"
@@ -438,6 +438,119 @@
                                                 </Grid>
 
                                             </StackPanel>
+
+                                        </Border>
+
+                                        <!-- Berichtsarchiv -->
+
+                                        <Border
+                                            Margin="0,12,0,0"
+                                            Padding="14"
+                                            Background="{StaticResource SurfaceSecondaryBrush}"
+                                            BorderBrush="{StaticResource AccentBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="7">
+
+                                            <Border.Style>
+
+                                                <Style TargetType="Border">
+
+                                                    <Setter
+                                                        Property="Visibility"
+                                                        Value="Collapsed" />
+
+                                                    <Style.Triggers>
+
+                                                        <DataTrigger
+                                                            Binding="{Binding IsCompleted}"
+                                                            Value="True">
+
+                                                            <Setter
+                                                                Property="Visibility"
+                                                                Value="Visible" />
+
+                                                        </DataTrigger>
+
+                                                    </Style.Triggers>
+
+                                                </Style>
+
+                                            </Border.Style>
+
+                                            <Grid>
+
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel
+                                                    Grid.Column="0"
+                                                    VerticalAlignment="Center">
+
+                                                    <TextBlock
+                                                        FontSize="11"
+                                                        FontWeight="SemiBold"
+                                                        Foreground="{StaticResource AccentBrush}"
+                                                        Text="BERICHTSARCHIV" />
+
+                                                    <TextBlock
+                                                        Margin="0,5,0,0"
+                                                        FontSize="12"
+                                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                                        Text="{Binding ReportArchiveStatusText}" />
+
+                                                    <TextBlock
+                                                        Margin="0,5,0,0"
+                                                        FontSize="11"
+                                                        Foreground="{StaticResource TextMutedBrush}"
+                                                        Text="Erzeugt den Kundenbericht aus den gespeicherten Prüfdaten neu."
+                                                        TextWrapping="Wrap" />
+
+                                                </StackPanel>
+
+                                                <Button
+                                                    Grid.Column="1"
+                                                    Width="180"
+                                                    Height="38"
+                                                    Margin="18,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    Content="PDF erneut erstellen"
+                                                    Command="{Binding DataContext.RegenerateArchivedCustomerCheckupReportCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="Exportiert den Bericht zu genau diesem abgeschlossenen Kundencheckup. Die archivierten Daten bleiben unverändert.">
+
+                                                    <Button.Style>
+
+                                                        <Style
+                                                            TargetType="Button"
+                                                            BasedOn="{StaticResource AccentButtonStyle}">
+
+                                                            <Setter
+                                                                Property="Visibility"
+                                                                Value="Collapsed" />
+
+                                                            <Style.Triggers>
+
+                                                                <DataTrigger
+                                                                    Binding="{Binding CanRegenerateReport}"
+                                                                    Value="True">
+
+                                                                    <Setter
+                                                                        Property="Visibility"
+                                                                        Value="Visible" />
+
+                                                                </DataTrigger>
+
+                                                            </Style.Triggers>
+
+                                                        </Style>
+
+                                                    </Button.Style>
+
+                                                </Button>
+
+                                            </Grid>
 
                                         </Border>
 

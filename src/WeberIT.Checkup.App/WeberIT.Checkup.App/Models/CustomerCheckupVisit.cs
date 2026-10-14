@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿
+using System.Text.Json.Serialization;
 
 namespace WeberIT.Checkup.App.Models;
 
@@ -41,18 +42,15 @@ public sealed class CustomerCheckupVisit
 
     [JsonIgnore]
     public bool IsInProgress =>
-        Status
-        == CustomerCheckupVisitStatus.InProgress;
+        Status == CustomerCheckupVisitStatus.InProgress;
 
     [JsonIgnore]
     public bool IsCompleted =>
-        Status
-        == CustomerCheckupVisitStatus.Completed;
+        Status == CustomerCheckupVisitStatus.Completed;
 
     [JsonIgnore]
     public bool IsCancelled =>
-        Status
-        == CustomerCheckupVisitStatus.Cancelled;
+        Status == CustomerCheckupVisitStatus.Cancelled;
 
     [JsonIgnore]
     public bool HasAfterCheckup =>
@@ -67,6 +65,69 @@ public sealed class CustomerCheckupVisit
         IsInProgress
         && HasAfterCheckup
         && HasComparison;
+
+    /// <summary>
+    /// Gibt an, ob aus diesem bereits abgeschlossenen
+    /// Kundencheckup erneut ein PDF-Bericht erzeugt
+    /// werden kann.
+    ///
+    /// Die Prüfung verändert weder den archivierten
+    /// Vorgang noch seine gespeicherten Prüfdaten.
+    ///
+    /// Die Eigenschaft wird nicht in der Datenbank
+    /// beziehungsweise im JSON gespeichert, sondern
+    /// beim Zugriff aus den vorhandenen Daten berechnet.
+    /// </summary>
+    [JsonIgnore]
+    public bool CanRegenerateReport
+    {
+        get
+        {
+            if (!IsCompleted)
+            {
+                return false;
+            }
+
+            if (BeforeCheckup?.ScanDate is null
+                || AfterCheckup?.ScanDate is null
+                || Comparison is null)
+            {
+                return false;
+            }
+
+            if (Comparison.CustomerCheckupVisitId != Id
+                || Comparison.BeforeScanDate
+                    != BeforeCheckup.ScanDate
+                || Comparison.AfterScanDate
+                    != AfterCheckup.ScanDate)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    TechnicianSummary)
+                || string.IsNullOrWhiteSpace(
+                    NextSteps)
+                || !NextCheckupDate.HasValue)
+            {
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Verständlicher Archivstatus für die spätere
+    /// Darstellung in der Kundenverwaltung.
+    /// </summary>
+    [JsonIgnore]
+    public string ReportArchiveStatusText =>
+        !IsCompleted
+            ? "Kein abgeschlossener Kundencheckup"
+            : CanRegenerateReport
+                ? "Bericht erneut erstellbar"
+                : "Berichtsdaten unvollständig";
 
     [JsonIgnore]
     public string StatusText =>
@@ -86,30 +147,26 @@ public sealed class CustomerCheckupVisit
 
     [JsonIgnore]
     public string StartedAtText =>
-        StartedAt.ToString(
-            "dd.MM.yyyy HH:mm")
+        StartedAt.ToString("dd.MM.yyyy HH:mm")
         + " Uhr";
 
     [JsonIgnore]
     public string CompletedAtText =>
         CompletedAt.HasValue
-            ? CompletedAt.Value.ToString(
-                "dd.MM.yyyy HH:mm")
+            ? CompletedAt.Value.ToString("dd.MM.yyyy HH:mm")
               + " Uhr"
             : "Noch nicht abgeschlossen";
 
     [JsonIgnore]
     public string NextCheckupDateText =>
         NextCheckupDate.HasValue
-            ? NextCheckupDate.Value.ToString(
-                "dd.MM.yyyy")
+            ? NextCheckupDate.Value.ToString("dd.MM.yyyy")
             : "Noch nicht festgelegt";
 
     public static CustomerCheckupVisit Start(
         CheckupSession beforeCheckup)
     {
-        ArgumentNullException.ThrowIfNull(
-            beforeCheckup);
+        ArgumentNullException.ThrowIfNull(beforeCheckup);
 
         if (!beforeCheckup.ScanDate.HasValue)
         {
@@ -128,16 +185,14 @@ public sealed class CustomerCheckupVisit
                 CustomerCheckupVisitStatus.InProgress,
 
             BeforeCheckup =
-                CheckupSnapshot.Capture(
-                    beforeCheckup)
+                CheckupSnapshot.Capture(beforeCheckup)
         };
     }
 
     public void StoreComparison(
         CustomerCheckupComparison comparison)
     {
-        ArgumentNullException.ThrowIfNull(
-            comparison);
+        ArgumentNullException.ThrowIfNull(comparison);
 
         EnsureInProgress();
 
@@ -159,11 +214,9 @@ public sealed class CustomerCheckupVisit
         string nextSteps,
         DateTime? nextCheckupDate)
     {
-        ArgumentNullException.ThrowIfNull(
-            afterCheckup);
+        ArgumentNullException.ThrowIfNull(afterCheckup);
 
-        ArgumentNullException.ThrowIfNull(
-            comparison);
+        ArgumentNullException.ThrowIfNull(comparison);
 
         EnsureInProgress();
 
@@ -189,8 +242,7 @@ public sealed class CustomerCheckupVisit
             CurrentVisitModelVersion;
 
         AfterCheckup =
-            CheckupSnapshot.Capture(
-                afterCheckup);
+            CheckupSnapshot.Capture(afterCheckup);
 
         Comparison =
             comparison;
@@ -279,13 +331,11 @@ public sealed class CustomerCheckupVisit
             CustomerCheckupVisitStatus.Completed;
     }
 
-    public void Cancel(
-        string reason)
+    public void Cancel(string reason)
     {
         EnsureInProgress();
 
-        if (string.IsNullOrWhiteSpace(
-                reason))
+        if (string.IsNullOrWhiteSpace(reason))
         {
             throw new ArgumentException(
                 "Für den Abbruch des Kundencheckups "
@@ -319,8 +369,7 @@ public sealed class CustomerCheckupVisit
         CustomerCheckupComparison comparison,
         DateTime? expectedAfterScanDate)
     {
-        if (comparison.CustomerCheckupVisitId
-            != Id)
+        if (comparison.CustomerCheckupVisitId != Id)
         {
             throw new ArgumentException(
                 "Das Vergleichsergebnis gehört nicht zu diesem "
@@ -354,8 +403,7 @@ public sealed class CustomerCheckupVisit
         DateTime? nextCheckupDate,
         DateTime afterScanDate)
     {
-        if (string.IsNullOrWhiteSpace(
-                technicianSummary))
+        if (string.IsNullOrWhiteSpace(technicianSummary))
         {
             throw new ArgumentException(
                 "Für den Abschlussentwurf ist eine "
@@ -363,8 +411,7 @@ public sealed class CustomerCheckupVisit
                 nameof(technicianSummary));
         }
 
-        if (string.IsNullOrWhiteSpace(
-                nextSteps))
+        if (string.IsNullOrWhiteSpace(nextSteps))
         {
             throw new ArgumentException(
                 "Für den Abschlussentwurf müssen die nächsten "
