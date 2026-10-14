@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 
@@ -105,6 +106,15 @@ public class CheckupTaskList : INotifyPropertyChanged
      * Erfolgreiche technische Aktion seit dem letzten
      * Kontrollscan:
      *   vorläufig aus der Arbeitsliste ausgeblendet.
+     *
+     * Ausnahme:
+     *   Die Sammelaufgabe für Programmaktualisierungen
+     *   bleibt sichtbar, solange ihr Status Open ist.
+     *   Ein erfolgreich aktualisiertes Paket bedeutet
+     *   nicht, dass alle anderen Updates erledigt sind.
+     *
+     * Die bereits erfolgreichen Aktionen bleiben
+     *   weiterhin als kontrollbedürftig dokumentiert.
      *
      * Kontrollscan erkennt den Befund erneut:
      *   Aufgabe ist weiterhin Open und wird wieder sichtbar.
@@ -852,13 +862,46 @@ public class CheckupTaskList : INotifyPropertyChanged
         }
     }
 
+    // =====================================================
+    // V1.1 – SAMMELAUFGABE FÜR PROGRAMMUPDATES
+    // =====================================================
+
     private bool IsTaskVisibleInWorkList(
         CheckupTask task)
     {
-        return task.Status
-                   == CheckupTaskStatus.Open
-               && !IsTaskAwaitingVerificationCore(
-                   task);
+        if (task.Status != CheckupTaskStatus.Open)
+        {
+            return false;
+        }
+
+        /*
+         * Eine Programmupdate-Aufgabe steht für eine
+         * möglicherweise große Anzahl von Paketen.
+         *
+         * Ein erfolgreiches Update darf die gesamte
+         * Sammelaufgabe nicht ausblenden.
+         *
+         * Solange die Aufgabe Open ist, muss sie
+         * weiterhin bearbeitbar bleiben.
+         *
+         * Das bereits erfolgreiche Aktionsergebnis
+         * bleibt unabhängig davon für die spätere
+         * Abschlusskontrolle gespeichert.
+         */
+        if (string.Equals(
+                task.TaskCode,
+                "task.program-updates.available",
+                StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        /*
+         * Alle anderen Aufgaben behalten das bisherige
+         * Verhalten: Nach einer erfolgreichen Aktion
+         * wird zunächst die Abschlusskontrolle abgewartet.
+         */
+        return !IsTaskAwaitingVerificationCore(task);
     }
 
     private bool IsTaskAwaitingVerificationCore(
