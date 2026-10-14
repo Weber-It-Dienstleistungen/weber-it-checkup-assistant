@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿
+using System.Globalization;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
@@ -12,6 +13,8 @@ public class MemoryAssessmentRule : ICheckupAssessmentRule
     public IEnumerable<CheckupFinding> Evaluate(
         CheckupSession checkupSession)
     {
+        ArgumentNullException.ThrowIfNull(checkupSession);
+
         var installedMemory =
             checkupSession.HardwareInformation.InstalledMemory;
 
@@ -30,7 +33,9 @@ public class MemoryAssessmentRule : ICheckupAssessmentRule
                         "Arbeitsspeicher nicht auswertbar",
 
                     Description =
-                        "Die Größe des installierten Arbeitsspeichers konnte nicht zuverlässig ermittelt werden.",
+                        "Die Größe des installierten "
+                        + "Arbeitsspeichers konnte nicht "
+                        + "zuverlässig ermittelt werden.",
 
                     Category =
                         FindingCategory.Hardware,
@@ -61,8 +66,9 @@ public class MemoryAssessmentRule : ICheckupAssessmentRule
 
                     Description =
                         $"Das Gerät verfügt über {installedMemory}. "
-                        + "Für einen zuverlässigen aktuellen Windows-Betrieb "
-                        + "sollten mindestens 8 GB Arbeitsspeicher vorhanden sein.",
+                        + "Für einen zuverlässigen aktuellen "
+                        + "Windows-Betrieb sollten mindestens "
+                        + "8 GB Arbeitsspeicher vorhanden sein.",
 
                     Category =
                         FindingCategory.Hardware,
@@ -85,16 +91,28 @@ public class MemoryAssessmentRule : ICheckupAssessmentRule
             {
                 new()
                 {
+                    // Der stabile Befundcode bleibt erhalten,
+                    // damit vorhandene Zuordnungen und
+                    // historische Vergleiche funktionieren.
                     Code =
                         "hardware.memory.upgrade-recommended",
 
                     Title =
-                        "Arbeitsspeicher erweiterbar",
+                        "Arbeitsspeicherausstattung prüfen",
 
                     Description =
-                        $"Das Gerät verfügt über {installedMemory}. "
-                        + "Eine Erweiterung auf mindestens 16 GB kann "
-                        + "die Alltagstauglichkeit und Leistungsreserven verbessern.",
+                        $"Im Gerät sind {installedMemory} "
+                        + "Arbeitsspeicher installiert. "
+                        + "Für viele alltägliche Aufgaben "
+                        + "ist diese Ausstattung nutzbar. "
+                        + "Bei anspruchsvolleren Programmen "
+                        + "oder vielen gleichzeitig geöffneten "
+                        + "Anwendungen können 16 GB "
+                        + "zusätzliche Leistungsreserven bieten. "
+                        + "Ob eine Aufrüstung technisch möglich "
+                        + "und wirtschaftlich sinnvoll ist, "
+                        + "muss für dieses Gerätemodell "
+                        + "gesondert geprüft werden.",
 
                     Category =
                         FindingCategory.Hardware,
@@ -122,8 +140,9 @@ public class MemoryAssessmentRule : ICheckupAssessmentRule
                     "Ausreichend Arbeitsspeicher",
 
                 Description =
-                    $"Mit {installedMemory} verfügt das Gerät über "
-                    + "eine zeitgemäße Arbeitsspeicherausstattung.",
+                    $"Mit {installedMemory} verfügt das Gerät "
+                    + "über eine zeitgemäße "
+                    + "Arbeitsspeicherausstattung.",
 
                 Category =
                     FindingCategory.Hardware,

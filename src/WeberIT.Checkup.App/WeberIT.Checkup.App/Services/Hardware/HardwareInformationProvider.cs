@@ -1,4 +1,6 @@
-﻿using System.Management;
+﻿
+using System.Globalization;
+using System.Management;
 using WeberIT.Checkup.App.Services.Interfaces;
 
 namespace WeberIT.Checkup.App.Services.Hardware;
@@ -69,8 +71,48 @@ public class HardwareInformationProvider :
             "Name");
     }
 
+    // =====================================================
+    // V1.1 – KORREKTE RAM-KAPAZITÄT
+    // =====================================================
+
     public string GetInstalledMemory()
     {
+        /*
+         * Primärquelle:
+         * Win32_PhysicalMemory.Capacity
+         *
+         * Diese WMI-Klasse liefert die Kapazität der
+         * erkannten physischen Speichermodule in Bytes.
+         *
+         * Bei mehreren RAM-Modulen werden sämtliche
+         * Kapazitäten addiert.
+         *
+         * Vorteil:
+         * Hardwareseitig reservierter Arbeitsspeicher
+         * wird nicht fälschlich von der installierten
+         * Speicherkapazität abgezogen.
+         */
+        if (TryGetPhysicalMemoryModuleBytes(
+                out var installedMemoryBytes))
+        {
+            return FormatMemoryCapacity(
+                installedMemoryBytes);
+        }
+
+        /*
+         * Rückfalllösung:
+         *
+         * Sollte die Abfrage der physischen Module
+         * nicht verfügbar sein, verwenden wir die
+         * bisherige WMI-Ermittlung.
+         *
+         * Dieser Wert kann etwas geringer sein
+         * als die nominell installierte Kapazität.
+         *
+         * Die bisherige Funktionalität bleibt damit
+         * auch bei eingeschränkter WMI-Verfügbarkeit
+         * erhalten.
+         */
         var totalPhysicalMemory =
             GetWmiValue(
                 "Win32_ComputerSystem",
@@ -78,16 +120,147 @@ public class HardwareInformationProvider :
 
         if (!ulong.TryParse(
                 totalPhysicalMemory,
-                out var bytes))
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out var fallbackBytes)
+            || fallbackBytes == 0)
         {
             return "Unbekannt";
         }
 
+        return FormatMemoryCapacity(
+            fallbackBytes);
+    }
+
+    /// <summary>
+    /// Ermittelt die Summe der Kapazitäten aller über
+    /// Win32_PhysicalMemory erkannten RAM-Module.
+    ///
+    /// Es werden ausschließlich positive und
+    /// vollständig lesbare Modulkapazitäten akzeptiert.
+    ///
+    /// Sobald eine Modulkapazität unplausibel ist
+    /// oder die WMI-Abfrage fehlschlägt, wird false
+    /// zurückgegeben.
+    ///
+    /// So verhindern wir, dass ein nur teilweise
+    /// erfolgreicher Scan eine zu geringe installierte
+    /// Speicherkapazität meldet.
+    /// </summary>
+    private static bool TryGetPhysicalMemoryModuleBytes(
+        out ulong installedMemoryBytes)
+    {
+        installedMemoryBytes = 0;
+
+        try
+        {
+            using var searcher =
+                new ManagementObjectSearcher(
+                    "SELECT Capacity "
+                    + "FROM Win32_PhysicalMemory");
+
+            using var results =
+                searcher.Get();
+
+            ulong totalBytes = 0;
+            var moduleCount = 0;
+
+            foreach (ManagementObject module in results)
+            {
+                /*
+                 * Capacity wird von WMI in Bytes
+                 * bereitgestellt.
+                 *
+                 * Einzelne Module können bei Problemen
+                 * mit der Firmware oder WMI fehlende
+                 * Werte liefern.
+                 */
+                var capacityValue =
+                    module["Capacity"];
+
+                if (capacityValue is null)
+                {
+                    return false;
+                }
+
+                var capacityText =
+                    Convert.ToString(
+                        capacityValue,
+                        CultureInfo.InvariantCulture);
+
+                if (!ulong.TryParse(
+                        capacityText,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out var moduleBytes)
+                    || moduleBytes == 0)
+                {
+                    return false;
+                }
+
+                /*
+                 * checked verhindert, dass bei
+                 * ungewöhnlichen oder fehlerhaften
+                 * WMI-Werten ein Überlauf unbemerkt
+                 * eine falsche Gesamtkapazität erzeugt.
+                 */
+                totalBytes = checked(
+                    totalBytes + moduleBytes);
+
+                moduleCount++;
+            }
+
+            if (moduleCount == 0
+                || totalBytes == 0)
+            {
+                return false;
+            }
+
+            installedMemoryBytes = totalBytes;
+            return true;
+        }
+        catch
+        {
+            /*
+             * Fehler bei WMI, Firmwaredaten oder
+             * Überläufen dürfen den kompletten
+             * Hardware-Scan nicht abbrechen.
+             *
+             * GetInstalledMemory verwendet dann
+             * die bisherige Rückfalllösung.
+             */
+            installedMemoryBytes = 0;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Wandelt eine Speicherkapazität in Bytes in
+    /// eine verständliche GB-Anzeige um.
+    ///
+    /// Die bestehende Formatierung bleibt erhalten,
+    /// damit die nachfolgenden Bewertungsregeln
+    /// den Wert weiterhin verarbeiten können.
+    ///
+    /// Technisch handelt es sich bei der Umrechnung
+    /// durch 1024^3 um GiB. Die bestehende Anzeige
+    /// verwendet aus Kompatibilitätsgründen "GB".
+    /// </summary>
+    private static string FormatMemoryCapacity(
+        ulong bytes)
+    {
         var gibibytes =
-            bytes / 1024d / 1024d / 1024d;
+            bytes
+            / 1024d
+            / 1024d
+            / 1024d;
 
         return $"{gibibytes:0.#} GB";
     }
+
+    // =====================================================
+    // WEITERE HARDWAREINFORMATIONEN
+    // =====================================================
 
     public string GetMainboardManufacturer()
     {
@@ -158,6 +331,10 @@ public class HardwareInformationProvider :
                 ? "Unbekannt"
                 : specificationVersion;
     }
+
+    // =====================================================
+    // ALLGEMEINE WMI-HILFSMETHODEN
+    // =====================================================
 
     private static string GetWmiValue(
         string className,
