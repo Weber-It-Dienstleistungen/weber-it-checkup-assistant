@@ -1,4 +1,5 @@
-﻿using WeberIT.Checkup.App.Models;
+﻿
+using WeberIT.Checkup.App.Models;
 
 namespace WeberIT.Checkup.App.Services.Tasks;
 
@@ -228,6 +229,13 @@ public static class CheckupTaskGenerator
                     "Windows-10-Supportstatus klären",
                     CheckupTaskPriority.Recommended,
                     CheckupTaskCategory.OperatingSystem),
+
+            "system.windows-update.pending-updates" =>
+                new TaskTemplate(
+                    "task.windows-update.pending-updates",
+                    "Ausstehende Windows-Updates prüfen",
+                    CheckupTaskPriority.Recommended,
+                    CheckupTaskCategory.WindowsUpdate),
 
             "system.windows-update.service-disabled" =>
                 new TaskTemplate(
@@ -480,8 +488,7 @@ public static class CheckupTaskGenerator
                 .Distinct(
                     StringComparer.OrdinalIgnoreCase)
                 .OrderBy(
-                    code =>
-                        code,
+                    code => code,
                     StringComparer.OrdinalIgnoreCase)
                 .ToList();
 

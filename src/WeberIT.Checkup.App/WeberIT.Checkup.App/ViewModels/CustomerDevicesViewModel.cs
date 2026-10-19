@@ -228,7 +228,6 @@ public class CustomerDevicesViewModel : BaseViewModel
                 return;
 
             _isScanRunning = value;
-
             OnPropertyChanged();
             OnPropertyChanged(nameof(RescanDeviceButtonText));
 
@@ -293,7 +292,6 @@ public class CustomerDevicesViewModel : BaseViewModel
                 return;
 
             _scanProgressPercentage = normalizedValue;
-
             OnPropertyChanged();
             OnPropertyChanged(nameof(ScanProgressPercentageText));
         }
@@ -1664,23 +1662,24 @@ public class CustomerDevicesViewModel : BaseViewModel
                 ? "Systemscan fehlgeschlagen"
                 : "Systemscan läuft";
 
-        ScanCurrentStepText = progress.Status switch
-        {
-            CheckupScanStepStatus.Running =>
-                progress.StepTitle + " wird ausgelesen …",
+        ScanCurrentStepText =
+            progress.Status switch
+            {
+                CheckupScanStepStatus.Running =>
+                    progress.StepTitle + " wird ausgelesen …",
 
-            CheckupScanStepStatus.Successful =>
-                progress.StepTitle + " wurde abgeschlossen.",
+                CheckupScanStepStatus.Successful =>
+                    progress.StepTitle + " wurde abgeschlossen.",
 
-            CheckupScanStepStatus.Warning =>
-                progress.StepTitle
-                + " wurde mit einem Hinweis abgeschlossen.",
+                CheckupScanStepStatus.Warning =>
+                    progress.StepTitle
+                    + " wurde mit einem Hinweis abgeschlossen.",
 
-            CheckupScanStepStatus.Failed =>
-                "Fehler bei: " + progress.StepTitle,
+                CheckupScanStepStatus.Failed =>
+                    "Fehler bei: " + progress.StepTitle,
 
-            _ => progress.StepTitle
-        };
+                _ => progress.StepTitle
+            };
 
         UpdateScanProgressSummary();
     }
@@ -2030,26 +2029,16 @@ public class CustomerDevicesViewModel : BaseViewModel
             + details);
     }
 
+    // =====================================================
+    // ZENTRALE KOPIERMETHODE
+    // =====================================================
+
     private static CustomerCheckupVisit CreateIndependentVisitCopy(
         CustomerCheckupVisit source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        return new CustomerCheckupVisit
-        {
-            VisitModelVersion = source.VisitModelVersion,
-            Id = source.Id,
-            StartedAt = source.StartedAt,
-            CompletedAt = source.CompletedAt,
-            Status = source.Status,
-            BeforeCheckup = source.BeforeCheckup,
-            AfterCheckup = source.AfterCheckup,
-            Comparison = source.Comparison,
-            TechnicianSummary = source.TechnicianSummary,
-            NextSteps = source.NextSteps,
-            NextCheckupDate = source.NextCheckupDate,
-            CancellationReason = source.CancellationReason
-        };
+        return source.CreateIndependentCopy();
     }
 
     private static void RestorePreparedVisitChange(

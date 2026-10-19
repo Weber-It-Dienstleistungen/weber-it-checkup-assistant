@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using WeberIT.Checkup.App.Services.Interfaces;
@@ -281,6 +282,13 @@ public sealed class GuidedTaskActionLauncher :
                     "ms-settings:about",
                     string.Empty,
                     "Windows-Systeminformationen",
+                    IsUri: true),
+
+            ["action.windows-update.pending-review"] =
+                new GuidedLaunchTarget(
+                    "ms-settings:windowsupdate",
+                    string.Empty,
+                    "Windows Update – ausstehende Aktualisierungen",
                     IsUri: true),
 
             ["action.windows-update.guided-review"] =

@@ -5,8 +5,11 @@ namespace WeberIT.Checkup.App.Models;
 
 public sealed class CustomerCheckupVisit
 {
+    private List<ProgramUpdateException>
+        _programUpdateExceptions = new();
+
     public const int CurrentVisitModelVersion =
-        3;
+        4;
 
     public int VisitModelVersion { get; set; } =
         CurrentVisitModelVersion;
@@ -39,6 +42,20 @@ public sealed class CustomerCheckupVisit
 
     public string CancellationReason { get; set; } =
         string.Empty;
+
+    /// <summary>
+    /// Bewusst nicht durchgeführte Programmupdates
+    /// in genau diesem Kundencheckup.
+    /// Die Liste wird gemeinsam mit dem Kundencheckup
+    /// im Datenbank-JSON gespeichert.
+    /// </summary>
+    public List<ProgramUpdateException>
+        ProgramUpdateExceptions
+    {
+        get => _programUpdateExceptions;
+        set => _programUpdateExceptions =
+            value ?? new List<ProgramUpdateException>();
+    }
 
     [JsonIgnore]
     public bool IsInProgress =>
@@ -188,6 +205,254 @@ public sealed class CustomerCheckupVisit
                 CheckupSnapshot.Capture(beforeCheckup)
         };
     }
+
+    // =====================================================
+    // ZENTRALE KOPIERMETHODE
+    // =====================================================
+
+    /// <summary>
+    /// Erstellt eine neue Instanz des Kundencheckups
+    /// für die weitere Vorgangsbearbeitung.
+    ///
+    /// Die bestehenden Scan- und Vergleichsobjekte
+    /// werden wie bisher übernommen.
+    ///
+    /// Programmupdate-Ausnahmen werden dagegen
+    /// einzeln kopiert. Dadurch besitzen Original
+    /// und Kopie weder dieselbe Ausnahmeliste
+    /// noch dieselben Ausnahmeobjekte.
+    ///
+    /// Die Vorgangs-ID und die archivierten
+    /// Entscheidungsdaten bleiben unverändert.
+    /// </summary>
+    public CustomerCheckupVisit CreateIndependentCopy()
+    {
+        return new CustomerCheckupVisit
+        {
+            VisitModelVersion =
+                VisitModelVersion,
+
+            Id =
+                Id,
+
+            StartedAt =
+                StartedAt,
+
+            CompletedAt =
+                CompletedAt,
+
+            Status =
+                Status,
+
+            BeforeCheckup =
+                BeforeCheckup,
+
+            AfterCheckup =
+                AfterCheckup,
+
+            Comparison =
+                Comparison,
+
+            TechnicianSummary =
+                TechnicianSummary,
+
+            NextSteps =
+                NextSteps,
+
+            NextCheckupDate =
+                NextCheckupDate,
+
+            CancellationReason =
+                CancellationReason,
+
+            ProgramUpdateExceptions =
+                ProgramUpdateExceptions
+                    .Select(CloneProgramUpdateException)
+                    .ToList()
+        };
+    }
+
+    /// <summary>
+    /// Erstellt eine unabhängige Kopie einer
+    /// dokumentierten Programmupdate-Ausnahme.
+    ///
+    /// Insbesondere die Genehmigungs-ID,
+    /// Vorgangs-ID und der ursprüngliche
+    /// Entscheidungszeitpunkt bleiben erhalten.
+    /// </summary>
+    private static ProgramUpdateException
+        CloneProgramUpdateException(
+            ProgramUpdateException source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        return new ProgramUpdateException
+        {
+            Id =
+                source.Id,
+
+            CheckupVisitId =
+                source.CheckupVisitId,
+
+            PackageId =
+                source.PackageId,
+
+            PackageName =
+                source.PackageName,
+
+            InstalledVersion =
+                source.InstalledVersion,
+
+            AvailableVersion =
+                source.AvailableVersion,
+
+            Source =
+                source.Source,
+
+            Reason =
+                source.Reason,
+
+            TechnicianNote =
+                source.TechnicianNote,
+
+            ApprovedAt =
+                source.ApprovedAt
+        };
+    }
+
+    // =====================================================
+    // PROGRAMMUPDATE-AUSNAHMEN
+    // =====================================================
+
+    /// <summary>
+    /// Dokumentiert eine begründete Ausnahme
+    /// für die exakt vorliegende Paketversion.
+    /// Ein anderer Versionsstand wird dadurch
+    /// ausdrücklich nicht freigegeben.
+    /// </summary>
+    public void ApproveProgramUpdateException(
+        AvailableProgramUpdate update,
+        string reason,
+        string technicianNote)
+    {
+        EnsureInProgress();
+
+        if (IsCompletionPrepared)
+        {
+            throw new InvalidOperationException(
+                "Nach der vorbereiteten Abschlusskontrolle "
+                + "dürfen keine neuen Programmupdate-Ausnahmen "
+                + "mehr erfasst werden.");
+        }
+
+        ArgumentNullException.ThrowIfNull(update);
+
+        if (string.IsNullOrWhiteSpace(update.PackageId)
+            || string.IsNullOrWhiteSpace(update.InstalledVersion)
+            || string.IsNullOrWhiteSpace(update.AvailableVersion)
+            || string.IsNullOrWhiteSpace(update.Source))
+        {
+            throw new ArgumentException(
+                "Für eine Programmupdate-Ausnahme sind "
+                + "Paketkennung, Quelle und beide "
+                + "Versionsstände erforderlich.",
+                nameof(update));
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException(
+                "Für die bewusste Nichtaktualisierung "
+                + "muss eine fachliche Begründung "
+                + "dokumentiert werden.",
+                nameof(reason));
+        }
+
+        // Eine erneute Freigabe desselben Updates
+        // ersetzt nur dessen vorherige Freigabe.
+        // Historische Entscheidungen zu anderen
+        // Paketversionen bleiben erhalten.
+        var existingApproval =
+            ProgramUpdateExceptions.FirstOrDefault(
+                approval =>
+                    approval.AppliesTo(Id, update));
+
+        if (existingApproval is not null)
+        {
+            ProgramUpdateExceptions.Remove(
+                existingApproval);
+        }
+
+        ProgramUpdateExceptions.Add(
+            new ProgramUpdateException
+            {
+                Id = existingApproval?.Id
+                    ?? Guid.NewGuid(),
+
+                CheckupVisitId = Id,
+
+                PackageId = update.PackageId.Trim(),
+
+                PackageName = update.Name?.Trim()
+                    ?? string.Empty,
+
+                InstalledVersion =
+                    update.InstalledVersion.Trim(),
+
+                AvailableVersion =
+                    update.AvailableVersion.Trim(),
+
+                Source = update.Source.Trim(),
+
+                Reason = reason.Trim(),
+
+                TechnicianNote =
+                    technicianNote?.Trim()
+                    ?? string.Empty,
+
+                ApprovedAt = DateTime.Now
+            });
+
+        VisitModelVersion =
+            CurrentVisitModelVersion;
+    }
+
+    /// <summary>
+    /// Widerruft eine Freigabe im laufenden
+    /// Kundencheckup. Abgeschlossene Vorgänge
+    /// bleiben unveränderlich.
+    /// </summary>
+    public bool RevokeProgramUpdateException(
+        Guid approvalId)
+    {
+        EnsureInProgress();
+
+        if (IsCompletionPrepared)
+        {
+            throw new InvalidOperationException(
+                "Nach der vorbereiteten Abschlusskontrolle "
+                + "dürfen Programmupdate-Ausnahmen "
+                + "nicht mehr geändert werden.");
+        }
+
+        var removed =
+            ProgramUpdateExceptions.RemoveAll(
+                approval =>
+                    approval.Id == approvalId
+                    && approval.CheckupVisitId == Id) > 0;
+
+        if (removed)
+        {
+            VisitModelVersion =
+                CurrentVisitModelVersion;
+        }
+
+        return removed;
+    }
+
+    // =====================================================
+    // VERGLEICH UND ABSCHLUSS
+    // =====================================================
 
     public void StoreComparison(
         CustomerCheckupComparison comparison)

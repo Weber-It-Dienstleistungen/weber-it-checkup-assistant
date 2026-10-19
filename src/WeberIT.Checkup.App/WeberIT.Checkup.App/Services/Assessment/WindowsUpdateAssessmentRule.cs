@@ -1,4 +1,5 @@
-﻿using WeberIT.Checkup.App.Models;
+﻿
+using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
 namespace WeberIT.Checkup.App.Services.Assessment;
@@ -16,6 +17,10 @@ public class WindowsUpdateAssessmentRule :
             new List<CheckupFinding>();
 
         AddSearchScopeFinding(
+            updateInformation,
+            findings);
+
+        AddPendingUpdateFindings(
             updateInformation,
             findings);
 
@@ -37,6 +42,14 @@ public class WindowsUpdateAssessmentRule :
         if (updateInformation.IsUpdateSearchPerformed
             && updateInformation.IsUpdateSearchSuccessful)
         {
+            var searchDateText =
+                updateInformation.UpdateSearchDate.HasValue
+                    ? "Suchzeitpunkt: "
+                      + updateInformation.UpdateSearchDate
+                          .Value.ToString("dd.MM.yyyy HH:mm")
+                      + " Uhr. "
+                    : string.Empty;
+
             findings.Add(
                 new CheckupFinding
                 {
@@ -47,18 +60,10 @@ public class WindowsUpdateAssessmentRule :
                         "Windows-Updatesuche durchgeführt",
 
                     Description =
-                        updateInformation.UpdateSearchDate.HasValue
-                            ? "Eine Windows-Updatesuche wurde "
-                              + "erfolgreich durchgeführt. "
-                              + "Suchzeitpunkt: "
-                              + updateInformation
-                                  .UpdateSearchDate
-                                  .Value
-                                  .ToString(
-                                      "dd.MM.yyyy HH:mm")
-                              + " Uhr."
-                            : "Eine Windows-Updatesuche wurde "
-                              + "erfolgreich durchgeführt.",
+                        "Eine Windows-Updatesuche wurde "
+                        + "erfolgreich durchgeführt. "
+                        + searchDateText
+                        + updateInformation.UpdateSearchDetails,
 
                     Category =
                         FindingCategory.OperatingSystem,
@@ -124,14 +129,15 @@ public class WindowsUpdateAssessmentRule :
                     "Der Checkup hat den lokal gespeicherten "
                     + "Windows-Updateverlauf, den Dienstzustand "
                     + "und vorhandene Neustartindikatoren "
-                    + "ausgewertet. Es wurde bewusst keine "
-                    + "Online-Updatesuche ausgelöst. Deshalb "
+                    + "ausgewertet. Es wurde keine erfolgreiche "
+                    + "Online-Updatesuche durchgeführt. Deshalb "
                     + "können auf den Microsoft- beziehungsweise "
                     + "konfigurierten Updateservern bereits "
                     + "neuere Updates verfügbar sein. Für eine "
-                    + "verbindliche Prüfung sollte Windows Update "
-                    + "bewusst geöffnet und dort nach Updates "
-                    + "gesucht werden.",
+                    + "zuverlässige Prüfung muss die "
+                    + "Windows-Updatesuche erfolgreich "
+                    + "abgeschlossen werden. "
+                    + updateInformation.UpdateSearchDetails,
 
                 Category =
                     FindingCategory.OperatingSystem,
@@ -145,6 +151,171 @@ public class WindowsUpdateAssessmentRule :
                 CauseGroup =
                     "system.windows-update.analysis-scope"
             });
+    }
+
+    private static void AddPendingUpdateFindings(
+        WindowsUpdateInformation updateInformation,
+        List<CheckupFinding> findings)
+    {
+        // Ohne vollständige erfolgreiche Suche darf
+        // keine Aussage über ausstehende Updates
+        // in die Systembewertung einfließen.
+        if (!updateInformation.IsUpdateSearchPerformed
+            || !updateInformation.IsUpdateSearchSuccessful)
+        {
+            return;
+        }
+
+        var detectedUpdates =
+            updateInformation.PendingUpdates
+            ?? new List<PendingWindowsUpdate>();
+
+        if (detectedUpdates.Count == 0)
+        {
+            // Eine leere Liste ist ausschließlich nach
+            // erfolgreicher Suche ein gültiges Ergebnis.
+            // Der Suchbefund dokumentiert diesen Zustand.
+            return;
+        }
+
+        var regularUpdates =
+            detectedUpdates
+                .Where(update => !update.IsOptional)
+                .ToList();
+
+        var optionalUpdates =
+            detectedUpdates
+                .Where(update => update.IsOptional)
+                .ToList();
+
+        if (regularUpdates.Count > 0)
+        {
+            var updateTitles =
+                BuildUpdateTitleSummary(
+                    regularUpdates);
+
+            findings.Add(
+                new CheckupFinding
+                {
+                    Code =
+                        "system.windows-update.pending-updates",
+
+                    Title =
+                        regularUpdates.Count == 1
+                            ? "1 Windows-Update ausstehend"
+                            : regularUpdates.Count
+                              + " Windows-Updates ausstehend",
+
+                    Description =
+                        "Die erfolgreiche Onlineprüfung "
+                        + "hat "
+                        + regularUpdates.Count
+                        + " noch nicht installierte, "
+                        + "regulär zugewiesene Windows-Updates "
+                        + "erkannt. "
+                        + "Diese sollten vor weiteren "
+                        + "Wartungsmaßnahmen einzeln geprüft "
+                        + "und gegebenenfalls installiert werden."
+                        + Environment.NewLine
+                        + Environment.NewLine
+                        + updateTitles
+                        + Environment.NewLine
+                        + Environment.NewLine
+                        + "Die Updates wurden durch den Checkup "
+                        + "nicht automatisch installiert. "
+                        + "Die endgültige Dringlichkeit wird "
+                        + "erst im Bewertungsmodell V2 anhand "
+                        + "zusätzlicher Kriterien bestimmt.",
+
+                    Category =
+                        FindingCategory.OperatingSystem,
+
+                    Severity =
+                        FindingSeverity.Recommendation,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.SystemCondition,
+
+                    CauseGroup =
+                        "system.windows-update.pending-updates"
+                });
+        }
+
+        if (optionalUpdates.Count > 0)
+        {
+            findings.Add(
+                new CheckupFinding
+                {
+                    Code =
+                        "system.windows-update.optional-updates",
+
+                    Title =
+                        optionalUpdates.Count == 1
+                            ? "1 optionales Windows-Update erkannt"
+                            : optionalUpdates.Count
+                              + " optionale Windows-Updates erkannt",
+
+                    Description =
+                        "Unter den regulär zugewiesenen "
+                        + "Suchergebnissen wurden "
+                        + optionalUpdates.Count
+                        + " Updates als optional eingeordnet. "
+                        + "Sie werden derzeit nicht als "
+                        + "Wartungsmangel bewertet."
+                        + Environment.NewLine
+                        + Environment.NewLine
+                        + BuildUpdateTitleSummary(
+                            optionalUpdates)
+                        + Environment.NewLine
+                        + Environment.NewLine
+                        + "Diese Angabe stellt keine "
+                        + "vollständige Suche nach allen "
+                        + "optionalen Windows-Updates dar.",
+
+                    Category =
+                        FindingCategory.OperatingSystem,
+
+                    Severity =
+                        FindingSeverity.Information,
+
+                    AssessmentTarget =
+                        FindingAssessmentTarget.InformationOnly,
+
+                    CauseGroup =
+                        "system.windows-update.optional-updates"
+                });
+        }
+    }
+
+    private static string BuildUpdateTitleSummary(
+        IReadOnlyCollection<PendingWindowsUpdate> updates)
+    {
+        const int MaximumDisplayedUpdates = 8;
+
+        var titles =
+            updates
+                .Take(MaximumDisplayedUpdates)
+                .Select(update =>
+                    string.IsNullOrWhiteSpace(update.Title)
+                        ? "Unbenanntes Windows-Update"
+                        : update.Title.Trim())
+                .Select(title => "• " + title)
+                .ToList();
+
+        var remainingCount =
+            updates.Count - titles.Count;
+
+        if (remainingCount > 0)
+        {
+            titles.Add(
+                "• sowie "
+                + remainingCount
+                + " weitere Updates");
+        }
+
+        return string.Join(
+            Environment.NewLine,
+            titles);
     }
 
     private static void AddServiceFinding(
@@ -166,8 +337,7 @@ public class WindowsUpdateAssessmentRule :
                         Description =
                             "Der Windows-Update-Dienst wird "
                             + "derzeit ausgeführt. "
-                            + updateInformation
-                                .ServiceStatusDetails,
+                            + updateInformation.ServiceStatusDetails,
 
                         Category =
                             FindingCategory.OperatingSystem,
@@ -198,8 +368,7 @@ public class WindowsUpdateAssessmentRule :
                             + "momentan nicht. Das ist bei einem "
                             + "bedarfsgesteuerten Windows-Dienst "
                             + "nicht automatisch fehlerhaft. "
-                            + updateInformation
-                                .ServiceStatusDetails,
+                            + updateInformation.ServiceStatusDetails,
 
                         Category =
                             FindingCategory.OperatingSystem,
@@ -260,14 +429,12 @@ public class WindowsUpdateAssessmentRule :
 
                         Description =
                             string.IsNullOrWhiteSpace(
-                                updateInformation
-                                    .ServiceStatusDetails)
+                                updateInformation.ServiceStatusDetails)
                                 ? "Der Zustand des "
                                   + "Windows-Update-Dienstes "
                                   + "konnte nicht zuverlässig "
                                   + "ermittelt werden."
-                                : updateInformation
-                                    .ServiceStatusDetails,
+                                : updateInformation.ServiceStatusDetails,
 
                         Category =
                             FindingCategory.OperatingSystem,

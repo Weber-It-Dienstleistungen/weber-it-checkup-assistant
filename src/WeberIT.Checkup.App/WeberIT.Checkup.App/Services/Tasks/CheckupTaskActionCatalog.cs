@@ -1,4 +1,5 @@
-﻿using WeberIT.Checkup.App.Models;
+﻿
+using WeberIT.Checkup.App.Models;
 
 namespace WeberIT.Checkup.App.Services.Tasks;
 
@@ -128,6 +129,25 @@ public static class CheckupTaskActionCatalog
                     + "der Windows-Ausgabe kann Kompatibilitätsprobleme "
                     + "oder zusätzlichen Lizenzbedarf verursachen.",
                     CheckupTaskActionRiskLevel.High,
+                    mayRequireRestart: true),
+
+            "task.windows-update.pending-updates" =>
+                CreateGuidedDefinition(
+                    taskCode,
+                    "action.windows-update.pending-review",
+                    "Ausstehende Windows-Updates geführt prüfen",
+                    "Die Windows-Update-Hauptseite wird geöffnet, "
+                    + "damit die vom Checkup erkannten ausstehenden "
+                    + "Aktualisierungen mit dem aktuellen Windows-"
+                    + "Status abgeglichen werden können. "
+                    + "Der Checkup selbst installiert keine Updates.",
+                    "Windows Update kann je nach Systemeinstellung "
+                    + "Aktualisierungen automatisch suchen, "
+                    + "herunterladen oder installieren. "
+                    + "Vor einer Installation sind mögliche "
+                    + "Kompatibilitätsprobleme und ein später "
+                    + "erforderlicher Neustart zu berücksichtigen.",
+                    CheckupTaskActionRiskLevel.Medium,
                     mayRequireRestart: true),
 
             "task.windows-update.recent-failures" =>

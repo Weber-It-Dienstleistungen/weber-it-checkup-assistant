@@ -269,6 +269,53 @@ public sealed class BrandedCustomerCheckupPdfReportService :
             };
 
         /*
+         * Neue Programmupdate-Ausnahmen werden
+         * vollständig in die temporäre Berichtssicht
+         * übernommen.
+         *
+         * Auch die einzelnen Ausnahmeobjekte
+         * erhalten unabhängige Instanzen.
+         * Die archivierten Originaldaten bleiben
+         * dadurch unverändert.
+         */
+        var reportProgramUpdateExceptions =
+            source.ProgramUpdateExceptions
+                .Select(approval =>
+                    new ProgramUpdateException
+                    {
+                        Id =
+                            approval.Id,
+
+                        CheckupVisitId =
+                            approval.CheckupVisitId,
+
+                        PackageId =
+                            approval.PackageId,
+
+                        PackageName =
+                            approval.PackageName,
+
+                        InstalledVersion =
+                            approval.InstalledVersion,
+
+                        AvailableVersion =
+                            approval.AvailableVersion,
+
+                        Source =
+                            approval.Source,
+
+                        Reason =
+                            approval.Reason,
+
+                        TechnicianNote =
+                            approval.TechnicianNote,
+
+                        ApprovedAt =
+                            approval.ApprovedAt
+                    })
+                .ToList();
+
+        /*
          * Auch der Checkup-Vorgang erhält für die
          * PDF-Ausgabe eine separate Objektinstanz.
          *
@@ -311,7 +358,10 @@ public sealed class BrandedCustomerCheckupPdfReportService :
                 source.NextCheckupDate,
 
             CancellationReason =
-                source.CancellationReason
+                source.CancellationReason,
+
+            ProgramUpdateExceptions =
+                reportProgramUpdateExceptions
         };
     }
 
