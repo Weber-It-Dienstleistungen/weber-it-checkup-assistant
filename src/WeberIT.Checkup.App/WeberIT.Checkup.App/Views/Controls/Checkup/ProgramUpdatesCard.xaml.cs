@@ -2,8 +2,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Threading;
 using WeberIT.Checkup.App.Models;
+using WeberIT.Checkup.App.Services.Assessment;
 using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.ViewModels;
 using WeberIT.Checkup.App.Views.Dialogs;
@@ -15,9 +18,17 @@ public partial class ProgramUpdatesCard : UserControl
     private const string ProgramUpdateTaskCode =
         "task.program-updates.available";
 
+    private const string ExceptionMarkerTag =
+        "WeberIT.ProgramUpdateExceptionMarker";
+
+    private const string ExtendedGridTag =
+        "WeberIT.ProgramUpdateExceptionExtendedGrid";
+
     private Button? _exceptionButton;
 
     private TextBlock? _exceptionStatusText;
+
+    private ItemsControl? _programUpdatesItemsControl;
 
     public ProgramUpdatesCard()
     {
@@ -44,6 +55,27 @@ public partial class ProgramUpdatesCard : UserControl
                 is not StackPanel contentPanel)
         {
             return;
+        }
+
+        /*
+         * Wir verwenden die bereits vorhandene
+         * Programmliste aus dem XAML.
+         *
+         * Dadurch müssen wir weder den Scan
+         * verändern noch eine zweite Programmliste
+         * erzeugen.
+         */
+        _programUpdatesItemsControl =
+            contentPanel.Children
+                .OfType<ItemsControl>()
+                .FirstOrDefault();
+
+        if (_programUpdatesItemsControl is not null)
+        {
+            _programUpdatesItemsControl
+                .ItemContainerGenerator
+                .StatusChanged +=
+                    ProgramUpdateItemContainers_OnStatusChanged;
         }
 
         var exceptionPanel = new StackPanel
@@ -137,6 +169,10 @@ public partial class ProgramUpdatesCard : UserControl
             exceptionPanel);
     }
 
+    // =====================================================
+    // LEBENSZYKLUS DER OBERFLÄCHE
+    // =====================================================
+
     private void ProgramUpdatesCard_OnLoaded(
         object sender,
         RoutedEventArgs e)
@@ -151,6 +187,31 @@ public partial class ProgramUpdatesCard : UserControl
         UpdateExceptionControls();
     }
 
+    private void ProgramUpdateItemContainers_OnStatusChanged(
+        object? sender,
+        EventArgs e)
+    {
+        if (_programUpdatesItemsControl
+                ?.ItemContainerGenerator.Status
+            != GeneratorStatus.ContainersGenerated)
+        {
+            return;
+        }
+
+        /*
+         * Die Einträge werden erst ergänzt,
+         * nachdem WPF ihre Darstellung
+         * vollständig aufgebaut hat.
+         */
+        Dispatcher.BeginInvoke(
+            new Action(UpdateExceptionControls),
+            DispatcherPriority.Loaded);
+    }
+
+    // =====================================================
+    // TECHNIKER-AUSNAHMEN: STATUSANZEIGE
+    // =====================================================
+
     private void UpdateExceptionControls()
     {
         if (_exceptionButton is null
@@ -161,18 +222,10 @@ public partial class ProgramUpdatesCard : UserControl
 
         if (!TryResolveCustomerContext(
                 out var viewModel,
-                out var session,
+                out _,
                 out var visit)
             || DataContext
-                is not ProgramUpdateInformation information
-            || viewModel.IsScanRunning
-            || !visit.IsInProgress
-            || visit.IsCompletionPrepared
-            || information.IsWingetAvailable != true
-            || !information.IsAnalysisPerformed
-            || !information.IsAnalysisSuccessful
-            || information.AvailableUpdateCount <= 0
-            || information.AvailableUpdates.Count == 0)
+                is not ProgramUpdateInformation information)
         {
             _exceptionButton.Visibility =
                 Visibility.Collapsed;
@@ -180,38 +233,388 @@ public partial class ProgramUpdatesCard : UserControl
             _exceptionStatusText.Visibility =
                 Visibility.Collapsed;
 
+            /*
+             * Ohne eindeutigen Kundenvorgang
+             * dürfen keine Ausnahmemarkierungen
+             * angezeigt werden.
+             */
+            UpdateProgramUpdateRowMarkers(null);
+
             return;
         }
 
-        var documentedCount =
-            visit.ProgramUpdateExceptions.Count(
-                approval =>
-                    approval.CheckupVisitId == visit.Id);
+        var evaluation =
+            ProgramUpdateExceptionEvaluationService
+                .Evaluate(
+                    information,
+                    visit);
 
-        _exceptionButton.Visibility =
-            Visibility.Visible;
+        var summary =
+            evaluation.SummaryText;
+
+        summary +=
+            Environment.NewLine
+            + Environment.NewLine
+            + "Technischer Systemscore: "
+            + "Die ursprüngliche Bewertung "
+            + "berücksichtigt weiterhin alle "
+            + "tatsächlich ausstehenden Updates. "
+            + "Dokumentierte Ausnahmen verändern "
+            + "den technischen Score derzeit nicht.";
+
+        if (visit.IsCompletionPrepared)
+        {
+            summary +=
+                Environment.NewLine
+                + Environment.NewLine
+                + "Der Abschlussentwurf wurde bereits "
+                + "vorbereitet. Technikerentscheidungen "
+                + "können in diesem Zustand "
+                + "nicht mehr verändert werden.";
+        }
+
+        _exceptionStatusText.Text =
+            summary;
 
         _exceptionStatusText.Visibility =
             Visibility.Visible;
 
-        _exceptionStatusText.Text =
-            documentedCount == 0
-                ? "Noch keine Ausnahmen dokumentiert. "
-                  + "Der Systemscore berücksichtigt "
-                  + "weiterhin alle erkannten "
-                  + "Programmaktualisierungen."
-                : documentedCount == 1
-                    ? "Eine Programmupdate-Ausnahme "
-                      + "ist in diesem Kundencheckup "
-                      + "dokumentiert. Die Auswirkung "
-                      + "auf den Systemscore ist "
-                      + "noch nicht aktiviert."
-                    : $"{documentedCount} "
-                      + "Programmupdate-Ausnahmen "
-                      + "sind in diesem Kundencheckup "
-                      + "dokumentiert. Die Auswirkung "
-                      + "auf den Systemscore ist "
-                      + "noch nicht aktiviert.";
+        var canEditExceptions =
+            !viewModel.IsScanRunning
+            && visit.IsInProgress
+            && !visit.IsCompletionPrepared
+            && evaluation.IsAnalysisReliable
+            && information.AvailableUpdateCount > 0
+            && information.AvailableUpdates.Count > 0;
+
+        _exceptionButton.Visibility =
+            canEditExceptions
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+        /*
+         * Die Einzelmarkierungen werden ebenfalls
+         * aus der aktuellen gespeicherten
+         * Technikerentscheidung berechnet.
+         */
+        UpdateProgramUpdateRowMarkers(
+            evaluation.IsAnalysisReliable
+                ? visit
+                : null);
+    }
+
+    // =====================================================
+    // SCHRITT 28: PROGRAMME DIREKT KENNZEICHNEN
+    // =====================================================
+
+    /// <summary>
+    /// Ergänzt die tatsächlich sichtbaren
+    /// Programmzeilen um eine Kennzeichnung
+    /// bei gültigen Technikerentscheidungen.
+    ///
+    /// Die ursprünglichen Programmdaten,
+    /// Befunde und Scores bleiben unverändert.
+    /// </summary>
+    private void UpdateProgramUpdateRowMarkers(
+        CustomerCheckupVisit? visit)
+    {
+        if (_programUpdatesItemsControl is null)
+        {
+            return;
+        }
+
+        foreach (var item
+                 in _programUpdatesItemsControl.Items)
+        {
+            if (item is not AvailableProgramUpdate update)
+            {
+                continue;
+            }
+
+            var container =
+                _programUpdatesItemsControl
+                    .ItemContainerGenerator
+                    .ContainerFromItem(update);
+
+            if (container is null)
+            {
+                continue;
+            }
+
+            if (container is FrameworkElement element)
+            {
+                element.ApplyTemplate();
+            }
+
+            var updateGrid =
+                FindUpdateEntryGrid(container);
+
+            if (updateGrid is null)
+            {
+                continue;
+            }
+
+            ProgramUpdateException? matchingException =
+                null;
+
+            if (visit is not null)
+            {
+                matchingException =
+                    visit.ProgramUpdateExceptions
+                        .Where(approval =>
+                            approval is not null
+                            && approval.AppliesTo(
+                                visit.Id,
+                                update))
+                        .OrderByDescending(
+                            approval =>
+                                approval.ApprovedAt)
+                        .FirstOrDefault();
+            }
+
+            UpdateSingleRowMarker(
+                updateGrid,
+                matchingException);
+        }
+    }
+
+    /// <summary>
+    /// Findet das ursprüngliche Fünf-Spalten-Grid
+    /// einer Programmzeile.
+    ///
+    /// Die fünf Spalten enthalten:
+    /// Programmname, Paket-ID, installierte
+    /// Version, Pfeil und verfügbare Version.
+    /// </summary>
+    private static Grid? FindUpdateEntryGrid(
+        DependencyObject root)
+    {
+        if (root is Grid grid
+            && grid.ColumnDefinitions.Count == 5)
+        {
+            return grid;
+        }
+
+        var childrenCount =
+            VisualTreeHelper.GetChildrenCount(root);
+
+        for (var index = 0;
+             index < childrenCount;
+             index++)
+        {
+            var child =
+                VisualTreeHelper.GetChild(
+                    root,
+                    index);
+
+            var matchingGrid =
+                FindUpdateEntryGrid(child);
+
+            if (matchingGrid is not null)
+            {
+                return matchingGrid;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Fügt die Kennzeichnung hinzu oder
+    /// entfernt sie nach dem Widerruf.
+    /// </summary>
+    private static void UpdateSingleRowMarker(
+        Grid updateGrid,
+        ProgramUpdateException? approval)
+    {
+        var existingMarker =
+            updateGrid.Children
+                .OfType<Border>()
+                .FirstOrDefault(border =>
+                    string.Equals(
+                        border.Tag as string,
+                        ExceptionMarkerTag,
+                        StringComparison.Ordinal));
+
+        /*
+         * Vorhandene Markierung zuerst entfernen.
+         *
+         * So werden auch geänderte Begründungen
+         * unmittelbar korrekt dargestellt.
+         */
+        if (existingMarker is not null)
+        {
+            updateGrid.Children.Remove(
+                existingMarker);
+        }
+
+        if (approval is null)
+        {
+            /*
+             * Nach dem Widerruf wird die Zeile
+             * wieder vollständig in ihren
+             * ursprünglichen Zustand versetzt.
+             */
+            if (string.Equals(
+                    updateGrid.Tag as string,
+                    ExtendedGridTag,
+                    StringComparison.Ordinal))
+            {
+                updateGrid.RowDefinitions.Clear();
+
+                updateGrid.Tag = null;
+            }
+
+            return;
+        }
+
+        /*
+         * Das bestehende Layout bleibt in Zeile 0.
+         * Die neue Kennzeichnung wird darunter
+         * in einer zusätzlichen Zeile angezeigt.
+         */
+        if (!string.Equals(
+                updateGrid.Tag as string,
+                ExtendedGridTag,
+                StringComparison.Ordinal))
+        {
+            if (updateGrid.RowDefinitions.Count != 0)
+            {
+                /*
+                 * Ein unerwartet abweichendes
+                 * Template verändern wir nicht.
+                 */
+                return;
+            }
+
+            updateGrid.RowDefinitions.Add(
+                new RowDefinition
+                {
+                    Height = GridLength.Auto
+                });
+
+            updateGrid.RowDefinitions.Add(
+                new RowDefinition
+                {
+                    Height = GridLength.Auto
+                });
+
+            updateGrid.Tag =
+                ExtendedGridTag;
+        }
+
+        var markerBackground =
+            new SolidColorBrush(
+                Color.FromRgb(45, 44, 44));
+
+        var markerBorder =
+            new SolidColorBrush(
+                Color.FromRgb(158, 112, 44));
+
+        var markerAccent =
+            new SolidColorBrush(
+                Color.FromRgb(255, 194, 99));
+
+        var markerText =
+            new SolidColorBrush(
+                Color.FromRgb(225, 231, 240));
+
+        var markerPanel = new StackPanel();
+
+        var markerTitle = new TextBlock
+        {
+            Text =
+                "Begründet zurückgestellt "
+                + "· Aktualisierung weiterhin ausstehend",
+
+            FontWeight =
+                FontWeights.SemiBold,
+
+            FontSize = 12,
+
+            Foreground = markerAccent,
+
+            TextWrapping =
+                TextWrapping.Wrap
+        };
+
+        markerPanel.Children.Add(
+            markerTitle);
+
+        var reasonText = new TextBlock
+        {
+            Text =
+                "Begründung: "
+                + approval.Reason,
+
+            Margin =
+                new Thickness(0, 5, 0, 0),
+
+            FontSize = 11,
+
+            Foreground = markerText,
+
+            TextWrapping = TextWrapping.Wrap
+        };
+
+        markerPanel.Children.Add(
+            reasonText);
+
+        if (!string.IsNullOrWhiteSpace(
+                approval.TechnicianNote))
+        {
+            var noteText = new TextBlock
+            {
+                Text =
+                    "Technikernotiz: "
+                    + approval.TechnicianNote,
+
+                Margin =
+                    new Thickness(0, 4, 0, 0),
+
+                FontSize = 11,
+
+                Foreground = markerText,
+
+                TextWrapping =
+                    TextWrapping.Wrap
+            };
+
+            markerPanel.Children.Add(
+                noteText);
+        }
+
+        var marker = new Border
+        {
+            Tag = ExceptionMarkerTag,
+
+            Margin =
+                new Thickness(0, 12, 0, 0),
+
+            Padding =
+                new Thickness(12, 9, 12, 9),
+
+            Background = markerBackground,
+
+            BorderBrush = markerBorder,
+
+            BorderThickness =
+                new Thickness(1),
+
+            CornerRadius =
+                new CornerRadius(6),
+
+            Child = markerPanel
+        };
+
+        Grid.SetRow(marker, 1);
+
+        Grid.SetColumn(marker, 0);
+
+        Grid.SetColumnSpan(marker, 5);
+
+        updateGrid.Children.Add(
+            marker);
     }
 
     // =====================================================
@@ -227,15 +630,6 @@ public partial class ProgramUpdatesCard : UserControl
         session = null!;
         visit = null!;
 
-        /*
-         * Die WinGet-Karte wird sowohl bei einem
-         * kundenunabhängigen Diagnosecheckup als
-         * auch im Fenster eines Kundengeräts benutzt.
-         *
-         * Ausnahmen dürfen ausschließlich einem
-         * gespeicherten Kundencheckup zugeordnet
-         * werden.
-         */
         if (Window.GetWindow(this)?.DataContext
                 is not CustomerDevicesViewModel
                     customerDevicesViewModel)
@@ -349,13 +743,9 @@ public partial class ProgramUpdatesCard : UserControl
             }
 
             /*
-             * Nach dem Dialog wird der Kontext
-             * erneut kontrolliert.
-             *
-             * Dadurch wird vermieden, dass eine
-             * Entscheidung versehentlich an ein
-             * inzwischen anderes Gerät gebunden
-             * wird.
+             * Nach der Entscheidung wird geprüft,
+             * ob noch derselbe Kundencheckup
+             * bearbeitet wird.
              */
             if (!TryResolveCustomerContext(
                     out var currentViewModel,
@@ -442,14 +832,6 @@ public partial class ProgramUpdatesCard : UserControl
                 + "nicht verändert werden.");
         }
 
-        /*
-         * Zuerst wird ausschließlich eine
-         * unabhängige Vorgangskopie bearbeitet.
-         *
-         * Die bisher gespeicherte Entscheidung
-         * bleibt bis zum eigentlichen
-         * Speicherversuch unverändert.
-         */
         var updatedVisit =
             visit.CreateIndependentCopy();
 
@@ -520,15 +902,6 @@ public partial class ProgramUpdatesCard : UserControl
         var previousUpdatedAt =
             device.UpdatedAt;
 
-        /*
-         * Der bisherige Vorgang wird in der
-         * Sitzung durch die vorbereitete Kopie
-         * ersetzt.
-         *
-         * Schlägt das anschließende Speichern
-         * fehl, wird die ursprüngliche Liste
-         * vollständig wiederhergestellt.
-         */
         session.CustomerCheckupVisits =
             previousVisits
                 .Select(storedVisit =>
@@ -578,10 +951,6 @@ public partial class ProgramUpdatesCard : UserControl
             throw;
         }
 
-        /*
-         * Erst ab hier ist die Entscheidung
-         * erfolgreich gespeichert.
-         */
         var successMessage =
             dialog.SelectedAction
                 == ProgramUpdateExceptionDialogAction.Approve
@@ -597,8 +966,8 @@ public partial class ProgramUpdatesCard : UserControl
             + Environment.NewLine
             + Environment.NewLine
             + "Die erkannten Programmupdates "
-            + "und der Systemscore bleiben "
-            + "vorerst unverändert.",
+            + "und der technische Systemscore "
+            + "bleiben unverändert.",
             "Technikerentscheidung gespeichert",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
@@ -688,8 +1057,7 @@ public partial class ProgramUpdatesCard : UserControl
                     checkupSession.TaskList)
                 {
                     Owner =
-                        Window.GetWindow(
-                            this)
+                        Window.GetWindow(this)
                 };
 
             dialog.ShowDialog();
@@ -706,15 +1074,14 @@ public partial class ProgramUpdatesCard : UserControl
         }
     }
 
+    // =====================================================
+    // CHECKUP-KONTEXT AUFLÖSEN
+    // =====================================================
+
     private CheckupSession? ResolveCheckupSession(
         ProgramUpdateInformation
             programUpdateInformation)
     {
-        /*
-         * Gespeicherter Kundencheckup:
-         * Die Programmupdates gehören zum
-         * aktuell ausgewählten Kundengerät.
-         */
         if (TryResolveCustomerContext(
                 out _,
                 out var customerSession,
@@ -726,10 +1093,6 @@ public partial class ProgramUpdatesCard : UserControl
             return customerSession;
         }
 
-        /*
-         * Kundenunabhängiger Diagnosecheckup:
-         * Bisherige Auflösung beibehalten.
-         */
         DependencyObject? current =
             this;
 
@@ -769,6 +1132,10 @@ public partial class ProgramUpdatesCard : UserControl
 
         return null;
     }
+
+    // =====================================================
+    // FEHLERMELDUNGEN
+    // =====================================================
 
     private void ShowError(
         string title,
