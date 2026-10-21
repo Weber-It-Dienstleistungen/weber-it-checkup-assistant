@@ -158,6 +158,9 @@ public sealed class CustomerCheckupPdfReportService :
     {
         var comparison = visit.Comparison!;
 
+        var programUpdateReport =
+            CustomerCheckupProgramUpdateReportService.Create(visit);
+
         var document = new Document();
 
         document.Info.Title =
@@ -195,6 +198,10 @@ public sealed class CustomerCheckupPdfReportService :
         AddCustomerSummary(
             customerSection,
             comparison);
+
+        AddCustomerProgramUpdateDecisions(
+            customerSection,
+            programUpdateReport);
 
         AddTechnicianSummary(
             customerSection,
@@ -252,6 +259,10 @@ public sealed class CustomerCheckupPdfReportService :
         AddTasks(
             appendixSection,
             comparison);
+
+        AddProgramUpdateDecisions(
+            appendixSection,
+            programUpdateReport);
 
         AddComparisonNotes(
             appendixSection,
@@ -441,6 +452,22 @@ public sealed class CustomerCheckupPdfReportService :
                 summary.CheckupCoverageText,
                 MutedTextColor);
         }
+    }
+
+    private static void AddCustomerProgramUpdateDecisions(
+        Section section,
+        CustomerCheckupProgramUpdateReportData report)
+    {
+        if (!report.HasDocumentedDecisions)
+        {
+            return;
+        }
+
+        AddCallout(
+            section,
+            "Bewusst zurückgestellte Programmupdates",
+            report.CustomerSummary,
+            WarningColor);
     }
 
     private static bool HasCriticalOpenFindings(
@@ -1235,6 +1262,102 @@ public sealed class CustomerCheckupPdfReportService :
         AddSpacer(section, 5);
     }
 
+    private static void AddProgramUpdateDecisions(
+        Section section,
+        CustomerCheckupProgramUpdateReportData report)
+    {
+        if (!report.HasDocumentedDecisions)
+        {
+            return;
+        }
+
+        AddSectionHeading(
+            section,
+            "Dokumentierte Entscheidungen zu Programmupdates");
+
+        var introduction = section.AddParagraph(
+            "Diese Aktualisierungen wurden während des "
+            + "Kundencheckups bewusst zurückgestellt. "
+            + "Der Status beschreibt, was bei der "
+            + "Abschlusskontrolle ermittelt werden konnte. "
+            + "Eine Zurückstellung zählt nicht als "
+            + "erfolgreich installierte Aktualisierung.");
+
+        introduction.Format.Font.Color = MutedTextColor;
+        introduction.Format.SpaceAfter = Unit.FromPoint(6);
+
+        var table = CreateTable(
+            section,
+            4.3,
+            3.1,
+            4.2,
+            6.2);
+
+        AddHeaderRow(
+            table,
+            "Programm / Quelle",
+            "Versionsstand",
+            "Status bei Abschluss",
+            "Begründung / Technikerhinweis");
+
+        var rowIndex = 0;
+
+        foreach (var decision in report.Decisions)
+        {
+            var notes = new List<string>
+            {
+                SafeText(decision.Reason)
+            };
+
+            if (!string.IsNullOrWhiteSpace(
+                    decision.TechnicianNote))
+            {
+                notes.Add(
+                    "Technikerhinweis: "
+                    + decision.TechnicianNote.Trim());
+            }
+
+            notes.Add(
+                decision.WasDetectedAtBeginning switch
+                {
+                    true => "Im Eingangsscan erkannt",
+                    false => "Im Eingangsscan nicht zugeordnet",
+                    _ => "Eingangsscan nicht sicher zuordenbar"
+                });
+
+            notes.Add(
+                "Entscheidung vom "
+                + FormatDateTime(decision.ApprovedAt));
+
+            var row = AddDataRow(
+                table,
+                SafeText(decision.PackageName)
+                + " · "
+                + SafeText(decision.Source,
+                    "Quelle nicht dokumentiert"),
+                SafeText(decision.VersionText),
+                SafeText(decision.VerificationText),
+                string.Join(" · ", notes));
+
+            row.Cells[0].Format.Font.Bold = true;
+
+            row.Cells[2].Format.Font.Color =
+                decision.IsConfirmedStillPending
+                    ? WarningColor
+                    : MutedTextColor;
+
+            ShadeAlternatingRow(row, rowIndex++);
+        }
+
+        AddSpacer(section, 5);
+
+        AddCallout(
+            section,
+            "Fachliche Einordnung",
+            report.TechnicalNote,
+            MutedTextColor);
+    }
+
     private static void AddComparisonNotes(
         Section section,
         CustomerCheckupComparison comparison)
@@ -1691,7 +1814,7 @@ public sealed class CustomerCheckupPdfReportService :
 
             CustomerCheckupAreaComparisonStatus
                 .NewlyNeedsAttention =>
-                    "Neuer technischer Befund",
+                "Neuer technischer Befund",
 
             _ => "Technisch nicht direkt vergleichbar"
         };

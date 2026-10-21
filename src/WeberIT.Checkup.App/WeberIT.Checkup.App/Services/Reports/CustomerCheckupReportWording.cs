@@ -6,6 +6,13 @@ namespace WeberIT.Checkup.App.Services.Reports;
 /// <summary>
 /// Einheitliche, kundenverständliche Bezeichnungen
 /// für den Weber-IT-Kundencheckup-Bericht.
+///
+/// Die Formulierungen unterscheiden ausdrücklich
+/// zwischen technischen Befunden, ausgeführten
+/// Arbeiten und der Zuverlässigkeit einer Kontrolle.
+///
+/// Technische Statuswerte und Bewertungen werden
+/// durch diese Klasse nicht verändert.
 /// </summary>
 public static class CustomerCheckupReportWording
 {
@@ -15,16 +22,16 @@ public static class CustomerCheckupReportWording
         return status switch
         {
             CustomerCheckupFindingComparisonStatus.Resolved =>
-                "Behoben",
+                "Nicht mehr festgestellt",
 
             CustomerCheckupFindingComparisonStatus.StillOpen =>
-                "Weiterhin zu beachten",
+                "Weiterhin vorhanden",
 
             CustomerCheckupFindingComparisonStatus.NewlyDetected =>
                 "Neu festgestellt",
 
             CustomerCheckupFindingComparisonStatus.NotReevaluatable =>
-                "Kontrolle noch offen",
+                "Nicht erneut auswertbar",
 
             CustomerCheckupFindingComparisonStatus.Informational =>
                 "Information",
@@ -62,27 +69,27 @@ public static class CustomerCheckupReportWording
         return status switch
         {
             CustomerCheckupAreaComparisonStatus.UnchangedHealthy =>
-                "Alles in Ordnung",
+                "Keine Auffälligkeiten erkannt",
 
             CustomerCheckupAreaComparisonStatus.Improved =>
-                "Verbessert",
+                "Technisch verbessert",
 
             CustomerCheckupAreaComparisonStatus
                 .ImprovedButStillNeedsAttention =>
-                    "Verbessert, weitere Prüfung empfohlen",
+                    "Verbessert, weitere Auffälligkeiten vorhanden",
 
             CustomerCheckupAreaComparisonStatus
                 .UnchangedNeedsAttention =>
-                    "Weiterhin zu beachten",
+                    "Weiterhin auffällig",
 
             CustomerCheckupAreaComparisonStatus.Worsened =>
-                "Verschlechtert",
+                "Technisch verschlechtert",
 
             CustomerCheckupAreaComparisonStatus.NewlyNeedsAttention =>
-                "Neuer Hinweis",
+                "Neue Auffälligkeit",
 
             CustomerCheckupAreaComparisonStatus.NotComparable =>
-                "Nicht vollständig geprüft",
+                "Nicht zuverlässig vergleichbar",
 
             _ =>
                 "Keine eindeutige Bewertung"
@@ -95,16 +102,16 @@ public static class CustomerCheckupReportWording
         return status switch
         {
             CustomerCheckupTaskComparisonStatus.Completed =>
-                "Erledigt",
+                "Als erledigt dokumentiert",
 
             CustomerCheckupTaskComparisonStatus.CompletedButStillDetected =>
-                "Bearbeitet, weitere Prüfung empfohlen",
+                "Bearbeitet, Befund weiterhin vorhanden",
 
             CustomerCheckupTaskComparisonStatus.StillOpen =>
-                "Noch offen",
+                "Aufgabe noch offen",
 
             CustomerCheckupTaskComparisonStatus.NoLongerDetected =>
-                "Problem nicht mehr festgestellt",
+                "Befund nicht mehr erkannt",
 
             CustomerCheckupTaskComparisonStatus.Skipped =>
                 "Nicht durchgeführt",
@@ -116,7 +123,7 @@ public static class CustomerCheckupReportWording
                 "Neu hinzugekommen",
 
             CustomerCheckupTaskComparisonStatus.NotReevaluatable =>
-                "Ergebnis noch nicht bestätigt",
+                "Ergebnis nicht erneut auswertbar",
 
             _ =>
                 "Nicht eindeutig bewertet"
@@ -128,11 +135,23 @@ public static class CustomerCheckupReportWording
     {
         ArgumentNullException.ThrowIfNull(score);
 
+        /*
+         * Ein direkter Vergleich ist nur zulässig,
+         * wenn das Vergleichsmodell diesen ausdrücklich
+         * als belastbar einstuft.
+         *
+         * Gleiche oder unterschiedliche Punktwerte
+         * begründen andernfalls keine Aussage über
+         * die Veränderung des technischen Zustands.
+         */
         if (!score.IsComparable
             || !score.Difference.HasValue)
         {
-            return "Die beiden Bewertungen lassen sich "
-                   + "nicht zuverlässig miteinander vergleichen.";
+            return "Die Bewertungen lassen sich nicht "
+                   + "zuverlässig miteinander vergleichen. "
+                   + "Aus den Punktwerten kann daher "
+                   + "keine gesicherte Verbesserung oder "
+                   + "Verschlechterung abgeleitet werden.";
         }
 
         return score.Difference.Value switch
@@ -152,9 +171,14 @@ public static class CustomerCheckupReportWording
     {
         return count switch
         {
-            0 => "Keine weiteren Auffälligkeiten",
-            1 => "1 Hinweis für das weitere Vorgehen",
-            _ => $"{count} Hinweise für das weitere Vorgehen"
+            0 =>
+                "Keine weiteren erfassten Hinweise",
+
+            1 =>
+                "1 Hinweis für das weitere Vorgehen",
+
+            _ =>
+                $"{count} Hinweise für das weitere Vorgehen"
         };
     }
 }

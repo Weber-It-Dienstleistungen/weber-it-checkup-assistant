@@ -9,6 +9,10 @@ namespace WeberIT.Checkup.App.Services.Reports;
 ///
 /// Scan-, Bewertungs- und Vergleichsdaten werden
 /// dabei nicht verändert.
+///
+/// Erfolgreiche Wartungsaktionen, erledigte Aufgaben
+/// und technisch nachgewiesene Verbesserungen
+/// werden ausdrücklich getrennt dargestellt.
 /// </summary>
 public sealed class CustomerCheckupCustomerSummary
 {
@@ -34,6 +38,10 @@ public sealed class CustomerCheckupCustomerSummary
     public int CompletedTaskCount { get; private set; }
 
     public int SuccessfulActionCount { get; private set; }
+
+    public int FailedActionCount { get; private set; }
+
+    public int CancelledActionCount { get; private set; }
 
     public bool HasOpenFindings =>
         OpenFindingCount > 0;
@@ -71,11 +79,20 @@ public sealed class CustomerCheckupCustomerSummary
                 task.WorkStatus == CheckupTaskStatus.Completed),
 
             SuccessfulActionCount =
-                comparison.SuccessfulActionCount
+                comparison.SuccessfulActionCount,
+
+            FailedActionCount =
+                comparison.FailedActionCount,
+
+            CancelledActionCount =
+                comparison.CancelledActionCount
         };
 
         summary.Headline =
-            BuildHeadline(comparison, findings);
+            BuildHeadline(
+                comparison,
+                findings,
+                areas);
 
         summary.ConditionText =
             BuildConditionText(comparison);
@@ -94,7 +111,8 @@ public sealed class CustomerCheckupCustomerSummary
 
     private static string BuildHeadline(
         CustomerCheckupComparison comparison,
-        IReadOnlyCollection<CustomerCheckupFindingComparison> findings)
+        IReadOnlyCollection<CustomerCheckupFindingComparison> findings,
+        IReadOnlyCollection<CustomerCheckupAreaComparison> areas)
     {
         var hasCriticalFindings = findings.Any(finding =>
             IsConfirmedOpen(finding)
@@ -132,6 +150,23 @@ public sealed class CustomerCheckupCustomerSummary
                    + "Es bestehen noch Empfehlungen.";
         }
 
+        /*
+         * Wenn keine offenen Befunde vorhanden sind,
+         * einzelne Prüfbereiche aber nicht verglichen
+         * werden konnten, behaupten wir keine
+         * uneingeschränkt vollständige Kontrolle.
+         */
+        if (areas.Any(area =>
+                area.Status ==
+                CustomerCheckupAreaComparisonStatus.NotComparable))
+        {
+            return "In den auswertbaren Prüfbereichen "
+                   + "wurden keine offenen Probleme "
+                   + "festgestellt. Einzelne Bereiche "
+                   + "konnten nicht vollständig "
+                   + "verglichen werden.";
+        }
+
         return "Bei der Abschlusskontrolle wurden "
                + "keine offenen technischen Probleme festgestellt.";
     }
@@ -144,7 +179,16 @@ public sealed class CustomerCheckupCustomerSummary
 
         var parts = new List<string>();
 
-        // Aktueller Zustand.
+        /*
+         * Die aktuellen Punktwerte dürfen genannt
+         * werden, auch wenn ein direkter Vergleich
+         * zwischen den Scans nicht möglich ist.
+         *
+         * Die Vergleichbarkeit entscheidet jedoch,
+         * ob wir eine Verbesserung oder
+         * Verschlechterung behaupten dürfen.
+         */
+
         if (systemScore.AfterScore.HasValue)
         {
             parts.Add(
@@ -171,13 +215,6 @@ public sealed class CustomerCheckupCustomerSummary
                 + "Punktbewertung vor.");
         }
 
-        // Die Veränderungen werden getrennt bewertet.
-        //
-        // Beispiel:
-        // System unverändert, Hardware verbessert.
-        //
-        // Eine unveränderte Systembewertung darf nicht
-        // automatisch für die Hardware gelten.
         parts.Add(
             BuildScoreChangeText(
                 systemScore,
@@ -195,12 +232,25 @@ public sealed class CustomerCheckupCustomerSummary
         CustomerCheckupScoreComparison score,
         string label)
     {
+        /*
+         * Unterschiedliche Punktzahlen sind für sich
+         * genommen kein Beleg einer Verbesserung,
+         * wenn die Datengrundlagen nicht vergleichbar
+         * sind.
+         *
+         * Das gilt ebenso für identische Punktzahlen:
+         * Ohne Vergleichbarkeit ist auch "unverändert"
+         * keine belastbare Aussage.
+         */
         if (!score.IsComparable
             || !score.Difference.HasValue)
         {
             return label
-                   + " lässt sich nicht zuverlässig "
-                   + "mit dem Eingangsscan vergleichen.";
+                   + " kann nicht zuverlässig mit "
+                   + "dem Eingangsscan verglichen werden. "
+                   + "Eine Verbesserung oder "
+                   + "Verschlechterung lässt sich daraus "
+                   + "nicht sicher ableiten.";
         }
 
         var difference = score.Difference.Value;
@@ -230,18 +280,32 @@ public sealed class CustomerCheckupCustomerSummary
     {
         var parts = new List<string>();
 
+        /*
+         * 1. Erledigte Aufgaben beschreiben den
+         *    dokumentierten Bearbeitungsstand.
+         *
+         * 2. Technische Aktionen beschreiben
+         *    protokollierte Ausführungsergebnisse.
+         *
+         * 3. Behobene Befunde setzen einen
+         *    entsprechenden technischen Nachweis
+         *    aus dem gespeicherten Vergleich voraus.
+         *
+         * Keine dieser Kategorien ersetzt die andere.
+         */
+
         if (summary.CompletedTaskCount > 0)
         {
             parts.Add(
                 summary.CompletedTaskCount == 1
-                    ? "Eine Aufgabe wurde als abgeschlossen dokumentiert."
+                    ? "Eine Aufgabe wurde als erledigt dokumentiert."
                     : $"{summary.CompletedTaskCount} Aufgaben wurden "
-                      + "als abgeschlossen dokumentiert.");
+                      + "als erledigt dokumentiert.");
         }
         else
         {
             parts.Add(
-                "Es wurden keine Aufgaben als abgeschlossen "
+                "Es wurden keine Aufgaben als erledigt "
                 + "dokumentiert.");
         }
 
@@ -249,26 +313,79 @@ public sealed class CustomerCheckupCustomerSummary
         {
             parts.Add(
                 summary.SuccessfulActionCount == 1
-                    ? "Eine technische Aktion wurde erfolgreich ausgeführt."
+                    ? "Eine technische Wartungsaktion "
+                      + "wurde erfolgreich ausgeführt."
                     : $"{summary.SuccessfulActionCount} technische "
-                      + "Aktionen wurden erfolgreich ausgeführt.");
+                      + "Wartungsaktionen wurden erfolgreich "
+                      + "ausgeführt.");
+        }
+
+        /*
+         * Fehlgeschlagene und abgebrochene Aktionen
+         * werden nicht verschwiegen, wenn gleichzeitig
+         * erfolgreiche Aktionen protokolliert sind.
+         */
+        if (summary.FailedActionCount > 0)
+        {
+            parts.Add(
+                summary.FailedActionCount == 1
+                    ? "Eine technische Aktion ist fehlgeschlagen."
+                    : $"{summary.FailedActionCount} technische "
+                      + "Aktionen sind fehlgeschlagen.");
+        }
+
+        if (summary.CancelledActionCount > 0)
+        {
+            parts.Add(
+                summary.CancelledActionCount == 1
+                    ? "Eine technische Aktion wurde abgebrochen."
+                    : $"{summary.CancelledActionCount} technische "
+                      + "Aktionen wurden abgebrochen.");
         }
 
         if (summary.ResolvedFindingCount > 0)
         {
             parts.Add(
                 summary.ResolvedFindingCount == 1
-                    ? "Ein zuvor festgestellter technischer Befund "
-                      + "war nach der Bearbeitung nicht mehr vorhanden."
-                    : $"{summary.ResolvedFindingCount} zuvor "
-                      + "festgestellte technische Befunde waren "
-                      + "nach der Bearbeitung nicht mehr vorhanden.");
+                    ? "Bei der Abschlusskontrolle war eine "
+                      + "zuvor festgestellte technische "
+                      + "Auffälligkeit nicht mehr nachweisbar."
+                    : $"Bei der Abschlusskontrolle waren "
+                      + $"{summary.ResolvedFindingCount} zuvor "
+                      + "festgestellte technische Auffälligkeiten "
+                      + "nicht mehr nachweisbar.");
         }
         else
         {
+            /*
+             * Wichtiges Ergebnis der Praxistests:
+             *
+             * Erfolgreiche Programmaktualisierungen,
+             * Bereinigungen oder Systemdateireparaturen
+             * können protokolliert sein, obwohl kein
+             * einzelner Bewertungsbefund als behoben
+             * bestätigt werden konnte.
+             *
+             * Deshalb wird aus "0 behobenen Befunden"
+             * ausdrücklich kein Misserfolg abgeleitet.
+             */
             parts.Add(
-                "Im Vorher-/Nachher-Vergleich wurde kein "
-                + "behobener technischer Befund festgestellt.");
+                "Bei der Abschlusskontrolle ließ sich "
+                + "keine zuvor festgestellte technische "
+                + "Auffälligkeit eindeutig als behoben "
+                + "bestätigen.");
+
+            if (summary.SuccessfulActionCount > 0
+                || summary.CompletedTaskCount > 0)
+            {
+                parts.Add(
+                    "Das bedeutet nicht, dass die "
+                    + "dokumentierten Wartungsarbeiten "
+                    + "erfolglos waren. Ausgeführte "
+                    + "Maßnahmen und bestätigte "
+                    + "Fehlerbehebungen werden getrennt "
+                    + "bewertet.");
+            }
         }
 
         return string.Join(" ", parts);
@@ -277,13 +394,17 @@ public sealed class CustomerCheckupCustomerSummary
     private static string BuildRecommendationText(
         IReadOnlyCollection<CustomerCheckupFindingComparison> findings)
     {
-        // Nachgewiesene offene Befunde.
+        /*
+         * Nur tatsächlich erneut erkannte offene
+         * Befunde werden als gesichert offen gezählt.
+         *
+         * Nicht erneut auswertbare Befunde bleiben
+         * eine separate Kategorie.
+         */
         var openFindings = findings
             .Where(IsConfirmedOpen)
             .ToList();
 
-        // Befunde ohne verlässliche erneute Auswertung
-        // gesondert behandeln.
         var uncertainCount = findings.Count(finding =>
             finding.Status ==
             CustomerCheckupFindingComparisonStatus.NotReevaluatable);
