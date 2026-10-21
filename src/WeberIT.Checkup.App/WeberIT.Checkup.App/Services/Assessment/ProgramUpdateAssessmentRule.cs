@@ -1,4 +1,5 @@
-﻿using WeberIT.Checkup.App.Models;
+﻿
+using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
 namespace WeberIT.Checkup.App.Services.Assessment;
@@ -162,8 +163,12 @@ public class ProgramUpdateAssessmentRule :
                         + "keine verfügbaren Aktualisierungen für erkannte "
                         + "Programme gemeldet. Microsoft-Store-Apps und "
                         + "Programme, die WinGet nicht zuordnen kann, sind "
-                        + "in dieser Aussage nicht enthalten. Es wurden "
-                        + "keine Quellenvereinbarungen automatisch akzeptiert.",
+                        + "in dieser Aussage nicht enthalten. "
+                        + "Bei der Abfrage wurde die WinGet-Option zum "
+                        + "automatischen Akzeptieren von "
+                        + "Quellenvereinbarungen verwendet. "
+                        + "Die Prüfung selbst hat keine Programme "
+                        + "installiert oder aktualisiert.",
 
                     Category =
                         FindingCategory.OperatingSystem,
@@ -258,13 +263,27 @@ public class ProgramUpdateAssessmentRule :
                 + $"• sowie {undisplayedUpdateCount} weitere";
         }
 
+        /*
+         * Die aktuelle WinGet-Analyse verwendet
+         * --accept-source-agreements.
+         *
+         * Wir dürfen deshalb nicht behaupten,
+         * Quellenvereinbarungen seien grundsätzlich
+         * nicht automatisch akzeptiert worden.
+         *
+         * Die reine Analyse startet jedoch keine
+         * Programminstallation und führt keine
+         * Programmaktualisierung aus.
+         */
         description +=
             Environment.NewLine
             + Environment.NewLine
             + "Microsoft-Store-Apps und Programme, die WinGet nicht "
             + "zuordnen kann, sind in dieser Aussage nicht enthalten. "
-            + "Es wurden weder Quellenvereinbarungen automatisch "
-            + "akzeptiert noch Programme aktualisiert.";
+            + "Für diese Prüfung wurde die WinGet-Option zum "
+            + "automatischen Akzeptieren von Quellenvereinbarungen "
+            + "verwendet. Die Analyse selbst hat keine Programme "
+            + "installiert oder aktualisiert.";
 
         if (!string.IsNullOrWhiteSpace(
             programUpdateInformation.WingetVersion))

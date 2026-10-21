@@ -20,6 +20,9 @@ public class ProgramUpdateInformationProvider :
 
     private const string WingetSourceName = "winget";
 
+    private const uint WingetNoApplicableUpdateCode =
+        0x8A15002B;
+
     private static readonly Regex AnsiEscapeSequenceRegex =
         new(
             @"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])",
@@ -29,24 +32,28 @@ public class ProgramUpdateInformationProvider :
     // durch mindestens zwei Leerzeichen aus.
     //
     // Anders als \S+ behandelt dieser Ausdruck
-    // auch "Available Version" oder
-    // "Verfügbare Version" als eine Spalte.
+    // auch mehrteilige Spaltennamen als eine Spalte.
     private static readonly Regex HeaderColumnRegex =
         new(
             @"\S(?:.*?\S)?(?=\s{2,}|$)",
             RegexOptions.Compiled);
 
-    // Unterstützte Zusammenfassungen beispielsweise:
+    // SCHRITT 40:
+    // Unterstützt sowohl:
     //
-    // 15 upgrades available.
-    // 15 updates available.
-    // 15 Aktualisierungen verfügbar.
     // 1 Aktualisierung verfügbar.
+    // 17 Aktualisierungen verfügbar.
+    // 1 upgrade available.
+    // 17 upgrades available.
     // 15 packages have upgrades available.
+    //
+    // Die bisherige Schreibweise
+    // "Aktualisierungen?" erkannte die deutsche
+    // Einzahl "Aktualisierung" nicht korrekt.
     private static readonly Regex ReportedUpdateCountRegex =
         new(
             @"^\s*(?<count>\d+)\s+"
-            + @"(?:(?:Aktualisierungen?|Upgrades?|Updates?)"
+            + @"(?:(?:Aktualisierung(?:en)?|Upgrades?|Updates?)"
             + @"\s+(?:verfügbar|available)"
             + @"|packages?\s+have\s+"
             + @"(?:upgrades?|updates?)\s+available)\b",
@@ -155,6 +162,12 @@ public class ProgramUpdateInformationProvider :
             return information;
         }
 
+        // Ein von null abweichender Rückgabecode
+        // bleibt zunächst ein nicht erfolgreich
+        // bestätigter Analysevorgang.
+        //
+        // Auch 0x8A15002B wird nicht pauschal
+        // als "keine Updates verfügbar" gewertet.
         if (analysisResult.ExitCode != 0)
         {
             information.IsAnalysisSuccessful = false;
@@ -195,16 +208,14 @@ public class ProgramUpdateInformationProvider :
                 + "überprüft werden. "
                 + reason
                 + " Deshalb wird keine Aussage über "
-                + "die Anzahl verfügbarer Updates getroffen."
-                + " Technische Ausgabe: "
-                + LimitTechnicalText(
-                    CleanOutput(
-                        analysisResult.StandardOutput));
+                + "die Anzahl verfügbarer Updates getroffen. "
+                + BuildFailureDetails(
+                    "Technische Prozessdaten:",
+                    analysisResult);
 
             return information;
         }
 
-        // Zusätzliche defensive Prüfung.
         // Erfolgreiche Tabellen müssen eine passende
         // WinGet-Gesamtzahl besitzen.
         if (parseResult.ReportedUpdateCount.HasValue
@@ -216,7 +227,10 @@ public class ProgramUpdateInformationProvider :
             information.AnalysisDetails =
                 "Die von WinGet gemeldete Gesamtzahl "
                 + "stimmt nicht mit den vollständig "
-                + "ausgewerteten Tabelleneinträgen überein.";
+                + "ausgewerteten Tabelleneinträgen überein. "
+                + BuildFailureDetails(
+                    "Technische Prozessdaten:",
+                    analysisResult);
 
             return information;
         }
@@ -802,8 +816,8 @@ public class ProgramUpdateInformationProvider :
         return value.Contains(
                    '…')
                || value.EndsWith(
-                   "...",
-                   StringComparison.Ordinal);
+                    "...",
+                    StringComparison.Ordinal);
     }
 
     private static List<string> ReadColumns(
@@ -978,29 +992,89 @@ public class ProgramUpdateInformationProvider :
         return details;
     }
 
+    /// <summary>
+    /// Erstellt eine nachvollziehbare Diagnose für
+    /// fehlgeschlagene WinGet-Aufrufe.
+    ///
+    /// Rückgabecode, Standardfehler und Standardausgabe
+    /// werden getrennt dokumentiert. Beide Ausgaben
+    /// werden aus Platzgründen begrenzt.
+    ///
+    /// Ein Fehler wird dadurch nicht zu einem
+    /// erfolgreichen Analyseergebnis umgedeutet.
+    /// </summary>
     private static string BuildFailureDetails(
         string summary,
         WingetExecutionResult result)
     {
-        var technicalDetails =
-            !string.IsNullOrWhiteSpace(
-                result.StandardError)
-                ? result.StandardError
-                : !string.IsNullOrWhiteSpace(
-                    result.StandardOutput)
-                    ? result.StandardOutput
-                    : result.ErrorMessage;
+        var details = new List<string>();
 
-        if (string.IsNullOrWhiteSpace(technicalDetails))
+        if (!string.IsNullOrWhiteSpace(summary))
         {
-            return summary;
+            details.Add(summary.Trim());
         }
 
-        return summary
-               + " Technische Details: "
-               + LimitTechnicalText(
-                   CleanOutput(
-                       technicalDetails));
+        if (result.ExitCode.HasValue)
+        {
+            var exitCode = result.ExitCode.Value;
+
+            var unsignedExitCode =
+                unchecked((uint)exitCode);
+
+            details.Add(
+                "WinGet-Rückgabecode: "
+                + exitCode.ToString(
+                    CultureInfo.InvariantCulture)
+                + " (0x"
+                + unsignedExitCode.ToString(
+                    "X8",
+                    CultureInfo.InvariantCulture)
+                + ").");
+
+            if (unsignedExitCode ==
+                WingetNoApplicableUpdateCode)
+            {
+                details.Add(
+                    "WinGet meldete den Rückgabecode "
+                    + "für eine nicht anwendbare "
+                    + "Aktualisierung. Daraus allein "
+                    + "lässt sich kein vollständig "
+                    + "erfolgreicher Update-Scan "
+                    + "mit null verfügbaren "
+                    + "Aktualisierungen ableiten.");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+                result.ErrorMessage))
+        {
+            details.Add(
+                "Prozessfehler: "
+                + LimitTechnicalText(
+                    result.ErrorMessage));
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+                result.StandardError))
+        {
+            details.Add(
+                "WinGet-Fehlerausgabe: "
+                + LimitTechnicalText(
+                    CleanOutput(
+                        result.StandardError)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+                result.StandardOutput))
+        {
+            details.Add(
+                "WinGet-Standardausgabe: "
+                + LimitTechnicalText(
+                    CleanOutput(
+                        result.StandardOutput)));
+        }
+
+        return string.Join(" ", details);
     }
 
     private static string BuildSuccessDetails(
