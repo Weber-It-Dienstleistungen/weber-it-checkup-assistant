@@ -28,6 +28,8 @@ public partial class ProgramUpdatesCard : UserControl
 
     private TextBlock? _exceptionStatusText;
 
+    private TextBlock? _workStatusText;
+
     private ItemsControl? _programUpdatesItemsControl;
 
     public ProgramUpdatesCard()
@@ -36,8 +38,7 @@ public partial class ProgramUpdatesCard : UserControl
 
         AddProgramUpdateExceptionPanel();
 
-        Loaded +=
-            ProgramUpdatesCard_OnLoaded;
+        Loaded += ProgramUpdatesCard_OnLoaded;
 
         DataContextChanged +=
             ProgramUpdatesCard_OnDataContextChanged;
@@ -58,8 +59,8 @@ public partial class ProgramUpdatesCard : UserControl
         }
 
         /*
-         * Die ursprüngliche Programmliste
-         * aus dem XAML bleibt erhalten.
+         * Die vorhandene technische Programmliste
+         * bleibt unverändert.
          */
         _programUpdatesItemsControl =
             contentPanel.Children
@@ -117,6 +118,41 @@ public partial class ProgramUpdatesCard : UserControl
 
         exceptionPanel.Children.Add(description);
 
+        // =============================================
+        // SCHRITT 31: FACHLICHER BEARBEITUNGSSTATUS
+        // =============================================
+
+        /*
+         * Die neue Statuszeile ist ausdrücklich
+         * unabhängig vom technischen Systemscore.
+         *
+         * Sie wird nur für einen eindeutig
+         * zugeordneten Kundencheckup angezeigt.
+         */
+        _workStatusText = new TextBlock
+        {
+            Margin = new Thickness(0, 16, 0, 0),
+
+            FontSize = 13,
+
+            FontWeight = FontWeights.SemiBold,
+
+            TextWrapping = TextWrapping.Wrap,
+
+            Visibility = Visibility.Collapsed
+        };
+
+        _workStatusText.SetResourceReference(
+            TextBlock.ForegroundProperty,
+            "AccentBrush");
+
+        exceptionPanel.Children.Add(
+            _workStatusText);
+
+        // =============================================
+        // AUSNAHMEN BEARBEITEN
+        // =============================================
+
         _exceptionButton = new Button
         {
             Content = "Ausnahmen dokumentieren",
@@ -143,9 +179,13 @@ public partial class ProgramUpdatesCard : UserControl
         exceptionPanel.Children.Add(
             _exceptionButton);
 
+        // =============================================
+        // AUSFÜHRLICHE STATUSBESCHREIBUNG
+        // =============================================
+
         _exceptionStatusText = new TextBlock
         {
-            Margin = new Thickness(0, 10, 0, 0),
+            Margin = new Thickness(0, 12, 0, 0),
 
             FontSize = 11,
 
@@ -166,7 +206,7 @@ public partial class ProgramUpdatesCard : UserControl
     }
 
     // =====================================================
-    // LEBENSZYKLUS DER OBERFLÄCHE
+    // LEBENSZYKLUS
     // =====================================================
 
     private void ProgramUpdatesCard_OnLoaded(
@@ -200,13 +240,14 @@ public partial class ProgramUpdatesCard : UserControl
     }
 
     // =====================================================
-    // TECHNIKER-AUSNAHMEN: STATUSANZEIGE
+    // SCHRITT 31: FACHLICHEN STATUS AKTUALISIEREN
     // =====================================================
 
     private void UpdateExceptionControls()
     {
         if (_exceptionButton is null
-            || _exceptionStatusText is null)
+            || _exceptionStatusText is null
+            || _workStatusText is null)
         {
             return;
         }
@@ -224,32 +265,53 @@ public partial class ProgramUpdatesCard : UserControl
             _exceptionStatusText.Visibility =
                 Visibility.Collapsed;
 
+            _workStatusText.Visibility =
+                Visibility.Collapsed;
+
             UpdateProgramUpdateRowMarkers(null);
 
             return;
         }
 
-        var evaluation =
-            ProgramUpdateExceptionEvaluationService
+        /*
+         * Der neue Dienst verwendet intern
+         * unsere bereits getestete
+         * Ausnahmeauswertung.
+         *
+         * Die Berechnung verändert keine
+         * gespeicherten technischen Befunde.
+         */
+        var workStatus =
+            ProgramUpdateWorkStatusService
                 .Evaluate(
                     information,
                     visit);
 
+        // =============================================
+        // FACHLICHER ENTSCHEIDUNGSSTATUS
+        // =============================================
+
+        _workStatusText.Text =
+            "Fachlicher Bearbeitungsstatus: "
+            + workStatus.StatusText;
+
+        _workStatusText.Visibility =
+            Visibility.Visible;
+
+        // =============================================
+        // DETAILLIERTE BESCHREIBUNG
+        // =============================================
+
         var summary =
-            evaluation.SummaryText;
+            workStatus.SummaryText;
 
         summary +=
             Environment.NewLine
             + Environment.NewLine
-            + "Technischer Systemscore: "
-            + "Die ursprüngliche Bewertung "
-            + "berücksichtigt weiterhin alle "
-            + "tatsächlich ausstehenden Updates. "
-            + "Dokumentierte Ausnahmen verändern "
-            + "den technischen Score derzeit nicht.";
+            + workStatus.TechnicalNoticeText;
 
-        if (evaluation.IsAnalysisReliable
-            && evaluation.ApplicableExceptionCount > 0)
+        if (workStatus.IsAnalysisReliable
+            && workStatus.DeferredUpdateCount is > 0)
         {
             summary +=
                 Environment.NewLine
@@ -278,11 +340,15 @@ public partial class ProgramUpdatesCard : UserControl
         _exceptionStatusText.Visibility =
             Visibility.Visible;
 
+        // =============================================
+        // BEARBEITUNGSBERECHTIGUNG
+        // =============================================
+
         var canEditExceptions =
             !viewModel.IsScanRunning
             && visit.IsInProgress
             && !visit.IsCompletionPrepared
-            && evaluation.IsAnalysisReliable
+            && workStatus.IsAnalysisReliable
             && information.AvailableUpdateCount > 0
             && information.AvailableUpdates.Count > 0;
 
@@ -291,8 +357,16 @@ public partial class ProgramUpdatesCard : UserControl
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
+        // =============================================
+        // PROGRAMMZEILEN AKTUALISIEREN
+        // =============================================
+
+        /*
+         * Die Einzelkennzeichnung aus Schritt 28
+         * bleibt unverändert erhalten.
+         */
         UpdateProgramUpdateRowMarkers(
-            evaluation.IsAnalysisReliable
+            workStatus.IsAnalysisReliable
                 ? visit
                 : null);
     }
@@ -301,14 +375,6 @@ public partial class ProgramUpdatesCard : UserControl
     // SCHRITT 28: PROGRAMME DIREKT KENNZEICHNEN
     // =====================================================
 
-    /// <summary>
-    /// Ergänzt die tatsächlich sichtbaren
-    /// Programmzeilen um eine Kennzeichnung
-    /// bei gültigen Technikerentscheidungen.
-    ///
-    /// Die ursprünglichen Programmdaten,
-    /// Befunde und Scores bleiben unverändert.
-    /// </summary>
     private void UpdateProgramUpdateRowMarkers(
         CustomerCheckupVisit? visit)
     {
@@ -372,14 +438,10 @@ public partial class ProgramUpdatesCard : UserControl
         }
     }
 
-    /// <summary>
-    /// Findet das ursprüngliche Fünf-Spalten-Grid
-    /// einer Programmzeile.
-    ///
-    /// Die fünf Spalten enthalten:
-    /// Programmname, Paket-ID, installierte
-    /// Version, Pfeil und verfügbare Version.
-    /// </summary>
+    // =====================================================
+    // PROGRAMM-GRID IM VISUAL TREE FINDEN
+    // =====================================================
+
     private static Grid? FindUpdateEntryGrid(
         DependencyObject root)
     {
@@ -413,10 +475,10 @@ public partial class ProgramUpdatesCard : UserControl
         return null;
     }
 
-    /// <summary>
-    /// Fügt die Kennzeichnung hinzu oder
-    /// entfernt sie nach dem Widerruf.
-    /// </summary>
+    // =====================================================
+    // PROGRAMMUPDATE-AUSNAHME VISUELL DARSTELLEN
+    // =====================================================
+
     private static void UpdateSingleRowMarker(
         Grid updateGrid,
         ProgramUpdateException? approval)
@@ -452,11 +514,11 @@ public partial class ProgramUpdatesCard : UserControl
         }
 
         /*
-         * Die vorhandenen fünf Spalten
-         * bleiben unverändert.
+         * Die ursprünglichen fünf Spalten
+         * bleiben in der ersten Grid-Zeile.
          *
-         * Die Begründung wird als zweite
-         * Zeile darunter angezeigt.
+         * Die Technikerentscheidung wird
+         * in einer zweiten Zeile ergänzt.
          */
         if (!string.Equals(
                 updateGrid.Tag as string,
@@ -612,12 +674,9 @@ public partial class ProgramUpdatesCard : UserControl
         visit = null!;
 
         /*
-         * Die WinGet-Karte wird auch beim
-         * allgemeinen Checkup verwendet.
-         *
-         * Ausnahmen dürfen nur einem
-         * gespeicherten Kundenvorgang
-         * zugeordnet werden.
+         * Außerhalb des Kundengerätefensters
+         * wird keine individuelle
+         * Technikerentscheidung ausgewertet.
          */
         if (Window.GetWindow(this)?.DataContext
                 is not CustomerDevicesViewModel
@@ -647,8 +706,7 @@ public partial class ProgramUpdatesCard : UserControl
             device.CheckupSession;
 
         if (DataContext
-                is not ProgramUpdateInformation
-                    information
+                is not ProgramUpdateInformation information
             || !ReferenceEquals(
                 deviceSession.ProgramUpdateInformation,
                 information))
@@ -732,9 +790,9 @@ public partial class ProgramUpdatesCard : UserControl
             }
 
             /*
-             * Nach der Entscheidung prüfen wir,
-             * ob derselbe Kundenvorgang
-             * weiterhin aktiv ist.
+             * Verhindert eine Speicherung,
+             * wenn sich der Kundenkontext
+             * während der Bearbeitung geändert hat.
              */
             if (!TryResolveCustomerContext(
                     out var currentViewModel,
@@ -778,6 +836,11 @@ public partial class ProgramUpdatesCard : UserControl
         }
         finally
         {
+            /*
+             * Nach jedem Speicherversuch werden
+             * Bearbeitungsstatus, Begründungen
+             * und Schaltflächen neu berechnet.
+             */
             UpdateExceptionControls();
         }
     }
@@ -821,6 +884,10 @@ public partial class ProgramUpdatesCard : UserControl
                 + "nicht verändert werden.");
         }
 
+        /*
+         * Nur die unabhängige Vorgangskopie
+         * wird zunächst verändert.
+         */
         var updatedVisit =
             visit.CreateIndependentCopy();
 
@@ -891,14 +958,6 @@ public partial class ProgramUpdatesCard : UserControl
         var previousUpdatedAt =
             device.UpdatedAt;
 
-        /*
-         * Die neue Entscheidung wird nur auf
-         * einer unabhängigen Kopie verändert.
-         *
-         * Beim fehlgeschlagenen Speichern
-         * wird der ursprüngliche Zustand
-         * wiederhergestellt.
-         */
         session.CustomerCheckupVisits =
             previousVisits
                 .Select(storedVisit =>
@@ -939,6 +998,10 @@ public partial class ProgramUpdatesCard : UserControl
         }
         catch
         {
+            /*
+             * Bei einem Fehler bleibt die
+             * ursprüngliche Vorgangsliste erhalten.
+             */
             session.CustomerCheckupVisits =
                 previousVisits;
 
@@ -1048,12 +1111,8 @@ public partial class ProgramUpdatesCard : UserControl
         {
             /*
              * Außerhalb eines Kundencheckups
-             * bleibt die bisherige allgemeine
-             * Programmupdate-Auswahl erhalten.
-             *
-             * Innerhalb eines Kundencheckups
-             * verwenden wir ausschließlich eine
-             * separat gefilterte Arbeitsliste.
+             * bleibt die allgemeine
+             * Update-Auswahl erhalten.
              */
             var selectionInformation =
                 programUpdateInformation;
@@ -1061,12 +1120,6 @@ public partial class ProgramUpdatesCard : UserControl
             if (Window.GetWindow(this)?.DataContext
                 is CustomerDevicesViewModel)
             {
-                /*
-                 * Bei einem Kundengerät gilt:
-                 * Ohne eindeutig erkannten,
-                 * bearbeitbaren Vorgang wird
-                 * kein Installationsplan erstellt.
-                 */
                 if (!TryResolveCustomerContext(
                         out var viewModel,
                         out var customerSession,
@@ -1119,14 +1172,10 @@ public partial class ProgramUpdatesCard : UserControl
             }
 
             /*
-             * Dialog und Plan-Builder erhalten
-             * dieselbe zulässige Arbeitsliste.
-             *
-             * Dadurch können zurückgestellte
-             * Programme weder durch
-             * "Alle auswählen" noch durch
-             * die anschließende Planerstellung
-             * in den Wartungslauf gelangen.
+             * Der Auswahldialog verwendet die
+             * gefilterte Liste auch für
+             * "Alle auswählen" und die
+             * anschließende Planerstellung.
              */
             var dialog =
                 new ProgramUpdateSelectionDialog(
@@ -1156,19 +1205,6 @@ public partial class ProgramUpdatesCard : UserControl
     // SCHRITT 29: GEFILTERTE INSTALLATIONSARBEITSLISTE
     // =====================================================
 
-    /// <summary>
-    /// Erstellt eine unabhängige Arbeitsliste
-    /// der für die Installation zulässigen
-    /// Programmaktualisierungen.
-    ///
-    /// Eine Ausnahme wird nur berücksichtigt,
-    /// wenn sie zur aktuellen Vorgangs-ID,
-    /// Paket-ID, Paketquelle und den exakten
-    /// Versionsständen passt.
-    ///
-    /// Der ursprüngliche WinGet-Scan bleibt
-    /// vollständig unverändert.
-    /// </summary>
     private static ProgramUpdateInformation
         CreateInstallationSelectionInformation(
             ProgramUpdateInformation information,
@@ -1195,10 +1231,6 @@ public partial class ProgramUpdatesCard : UserControl
                 + "erfolgreiche WinGet-Analyse vor.");
         }
 
-        /*
-         * Die aktuelle Auswertung wird auch
-         * hier zur Validierung verwendet.
-         */
         var evaluation =
             ProgramUpdateExceptionEvaluationService
                 .Evaluate(
@@ -1213,13 +1245,8 @@ public partial class ProgramUpdatesCard : UserControl
         }
 
         /*
-         * Zunächst die zur aktuellen
-         * Vorgangs-ID gehörenden Ausnahmen
-         * bestimmen.
-         *
-         * Fremde und historische Vorgänge
-         * dürfen sich nicht auf die aktuelle
-         * Installationsauswahl auswirken.
+         * Es werden nur Ausnahmen berücksichtigt,
+         * die auf den aktuellen Vorgang verweisen.
          */
         var applicableExceptions =
             visit.ProgramUpdateExceptions
@@ -1229,12 +1256,9 @@ public partial class ProgramUpdatesCard : UserControl
                 .ToList();
 
         /*
-         * Für jedes Paket prüfen wir über
-         * AppliesTo die vollständige Identität
-         * einschließlich Versionsständen.
-         *
-         * Eine Ausnahme für eine alte Version
-         * sperrt keine neue Aktualisierung.
+         * Die vollständige Übereinstimmung
+         * der Paket- und Versionsstände
+         * wird über AppliesTo geprüft.
          */
         var selectableUpdates =
             information.AvailableUpdates
@@ -1263,16 +1287,9 @@ public partial class ProgramUpdatesCard : UserControl
                 .ToList();
 
         /*
-         * Ausschließlich diese neue
-         * Programmliste wird an den
-         * Installationsdialog übergeben.
-         *
-         * Auch die Anzahl wird für diese
-         * Arbeitskopie angepasst.
-         *
-         * Die gespeicherte Originalanalyse
-         * behält weiterhin ihre tatsächliche
-         * Anzahl erkannter Updates.
+         * Der Originalscan bleibt unverändert.
+         * Die angepasste Anzahl gilt nur
+         * für die unabhängige Arbeitskopie.
          */
         return new ProgramUpdateInformation
         {
@@ -1313,11 +1330,6 @@ public partial class ProgramUpdatesCard : UserControl
         ProgramUpdateInformation
             programUpdateInformation)
     {
-        /*
-         * Gespeicherter Kundencheckup:
-         * Die Programmupdates gehören zum
-         * aktuell ausgewählten Kundengerät.
-         */
         if (TryResolveCustomerContext(
                 out _,
                 out var customerSession,
@@ -1329,10 +1341,6 @@ public partial class ProgramUpdatesCard : UserControl
             return customerSession;
         }
 
-        /*
-         * Kundenunabhängiger Diagnosecheckup:
-         * Bisherige Auflösung beibehalten.
-         */
         DependencyObject? current =
             this;
 
