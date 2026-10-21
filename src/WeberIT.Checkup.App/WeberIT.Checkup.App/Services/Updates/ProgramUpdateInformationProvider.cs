@@ -157,13 +157,42 @@ public class ProgramUpdateInformationProvider :
             return information;
         }
 
-        // Ein von null abweichender Rückgabecode
-        // bleibt zunächst ein nicht erfolgreich
-        // bestätigter Analysevorgang.
-        //
-        // Auch 0x8A15002B wird nicht pauschal
-        // als "keine Updates verfügbar" gewertet.
-        if (analysisResult.ExitCode != 0)
+        // -------------------------------------------------
+        // 3. Ausgabe und Rückgabecode gemeinsam prüfen
+        // -------------------------------------------------
+
+        /*
+         * SCHRITT 44:
+         *
+         * WinGet kann 0x8A15002B zurückgeben,
+         * wenn keine anwendbare Aktualisierung
+         * gefunden wurde.
+         *
+         * Dieser Rückgabecode alleine beweist
+         * allerdings kein erfolgreiches
+         * Nullergebnis.
+         *
+         * Deshalb prüfen wir zuerst die Ausgabe.
+         * Nur wenn diese eindeutig null Updates
+         * bestätigt und keine zusätzliche
+         * Fehlerausgabe vorliegt, darf der
+         * spezielle Rückgabecode akzeptiert werden.
+         *
+         * Alle anderen von null abweichenden
+         * Rückgabecodes bleiben Fehler.
+         */
+
+        var parseResult =
+            ParseAvailableUpdates(
+                analysisResult.StandardOutput);
+
+        var isConfirmedNoApplicableUpdateResult =
+            IsConfirmedNoApplicableUpdateResult(
+                analysisResult,
+                parseResult);
+
+        if (analysisResult.ExitCode != 0
+            && !isConfirmedNoApplicableUpdateResult)
         {
             information.IsAnalysisSuccessful = false;
 
@@ -177,14 +206,6 @@ public class ProgramUpdateInformationProvider :
 
             return information;
         }
-
-        // -------------------------------------------------
-        // 3. Ausgabe vollständig und sicher auswerten
-        // -------------------------------------------------
-
-        var parseResult =
-            ParseAvailableUpdates(
-                analysisResult.StandardOutput);
 
         if (!parseResult.IsRecognized)
         {
@@ -249,8 +270,6 @@ public class ProgramUpdateInformationProvider :
                 .ToList();
 
         /*
-         * SCHRITT 41:
-         *
          * Bei einer erfolgreichen Auswertung wird
          * zusätzlich geprüft, ob WinGet Pakete mit
          * nicht ermittelbaren Versionsnummern meldet.
@@ -274,7 +293,88 @@ public class ProgramUpdateInformationProvider :
                 || HasUnknownVersionPackagesNotice(
                     analysisResult.StandardError));
 
+        if (isConfirmedNoApplicableUpdateResult)
+        {
+            information.AnalysisDetails +=
+                " WinGet hat das Nullergebnis mit dem "
+                + "Rückgabecode 0x8A15002B und einer "
+                + "eindeutigen Meldung über fehlende "
+                + "Aktualisierungen bestätigt.";
+        }
+
         return information;
+    }
+
+    // =====================================================
+    // SCHRITT 44: ABGESICHERTES WINGET-NULLERGEBNIS
+    // =====================================================
+
+    private static bool IsConfirmedNoApplicableUpdateResult(
+        WingetExecutionResult executionResult,
+        ProgramUpdateParseResult parseResult)
+    {
+        ArgumentNullException.ThrowIfNull(
+            executionResult);
+
+        ArgumentNullException.ThrowIfNull(
+            parseResult);
+
+        if (!executionResult.ExitCode.HasValue)
+        {
+            return false;
+        }
+
+        var exitCode =
+            unchecked(
+                (uint)executionResult.ExitCode.Value);
+
+        if (exitCode != WingetNoApplicableUpdateCode)
+        {
+            return false;
+        }
+
+        if (!executionResult.WasStarted
+            || executionResult.TimedOut)
+        {
+            return false;
+        }
+
+        // Ein zusätzlicher Prozessfehler oder
+        // eine nicht leere Fehlerausgabe verbietet
+        // die positive Interpretation.
+        if (!string.IsNullOrWhiteSpace(
+                executionResult.ErrorMessage)
+            || !string.IsNullOrWhiteSpace(
+                CleanOutput(
+                    executionResult.StandardError)))
+        {
+            return false;
+        }
+
+        // Die Standardausgabe muss ausdrücklich
+        // eine bekannte Nullergebnis-Meldung
+        // enthalten.
+        //
+        // Der Rückgabecode allein genügt nicht.
+        var standardOutput =
+            CleanOutput(
+                executionResult.StandardOutput);
+
+        if (!ContainsNoUpdatesMessage(standardOutput))
+        {
+            return false;
+        }
+
+        // Auch unser regulärer Parser muss die
+        // gesamte Ausgabe als zuverlässiges
+        // Nullergebnis erkannt haben.
+        //
+        // Eine erkannte Aktualisierung oder eine
+        // widersprüchliche Gesamtzahl schließt
+        // diesen Sonderfall aus.
+        return parseResult.IsRecognized
+            && parseResult.Updates.Count == 0
+            && parseResult.ReportedUpdateCount == 0;
     }
 
     // =====================================================
@@ -585,7 +685,7 @@ public class ProgramUpdateInformationProvider :
             // Eine Tabellen-Trennlinie besteht
             // ausschließlich aus Bindestrichen.
             if (!trimmedLine.All(
-                    character => character == '-'))
+                character => character == '-'))
             {
                 continue;
             }
@@ -1094,7 +1194,7 @@ public class ProgramUpdateInformationProvider :
     }
 
     // =====================================================
-    // SCHRITT 41: HINWEISE AUF UNBEKANNTE VERSIONEN
+    // HINWEISE AUF UNBEKANNTE VERSIONEN
     // =====================================================
 
     private static string BuildSuccessDetails(
