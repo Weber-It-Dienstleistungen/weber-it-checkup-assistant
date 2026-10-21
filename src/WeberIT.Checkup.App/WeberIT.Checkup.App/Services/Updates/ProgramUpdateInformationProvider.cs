@@ -38,7 +38,6 @@ public class ProgramUpdateInformationProvider :
             @"\S(?:.*?\S)?(?=\s{2,}|$)",
             RegexOptions.Compiled);
 
-    // SCHRITT 40:
     // Unterstützt sowohl:
     //
     // 1 Aktualisierung verfügbar.
@@ -46,10 +45,6 @@ public class ProgramUpdateInformationProvider :
     // 1 upgrade available.
     // 17 upgrades available.
     // 15 packages have upgrades available.
-    //
-    // Die bisherige Schreibweise
-    // "Aktualisierungen?" erkannte die deutsche
-    // Einzahl "Aktualisierung" nicht korrekt.
     private static readonly Regex ReportedUpdateCountRegex =
         new(
             @"^\s*(?<count>\d+)\s+"
@@ -253,10 +248,31 @@ public class ProgramUpdateInformationProvider :
                 .Take(MaximumStoredUpdates)
                 .ToList();
 
+        /*
+         * SCHRITT 41:
+         *
+         * Bei einer erfolgreichen Auswertung wird
+         * zusätzlich geprüft, ob WinGet Pakete mit
+         * nicht ermittelbaren Versionsnummern meldet.
+         *
+         * Diese Pakete werden NICHT in die Zahl
+         * bestätigter Aktualisierungen aufgenommen.
+         *
+         * Der Hinweis erscheint lediglich in der
+         * Diagnose und ermöglicht eine sachliche
+         * Einordnung der Analysegrenzen.
+         *
+         * WinGet kann solche Hinweise sowohl auf
+         * stdout als auch auf stderr ausgeben.
+         */
         information.AnalysisDetails =
             BuildSuccessDetails(
                 information.AvailableUpdateCount,
-                information.IsResultTruncated);
+                information.IsResultTruncated,
+                HasUnknownVersionPackagesNotice(
+                    analysisResult.StandardOutput)
+                || HasUnknownVersionPackagesNotice(
+                    analysisResult.StandardError));
 
         return information;
     }
@@ -1077,29 +1093,35 @@ public class ProgramUpdateInformationProvider :
         return string.Join(" ", details);
     }
 
+    // =====================================================
+    // SCHRITT 41: HINWEISE AUF UNBEKANNTE VERSIONEN
+    // =====================================================
+
     private static string BuildSuccessDetails(
         int availableUpdateCount,
-        bool isResultTruncated)
+        bool isResultTruncated,
+        bool hasUnknownVersionPackagesNotice)
     {
-        if (availableUpdateCount == 0)
+        var details = availableUpdateCount switch
         {
-            return
+            0 =>
                 "WinGet hat in der öffentlichen "
                 + "WinGet-Quelle keine verfügbaren "
                 + "Aktualisierungen für erkannte "
-                + "Programme gemeldet.";
-        }
+                + "Programme gemeldet.",
 
-        var details =
-            availableUpdateCount == 1
-                ? "WinGet hat in der öffentlichen "
-                  + "WinGet-Quelle eine verfügbare "
-                  + "Programmaktualisierung erkannt."
-                : "WinGet hat in der öffentlichen "
-                  + "WinGet-Quelle "
-                  + availableUpdateCount
-                  + " verfügbare Programmaktualisierungen "
-                  + "erkannt.";
+            1 =>
+                "WinGet hat in der öffentlichen "
+                + "WinGet-Quelle eine verfügbare "
+                + "Programmaktualisierung erkannt.",
+
+            _ =>
+                "WinGet hat in der öffentlichen "
+                + "WinGet-Quelle "
+                + availableUpdateCount
+                + " verfügbare Programmaktualisierungen "
+                + "erkannt."
+        };
 
         if (isResultTruncated)
         {
@@ -1110,7 +1132,45 @@ public class ProgramUpdateInformationProvider :
                 + " Einträge dauerhaft gespeichert.";
         }
 
+        if (hasUnknownVersionPackagesNotice)
+        {
+            details +=
+                " Zusätzlich hat WinGet auf Programme "
+                + "mit nicht ermittelbaren Versionsnummern "
+                + "hingewiesen. Diese wurden nicht als "
+                + "bestätigte Aktualisierungen mitgezählt. "
+                + "Ob für sie Updates nötig sind, konnte "
+                + "dabei nicht zuverlässig bewertet werden.";
+        }
+
         return details;
+    }
+
+    private static bool HasUnknownVersionPackagesNotice(
+        string output)
+    {
+        var normalized = CleanOutput(output);
+
+        // WinGet ergänzt die normale Update-Liste
+        // gegebenenfalls um einen Hinweis auf
+        // Pakete mit unbekannten Versionsständen.
+        //
+        // Das Merkmal --include-unknown dient
+        // zusammen mit der sprachlichen Aussage
+        // zur vorsichtigen Identifikation.
+        //
+        // Es handelt sich um einen Hinweis auf
+        // eine Analysegrenze, nicht um einen
+        // zusätzlich bestätigten Updatebedarf.
+        return normalized.Contains(
+                   "--include-unknown",
+                   StringComparison.OrdinalIgnoreCase)
+               && (normalized.Contains(
+                       "Versionsnummern",
+                       StringComparison.OrdinalIgnoreCase)
+                   || normalized.Contains(
+                       "unknown",
+                       StringComparison.OrdinalIgnoreCase));
     }
 
     // =====================================================
