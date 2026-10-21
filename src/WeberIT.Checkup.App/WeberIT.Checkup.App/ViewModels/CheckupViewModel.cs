@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿
+using System.IO;
 using System.Windows.Input;
 using WeberIT.Checkup.App.Infrastructure.Commands;
 using WeberIT.Checkup.App.Models;
@@ -37,6 +38,9 @@ public class CheckupViewModel : BaseViewModel
 
     private readonly AsyncRelayCommand
         _exportDiagnosticPdfCommand;
+
+    private readonly RelayCommand
+        _dismissScanProgressCommand;
 
     private Customer?
         _selectedCustomer;
@@ -165,6 +169,21 @@ public class CheckupViewModel : BaseViewModel
 
         ExportDiagnosticPdfCommand =
             _exportDiagnosticPdfCommand;
+
+        // Schritt 43.1:
+        // Die Abschlussübersicht kann nur dann
+        // geschlossen werden, wenn gerade
+        // kein Systemscan läuft.
+        _dismissScanProgressCommand =
+            new RelayCommand(
+                _ =>
+                    DismissScanProgress(),
+                _ =>
+                    HasScanProgress
+                    && !IsScanRunning);
+
+        DismissScanProgressCommand =
+            _dismissScanProgressCommand;
     }
 
     public string Title =>
@@ -391,6 +410,9 @@ public class CheckupViewModel : BaseViewModel
 
             _exportDiagnosticPdfCommand
                 .RaiseCanExecuteChanged();
+
+            _dismissScanProgressCommand
+                .RaiseCanExecuteChanged();
         }
     }
 
@@ -410,6 +432,9 @@ public class CheckupViewModel : BaseViewModel
                 value;
 
             OnPropertyChanged();
+
+            _dismissScanProgressCommand
+                .RaiseCanExecuteChanged();
         }
     }
 
@@ -628,6 +653,8 @@ public class CheckupViewModel : BaseViewModel
     public ICommand SaveCheckupCommand { get; }
 
     public ICommand ExportDiagnosticPdfCommand { get; }
+
+    public ICommand DismissScanProgressCommand { get; }
 
     public void SetCustomer(
         Customer? customer)
@@ -879,6 +906,40 @@ public class CheckupViewModel : BaseViewModel
 
         IsScanRunning =
             false;
+
+        /*
+         * Schritt 43.1:
+         *
+         * HasScanProgress bleibt nach einem
+         * erfolgreichen Scan auf true.
+         *
+         * Damit bleibt die Abschlussübersicht
+         * zur Kontrolle aller Scanbereiche
+         * dauerhaft sichtbar.
+         *
+         * Sie wird erst durch den manuellen
+         * Schließen-Befehl ausgeblendet.
+         *
+         * Ein neuer Scan initialisiert die
+         * Übersicht erneut.
+         */
+    }
+
+    private void DismissScanProgress()
+    {
+        /*
+         * Das Schließen während eines laufenden
+         * Scans ist ausdrücklich ausgeschlossen.
+         *
+         * Die Anzeige wird nur ausgeblendet.
+         * Weder Scandaten noch Bewertung oder
+         * Aufgabenstatus werden verändert.
+         */
+        if (IsScanRunning
+            || !HasScanProgress)
+        {
+            return;
+        }
 
         HasScanProgress =
             false;
