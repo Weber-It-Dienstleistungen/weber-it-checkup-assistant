@@ -93,6 +93,45 @@ public class SystemConditionAssessmentService :
                     area.IsAvailable(checkupSession))
                 .ToList();
 
+        /*
+         * SCHRITT 49.2:
+         *
+         * Die Bewertungsbereiche erhalten eine
+         * eindeutige und dauerhaft nachvollziehbare
+         * Kennung.
+         *
+         * Wir verwenden die bereits bestehenden
+         * fachlichen Codepräfixe ohne abschließenden
+         * Punkt.
+         *
+         * Dadurch hängt die Identität eines
+         * Bewertungsbereichs nicht von dessen
+         * sichtbarer Bezeichnung ab.
+         *
+         * EvaluatedAreaCodes enthält sämtliche
+         * Bereiche des aktuellen Bewertungsmodells.
+         *
+         * AvailableAreaCodes enthält ausschließlich
+         * diejenigen Bereiche, die in diesem Scan
+         * tatsächlich ausgewertet werden konnten.
+         *
+         * Beide Listen werden unabhängig davon
+         * dokumentiert, ob ein Score berechnet
+         * werden kann.
+         */
+
+        var evaluatedAreaCodes =
+            AssessmentAreas
+                .Select(area =>
+                    area.CodePrefix.TrimEnd('.'))
+                .ToList();
+
+        var availableAreaCodes =
+            availableAreas
+                .Select(area =>
+                    area.CodePrefix.TrimEnd('.'))
+                .ToList();
+
         var availableWeight =
             availableAreas.Sum(area => area.Weight);
 
@@ -141,7 +180,13 @@ public class SystemConditionAssessmentService :
                     AssessmentAreas.Count,
 
                 AvailableAreaCount =
-                    availableAreas.Count
+                    availableAreas.Count,
+
+                EvaluatedAreaCodes =
+                    evaluatedAreaCodes,
+
+                AvailableAreaCodes =
+                    availableAreaCodes
             };
         }
 
@@ -263,7 +308,13 @@ public class SystemConditionAssessmentService :
                 AssessmentAreas.Count,
 
             AvailableAreaCount =
-                availableAreas.Count
+                availableAreas.Count,
+
+            EvaluatedAreaCodes =
+                evaluatedAreaCodes,
+
+            AvailableAreaCodes =
+                availableAreaCodes
         };
     }
 

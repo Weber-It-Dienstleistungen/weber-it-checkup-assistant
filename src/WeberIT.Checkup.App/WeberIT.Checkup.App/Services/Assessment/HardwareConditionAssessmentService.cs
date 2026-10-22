@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿
+using System.Globalization;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
@@ -10,10 +11,29 @@ public class HardwareConditionAssessmentService :
     private const int MinimumAvailableWeightForScore =
         55;
 
+    /*
+     * SCHRITT 49.3:
+     *
+     * Jeder Hardwarebewertungsbereich besitzt
+     * eine stabile fachliche Kennung.
+     *
+     * Diese Kennung ist unabhängig von der
+     * sichtbaren deutschen Bereichsbezeichnung.
+     *
+     * Sie wird zusammen mit dem Ergebnis
+     * gespeichert, damit spätere Vergleiche
+     * die tatsächlich verwendeten
+     * Bewertungsbereiche prüfen können.
+     *
+     * Die bisherige Punkteberechnung und
+     * sämtliche Gewichtungen bleiben erhalten.
+     */
+
     private static readonly IReadOnlyList<HardwareAssessmentArea>
         AssessmentAreas =
         [
             new(
+                "hardware.memory",
                 "Arbeitsspeicher",
                 25,
                 IsMemoryInformationAvailable,
@@ -23,6 +43,7 @@ public class HardwareConditionAssessmentService :
                         StringComparison.OrdinalIgnoreCase)),
 
             new(
+                "hardware.storage.health",
                 "Physischer Datenträgerzustand",
                 35,
                 IsPhysicalStorageHealthAvailable,
@@ -32,6 +53,7 @@ public class HardwareConditionAssessmentService :
                         StringComparison.OrdinalIgnoreCase)),
 
             new(
+                "hardware.storage.technology",
                 "Datenträgertechnik",
                 15,
                 IsStorageTechnologyAvailable,
@@ -42,6 +64,7 @@ public class HardwareConditionAssessmentService :
                         or "hardware.storage.ssd"),
 
             new(
+                "hardware.tpm",
                 "TPM-Hardware",
                 10,
                 IsTpmCapabilityAvailable,
@@ -51,6 +74,7 @@ public class HardwareConditionAssessmentService :
                         StringComparison.OrdinalIgnoreCase)),
 
             new(
+                "hardware.platform",
                 "Prozessor und Plattform",
                 15,
                 IsPlatformCapabilityAvailable,
@@ -68,11 +92,43 @@ public class HardwareConditionAssessmentService :
         CheckupSession checkupSession,
         IReadOnlyCollection<CheckupFinding> findings)
     {
+        ArgumentNullException.ThrowIfNull(
+            checkupSession);
+
+        ArgumentNullException.ThrowIfNull(
+            findings);
+
         var availableAreas =
             AssessmentAreas
                 .Where(
                     area =>
                         area.IsAvailable(checkupSession))
+                .ToList();
+
+        /*
+         * Dokumentation der fachlichen
+         * Bewertungsgrundlage.
+         *
+         * EvaluatedAreaCodes:
+         * Alle fünf definierten Hardwarebereiche.
+         *
+         * AvailableAreaCodes:
+         * Die im aktuellen Scan tatsächlich
+         * auswertbaren Hardwarebereiche.
+         *
+         * Auch bei einem nicht verfügbaren
+         * Hardware-Score werden diese Angaben
+         * vollständig dokumentiert.
+         */
+
+        var evaluatedAreaCodes =
+            AssessmentAreas
+                .Select(area => area.Code)
+                .ToList();
+
+        var availableAreaCodes =
+            availableAreas
+                .Select(area => area.Code)
                 .ToList();
 
         var availableWeight =
@@ -106,7 +162,13 @@ public class HardwareConditionAssessmentService :
                         AssessmentAreas.Count,
 
                     AvailableAreaCount =
-                        availableAreas.Count
+                        availableAreas.Count,
+
+                    EvaluatedAreaCodes =
+                        evaluatedAreaCodes,
+
+                    AvailableAreaCodes =
+                        availableAreaCodes
                 },
 
                 HardwarePlanningHorizon.NotAvailable,
@@ -200,7 +262,13 @@ public class HardwareConditionAssessmentService :
                     AssessmentAreas.Count,
 
                 AvailableAreaCount =
-                    availableAreas.Count
+                    availableAreas.Count,
+
+                EvaluatedAreaCodes =
+                    evaluatedAreaCodes,
+
+                AvailableAreaCodes =
+                    availableAreaCodes
             };
 
         var planning =
@@ -595,6 +663,7 @@ public class HardwareConditionAssessmentService :
     }
 
     private sealed record HardwareAssessmentArea(
+        string Code,
         string Name,
         int Weight,
         Func<CheckupSession, bool> IsAvailable,

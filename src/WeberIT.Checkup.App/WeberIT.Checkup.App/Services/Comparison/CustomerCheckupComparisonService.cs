@@ -9,6 +9,8 @@ public sealed class CustomerCheckupComparisonService :
 {
     private const double MaximumCoverageDifference = 0.15d;
 
+    private const int CurrentComparisonModelVersion = 2;
+
     private readonly IDeviceIdentityService _deviceIdentityService;
 
     public CustomerCheckupComparisonService(
@@ -47,6 +49,9 @@ public sealed class CustomerCheckupComparisonService :
 
         var comparison = new CustomerCheckupComparison
         {
+            ComparisonModelVersion =
+                CurrentComparisonModelVersion,
+
             CustomerCheckupVisitId = customerCheckupVisit.Id,
             CreatedAt = DateTime.Now,
             BeforeScanDate = beforeCheckup.ScanDate,
@@ -744,7 +749,8 @@ public sealed class CustomerCheckupComparisonService :
         };
         comparison.ComparisonReason =
             "Beide Werte stammen aus demselben Bewertungsmodell "
-            + "und aus ausreichend vergleichbaren Datengrundlagen.";
+            + "und beruhen auf denselben auswertbaren "
+            + "Bewertungsbereichen.";
 
         return comparison;
     }
@@ -795,6 +801,56 @@ public sealed class CustomerCheckupComparisonService :
                    + "sich zwischen Vorher- und Nachher-Scan.";
         }
 
+        /*
+         * SCHRITT 49.4:
+         *
+         * Die Anzahl und die prozentuale Abdeckung
+         * reichen nicht aus, um zwei Bewertungen
+         * zuverlässig miteinander zu vergleichen.
+         *
+         * Es muss eindeutig bekannt sein, welche
+         * Bewertungsbereiche berücksichtigt wurden.
+         *
+         * Fehlen diese Kennungen in einem älteren
+         * Scan oder sind die Listen widersprüchlich,
+         * wird der direkte Vergleich ausgeschlossen.
+         *
+         * Historische Daten werden weder ergänzt
+         * noch rückwirkend neu bewertet.
+         */
+
+        if (!HasConsistentAreaCoverage(beforeAssessment)
+            || !HasConsistentAreaCoverage(afterAssessment))
+        {
+            return "Mindestens eine Bewertung enthält keine "
+                   + "vollständige und widerspruchsfreie "
+                   + "Dokumentation der Bewertungsbereiche.";
+        }
+
+        if (!HaveSameAreaCodes(
+                beforeAssessment.EvaluatedAreaCodes,
+                afterAssessment.EvaluatedAreaCodes))
+        {
+            return "Die beiden Bewertungen beruhen auf "
+                   + "unterschiedlichen definierten "
+                   + "Bewertungsbereichen.";
+        }
+
+        if (!HaveSameAreaCodes(
+                beforeAssessment.AvailableAreaCodes,
+                afterAssessment.AvailableAreaCodes))
+        {
+            return "In den beiden Scans waren unterschiedliche "
+                   + "Bewertungsbereiche auswertbar. "
+                   + "Ein direkter Punktevergleich ist "
+                   + "deshalb nicht belastbar.";
+        }
+
+        /*
+         * Die bisherigen Plausibilitätsprüfungen
+         * bleiben zusätzlich erhalten.
+         */
+
         if (Math.Abs(beforeAssessment.AvailableAreaCount
                      - afterAssessment.AvailableAreaCount) > 1)
         {
@@ -815,6 +871,84 @@ public sealed class CustomerCheckupComparisonService :
         }
 
         return string.Empty;
+    }
+
+    private static bool HasConsistentAreaCoverage(
+        ConditionAssessment assessment)
+    {
+        if (!assessment.HasAreaCoverageDetails)
+        {
+            return false;
+        }
+
+        var evaluatedCodes = assessment.EvaluatedAreaCodes
+            .Select(code => code?.Trim())
+            .ToList();
+
+        var availableCodes = assessment.AvailableAreaCodes
+            .Select(code => code?.Trim())
+            .ToList();
+
+        /*
+         * Leere Kennungen sind keine gültige
+         * Dokumentation eines Bewertungsbereichs.
+         */
+        if (evaluatedCodes.Any(string.IsNullOrWhiteSpace)
+            || availableCodes.Any(string.IsNullOrWhiteSpace))
+        {
+            return false;
+        }
+
+        var evaluatedSet = evaluatedCodes
+            .Select(code => code!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var availableSet = availableCodes
+            .Select(code => code!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        /*
+         * Doppelte Kennungen könnten sonst
+         * die gespeicherten Bereichszahlen
+         * künstlich erfüllen.
+         */
+        if (evaluatedSet.Count != evaluatedCodes.Count
+            || availableSet.Count != availableCodes.Count)
+        {
+            return false;
+        }
+
+        /*
+         * Ein tatsächlich auswertbarer Bereich
+         * muss zugleich Bestandteil des
+         * definierten Bewertungsmodells sein.
+         */
+        return availableSet.IsSubsetOf(evaluatedSet);
+    }
+
+    private static bool HaveSameAreaCodes(
+        IReadOnlyCollection<string> beforeCodes,
+        IReadOnlyCollection<string> afterCodes)
+    {
+        if (beforeCodes.Count != afterCodes.Count)
+        {
+            return false;
+        }
+
+        var beforeSet = beforeCodes
+            .Select(code => code.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var afterSet = afterCodes
+            .Select(code => code.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        /*
+         * Die Reihenfolge ist unerheblich.
+         * Entscheidend sind die fachlich
+         * identischen Bewertungsbereiche.
+         */
+        return beforeSet.SetEquals(afterSet);
     }
 
     private static List<string> BuildComparisonNotes(
