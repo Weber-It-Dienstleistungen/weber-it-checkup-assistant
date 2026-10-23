@@ -66,6 +66,10 @@ public sealed class CustomerCheckupCustomerSummary
             comparison.Areas
             ?? new List<CustomerCheckupAreaComparison>();
 
+        var actions =
+            comparison.Actions
+            ?? new List<CustomerCheckupActionSummary>();
+
         var summary = new CustomerCheckupCustomerSummary
         {
             OpenFindingCount = findings.Count(
@@ -78,14 +82,14 @@ public sealed class CustomerCheckupCustomerSummary
             CompletedTaskCount = tasks.Count(task =>
                 task.WorkStatus == CheckupTaskStatus.Completed),
 
-            SuccessfulActionCount =
-                comparison.SuccessfulActionCount,
+            SuccessfulActionCount = actions.Count(action =>
+                action.Status == CheckupTaskActionStatus.Successful),
 
-            FailedActionCount =
-                comparison.FailedActionCount,
+            FailedActionCount = actions.Count(action =>
+                action.Status == CheckupTaskActionStatus.Failed),
 
-            CancelledActionCount =
-                comparison.CancelledActionCount
+            CancelledActionCount = actions.Count(action =>
+                action.Status == CheckupTaskActionStatus.Cancelled)
         };
 
         summary.Headline =
@@ -97,8 +101,23 @@ public sealed class CustomerCheckupCustomerSummary
         summary.ConditionText =
             BuildConditionText(comparison);
 
+        /*
+         * SCHRITT 51.1:
+         *
+         * Die Kundenzusammenfassung erhält
+         * zusätzlich die dokumentierten
+         * technischen Aktionen.
+         *
+         * Dadurch können erfolgreiche Arbeiten
+         * konkret benannt werden, ohne aus
+         * ihnen automatisch behobene
+         * Bewertungsbefunde abzuleiten.
+         */
+
         summary.WorkResultText =
-            BuildWorkResultText(summary);
+            BuildWorkResultText(
+                summary,
+                actions);
 
         summary.RecommendationText =
             BuildRecommendationText(findings);
@@ -276,22 +295,27 @@ public sealed class CustomerCheckupCustomerSummary
     }
 
     private static string BuildWorkResultText(
-        CustomerCheckupCustomerSummary summary)
+        CustomerCheckupCustomerSummary summary,
+        IReadOnlyCollection<CustomerCheckupActionSummary> actions)
     {
         var parts = new List<string>();
 
         /*
-         * 1. Erledigte Aufgaben beschreiben den
-         *    dokumentierten Bearbeitungsstand.
+         * Fachliche Trennung:
          *
-         * 2. Technische Aktionen beschreiben
-         *    protokollierte Ausführungsergebnisse.
+         * 1. Erledigte Aufgaben dokumentieren
+         *    den Bearbeitungsstand.
+         *
+         * 2. Erfolgreiche Aktionen dokumentieren
+         *    die tatsächlichen Ausführungsergebnisse.
          *
          * 3. Behobene Befunde setzen einen
-         *    entsprechenden technischen Nachweis
-         *    aus dem gespeicherten Vergleich voraus.
+         *    technischen Nachweis aus dem
+         *    Vorher-/Nachher-Vergleich voraus.
          *
-         * Keine dieser Kategorien ersetzt die andere.
+         * Die drei Kategorien dürfen nicht
+         * gegenseitig ersetzt oder künstlich
+         * gleichgesetzt werden.
          */
 
         if (summary.CompletedTaskCount > 0)
@@ -311,20 +335,40 @@ public sealed class CustomerCheckupCustomerSummary
 
         if (summary.SuccessfulActionCount > 0)
         {
-            parts.Add(
+            var successfulActions =
+                actions
+                    .Where(action =>
+                        action.Status ==
+                        CheckupTaskActionStatus.Successful)
+                    .ToList();
+
+            var actionOverview =
+                BuildSuccessfulActionOverview(
+                    successfulActions);
+
+            var actionCountText =
                 summary.SuccessfulActionCount == 1
-                    ? "Eine technische Wartungsaktion "
-                      + "wurde erfolgreich ausgeführt."
-                    : $"{summary.SuccessfulActionCount} technische "
+                    ? "Eine Wartungsaktion wurde erfolgreich "
+                      + "protokolliert"
+                    : $"{summary.SuccessfulActionCount} "
                       + "Wartungsaktionen wurden erfolgreich "
-                      + "ausgeführt.");
+                      + "protokolliert";
+
+            parts.Add(
+                string.IsNullOrWhiteSpace(actionOverview)
+                    ? actionCountText + "."
+                    : actionCountText
+                      + ": "
+                      + actionOverview
+                      + ".");
         }
 
         /*
          * Fehlgeschlagene und abgebrochene Aktionen
-         * werden nicht verschwiegen, wenn gleichzeitig
-         * erfolgreiche Aktionen protokolliert sind.
+         * dürfen durch die positive Zusammenfassung
+         * nicht verdeckt werden.
          */
+
         if (summary.FailedActionCount > 0)
         {
             parts.Add(
@@ -355,40 +399,175 @@ public sealed class CustomerCheckupCustomerSummary
                       + "festgestellte technische Auffälligkeiten "
                       + "nicht mehr nachweisbar.");
         }
-        else
+        else if (summary.SuccessfulActionCount > 0)
         {
             /*
-             * Wichtiges Ergebnis der Praxistests:
+             * Eine erfolgreiche Wartungsaktion ist
+             * nicht automatisch eine im Scoring
+             * nachweisbar behobene Auffälligkeit.
              *
-             * Erfolgreiche Programmaktualisierungen,
-             * Bereinigungen oder Systemdateireparaturen
-             * können protokolliert sein, obwohl kein
-             * einzelner Bewertungsbefund als behoben
-             * bestätigt werden konnte.
+             * Das bedeutet umgekehrt aber auch
+             * nicht, dass die protokollierte
+             * Wartungsaktion erfolglos war.
              *
-             * Deshalb wird aus "0 behobenen Befunden"
-             * ausdrücklich kein Misserfolg abgeleitet.
+             * Diese Formulierung ist bewusst
+             * neutral und kundenverständlich.
              */
+
+            parts.Add(
+                "Eine zusätzliche Behebung zuvor "
+                + "erfasster Bewertungsbefunde "
+                + "konnte im Abschlussvergleich "
+                + "nicht eindeutig bestätigt werden. "
+                + "Die dokumentierten Wartungsarbeiten "
+                + "bleiben davon unabhängig.");
+        }
+        else
+        {
             parts.Add(
                 "Bei der Abschlusskontrolle ließ sich "
                 + "keine zuvor festgestellte technische "
                 + "Auffälligkeit eindeutig als behoben "
                 + "bestätigen.");
-
-            if (summary.SuccessfulActionCount > 0
-                || summary.CompletedTaskCount > 0)
-            {
-                parts.Add(
-                    "Das bedeutet nicht, dass die "
-                    + "dokumentierten Wartungsarbeiten "
-                    + "erfolglos waren. Ausgeführte "
-                    + "Maßnahmen und bestätigte "
-                    + "Fehlerbehebungen werden getrennt "
-                    + "bewertet.");
-            }
         }
 
         return string.Join(" ", parts);
+    }
+
+    /// <summary>
+    /// Verdichtet erfolgreiche Wartungsaktionen
+    /// zu einer kurzen kundenverständlichen
+    /// Darstellung.
+    ///
+    /// Ausschließlich Aktionen mit dem Status
+    /// Successful werden berücksichtigt.
+    ///
+    /// Mehrere erfolgreiche Ausführungen
+    /// derselben Aktion werden zusammengefasst,
+    /// jedoch nicht zu einer einzigen
+    /// Ausführung umgedeutet.
+    ///
+    /// Die Darstellung wird auf höchstens drei
+    /// unterschiedliche Maßnahmenarten begrenzt.
+    /// Weitere Aktionen bleiben im technischen
+    /// Anhang vollständig dokumentiert.
+    /// </summary>
+    private static string BuildSuccessfulActionOverview(
+        IReadOnlyCollection<CustomerCheckupActionSummary> actions)
+    {
+        if (actions.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var groupedActions =
+            actions
+                .OrderBy(action =>
+                    action.StartedAt ?? DateTimeOffset.MaxValue)
+                .Select(GetCustomerFriendlyActionName)
+                .Where(name =>
+                    !string.IsNullOrWhiteSpace(name))
+                .GroupBy(
+                    name => name,
+                    StringComparer.OrdinalIgnoreCase)
+                .Select(group => new
+                {
+                    Name = group.Key,
+                    Count = group.Count()
+                })
+                .ToList();
+
+        if (groupedActions.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        const int MaximumDisplayedActionTypes = 3;
+
+        var descriptions =
+            groupedActions
+                .Take(MaximumDisplayedActionTypes)
+                .Select(group =>
+                    group.Count == 1
+                        ? group.Name
+                        : $"{group.Name} "
+                          + $"({group.Count} Vorgänge)")
+                .ToList();
+
+        var remainingActionCount =
+            groupedActions
+                .Skip(MaximumDisplayedActionTypes)
+                .Sum(group => group.Count);
+
+        if (remainingActionCount > 0)
+        {
+            descriptions.Add(
+                remainingActionCount == 1
+                    ? "eine weitere Maßnahme"
+                    : $"{remainingActionCount} weitere Maßnahmen");
+        }
+
+        return JoinNaturalLanguage(descriptions);
+    }
+
+    /// <summary>
+    /// Übersetzt bekannte technische Aktionscodes
+    /// in kurze, verständliche Tätigkeitsnamen.
+    ///
+    /// Die Zuordnung erfolgt über stabile
+    /// Aktionscodes und nicht über eine
+    /// unsichere Textanalyse der Ergebnisse.
+    ///
+    /// Insbesondere behauptet die Bezeichnung
+    /// einer Systemdateiprüfung nicht, dass
+    /// dabei tatsächlich Dateien repariert
+    /// wurden. Das konkrete Ergebnis steht
+    /// weiterhin in der Aktionsdokumentation.
+    ///
+    /// Neue oder unbekannte Aktionen behalten
+    /// ihren dokumentierten Aktionsnamen.
+    /// </summary>
+    private static string GetCustomerFriendlyActionName(
+        CustomerCheckupActionSummary action)
+    {
+        var actionCode =
+            action.ActionCode?.Trim()
+            ?? string.Empty;
+
+        if (actionCode.Equals(
+                "action.program-updates.selected-upgrades",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return "Programmaktualisierungen";
+        }
+
+        if (actionCode.Equals(
+                "action.cleanup.selected-safe-categories",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return "Bereinigung ausgewählter Dateien";
+        }
+
+        if (actionCode.Equals(
+                "action.maintenance.system-file-check",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return "Prüfung der Windows-Systemdateien";
+        }
+
+        if (actionCode.Equals(
+                "action.maintenance.windows-image-repair",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return "Wartung des Windows-Komponentenspeichers";
+        }
+
+        if (!string.IsNullOrWhiteSpace(action.ActionTitle))
+        {
+            return action.ActionTitle.Trim();
+        }
+
+        return "weitere technische Wartung";
     }
 
     private static string BuildRecommendationText(
