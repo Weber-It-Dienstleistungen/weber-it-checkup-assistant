@@ -978,6 +978,10 @@ public sealed class CustomerCheckupPdfReportService :
             GetScoreChangeColor(score.Change);
     }
 
+    // =====================================================
+    // SCHRITT 53.2 – BEREICHSVERGLEICH MODELL V3
+    // =====================================================
+
     private static void AddAreaComparison(
         Section section,
         CustomerCheckupComparison comparison)
@@ -1045,6 +1049,31 @@ public sealed class CustomerCheckupPdfReportService :
         }
 
         AddSpacer(section, 5);
+
+        /*
+         * Bei gemischten Veränderungen sind
+         * einzelne positive und negative
+         * Entwicklungen belastbar nachgewiesen.
+         *
+         * Sie dürfen nicht mit fehlender
+         * Vergleichbarkeit verwechselt werden.
+         *
+         * Die Erklärung erscheint nur,
+         * wenn ein Bereich tatsächlich
+         * den Status MixedChanges besitzt.
+         */
+        if (areas.Any(area =>
+                area.Status ==
+                CustomerCheckupAreaComparisonStatus.MixedChanges))
+        {
+            AddCallout(
+                section,
+                "Gemischte Veränderungen",
+                CustomerCheckupReportWording
+                    .GetAreaStatusExplanation(
+                        CustomerCheckupAreaComparisonStatus.MixedChanges),
+                WarningColor);
+        }
     }
 
     // =====================================================
@@ -1934,9 +1963,21 @@ public sealed class CustomerCheckupPdfReportService :
         };
     }
 
+    // =====================================================
+    // SCHRITT 53.2 – STATUSANZEIGE
+    // =====================================================
+
     private static string GetAreaStatusText(
         CustomerCheckupAreaComparisonStatus status)
     {
+        /*
+         * Die bewährten Bezeichnungen der
+         * bisherigen Statuswerte bleiben erhalten.
+         *
+         * MixedChanges wird ausdrücklich über
+         * die zentrale kundenverständliche
+         * Formulierung ausgegeben.
+         */
         return status switch
         {
             CustomerCheckupAreaComparisonStatus.UnchangedHealthy =>
@@ -1959,6 +2000,10 @@ public sealed class CustomerCheckupPdfReportService :
             CustomerCheckupAreaComparisonStatus
                 .NewlyNeedsAttention =>
                     "Neuer technischer Befund",
+
+            CustomerCheckupAreaComparisonStatus.MixedChanges =>
+                CustomerCheckupReportWording.GetAreaStatusText(
+                    status),
 
             _ => "Technisch nicht direkt vergleichbar"
         };
@@ -1990,6 +2035,17 @@ public sealed class CustomerCheckupPdfReportService :
                 .NewlyNeedsAttention =>
                     DangerColor,
 
+            /*
+             * Gemischte Veränderungen sind
+             * weder ein rein positives noch
+             * ein rein negatives Ergebnis.
+             *
+             * Sie erscheinen deshalb in
+             * der Warnfarbe.
+             */
+            CustomerCheckupAreaComparisonStatus.MixedChanges =>
+                WarningColor,
+
             _ => MutedTextColor
         };
     }
@@ -1997,23 +2053,33 @@ public sealed class CustomerCheckupPdfReportService :
     private static int GetAreaStatusOrder(
         CustomerCheckupAreaComparisonStatus status)
     {
+        /*
+         * Negative und gemischte Entwicklungen
+         * werden im Bericht vor unveränderten
+         * oder positiven Bereichen angezeigt.
+         *
+         * Die Sortierung verändert keine
+         * gespeicherten Vergleichsdaten.
+         */
         return status switch
         {
             CustomerCheckupAreaComparisonStatus.Worsened => 0,
 
             CustomerCheckupAreaComparisonStatus.NewlyNeedsAttention => 1,
 
-            CustomerCheckupAreaComparisonStatus
-                .UnchangedNeedsAttention => 2,
+            CustomerCheckupAreaComparisonStatus.MixedChanges => 2,
 
             CustomerCheckupAreaComparisonStatus
-                .ImprovedButStillNeedsAttention => 3,
+                .UnchangedNeedsAttention => 3,
 
-            CustomerCheckupAreaComparisonStatus.NotComparable => 4,
+            CustomerCheckupAreaComparisonStatus
+                .ImprovedButStillNeedsAttention => 4,
 
-            CustomerCheckupAreaComparisonStatus.Improved => 5,
+            CustomerCheckupAreaComparisonStatus.NotComparable => 5,
 
-            _ => 6
+            CustomerCheckupAreaComparisonStatus.Improved => 6,
+
+            _ => 7
         };
     }
 

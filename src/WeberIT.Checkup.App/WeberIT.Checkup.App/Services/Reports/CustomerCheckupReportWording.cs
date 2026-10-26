@@ -88,11 +88,63 @@ public static class CustomerCheckupReportWording
             CustomerCheckupAreaComparisonStatus.NewlyNeedsAttention =>
                 "Neue Auffälligkeit",
 
+            /*
+             * SCHRITT 53.1:
+             *
+             * Vergleichsmodell V3 kann positive
+             * und negative Veränderungen
+             * innerhalb desselben technischen
+             * Bereichs feststellen.
+             *
+             * Diese Veränderungen sind
+             * auswertbar, besitzen aber keine
+             * eindeutige Gesamtrichtung.
+             *
+             * Sie dürfen deshalb nicht als
+             * "nicht vergleichbar" bezeichnet
+             * werden.
+             */
+            CustomerCheckupAreaComparisonStatus.MixedChanges =>
+                "Teils verbessert, teils verschlechtert",
+
             CustomerCheckupAreaComparisonStatus.NotComparable =>
                 "Nicht zuverlässig vergleichbar",
 
             _ =>
                 "Keine eindeutige Bewertung"
+        };
+    }
+
+    /// <summary>
+    /// Erklärt den fachlichen Unterschied
+    /// zwischen einer gemischten Entwicklung
+    /// und einer fehlenden Vergleichbarkeit.
+    ///
+    /// Diese Erklärung ist ausschließlich
+    /// für die Berichtspräsentation bestimmt.
+    /// </summary>
+    public static string GetAreaStatusExplanation(
+        CustomerCheckupAreaComparisonStatus status)
+    {
+        return status switch
+        {
+            CustomerCheckupAreaComparisonStatus.MixedChanges =>
+                "In diesem Prüfbereich wurden sowohl "
+                + "Verbesserungen als auch Verschlechterungen "
+                + "festgestellt. Eine insgesamt positive "
+                + "oder negative Entwicklung lässt sich "
+                + "daraus nicht eindeutig ableiten.",
+
+            CustomerCheckupAreaComparisonStatus.NotComparable =>
+                "Dieser Prüfbereich konnte zwischen "
+                + "Eingangs- und Abschlusskontrolle "
+                + "nicht ausreichend zuverlässig "
+                + "verglichen werden. Daraus ergibt "
+                + "sich keine gesicherte Aussage "
+                + "über eine Verbesserung oder "
+                + "Verschlechterung.",
+
+            _ => string.Empty
         };
     }
 
