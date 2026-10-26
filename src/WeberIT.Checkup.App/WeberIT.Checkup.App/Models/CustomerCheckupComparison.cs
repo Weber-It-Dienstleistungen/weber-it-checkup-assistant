@@ -284,13 +284,45 @@ public enum CustomerCheckupTaskComparisonStatus
 
 public enum CustomerCheckupAreaComparisonStatus
 {
-    NotComparable,
-    UnchangedHealthy,
-    Improved,
-    ImprovedButStillNeedsAttention,
-    UnchangedNeedsAttention,
-    Worsened,
-    NewlyNeedsAttention
+    NotComparable = 0,
+    UnchangedHealthy = 1,
+    Improved = 2,
+    ImprovedButStillNeedsAttention = 3,
+    UnchangedNeedsAttention = 4,
+    Worsened = 5,
+    NewlyNeedsAttention = 6,
+
+    /*
+     * SCHRITT 52.1:
+     *
+     * Ein Prüfbereich kann gleichzeitig
+     * verbesserte und verschlechterte
+     * Einzelbefunde enthalten.
+     *
+     * Eine alleinige Betrachtung der
+     * Befundanzahl ist dafür nicht
+     * ausreichend.
+     *
+     * MixedChanges bedeutet:
+     *
+     * - Mindestens eine belastbare
+     *   Verbesserung wurde festgestellt.
+     *
+     * - Gleichzeitig liegt mindestens
+     *   eine belastbare Verschlechterung
+     *   oder ein neuer Befund vor.
+     *
+     * Eine eindeutige Gesamtrichtung
+     * wird in diesem Fall nicht behauptet.
+     *
+     * Der Wert wird ausdrücklich am
+     * Ende der bestehenden Enumeration
+     * ergänzt.
+     *
+     * Historische numerische Statuswerte
+     * behalten dadurch ihre Bedeutung.
+     */
+    MixedChanges = 7
 }
 
 public enum CustomerCheckupMatchBasis

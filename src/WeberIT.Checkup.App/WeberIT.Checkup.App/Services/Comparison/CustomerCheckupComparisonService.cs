@@ -9,7 +9,12 @@ public sealed class CustomerCheckupComparisonService :
 {
     private const double MaximumCoverageDifference = 0.15d;
 
-    private const int CurrentComparisonModelVersion = 2;
+    /*
+     * Vergleichsmodell V3:
+     * Fachliche Bewertung einzelner Bereichsveränderungen
+     * und abgesicherte Zuordnung technischer Befunde.
+     */
+    private const int CurrentComparisonModelVersion = 3;
 
     private readonly IDeviceIdentityService _deviceIdentityService;
 
@@ -173,6 +178,10 @@ public sealed class CustomerCheckupComparisonService :
         var remainingAfter = GetFindings(afterCheckup).ToList();
         var comparisons = new List<CustomerCheckupFindingComparison>();
 
+        /*
+         * Erste Stufe:
+         * Zuordnung anhand stabiler Befundcodes.
+         */
         MatchFindingGroups(
             remainingBefore,
             remainingAfter,
@@ -185,6 +194,13 @@ public sealed class CustomerCheckupComparisonService :
             areas,
             comparisons);
 
+        /*
+         * Zweite Stufe:
+         * Zuordnung über Ursachengruppen.
+         *
+         * Unterschiedliche stabile Befundcodes
+         * dürfen hierbei nicht überschrieben werden.
+         */
         MatchFindingGroups(
             remainingBefore,
             remainingAfter,
@@ -198,6 +214,13 @@ public sealed class CustomerCheckupComparisonService :
             areas,
             comparisons);
 
+        /*
+         * Dritte Stufe:
+         * Historische Fallback-Zuordnung über Titel.
+         *
+         * Auch hier bleibt die Identität vorhandener
+         * stabiler Befundcodes geschützt.
+         */
         MatchFindingGroups(
             remainingBefore,
             remainingAfter,
@@ -260,6 +283,31 @@ public sealed class CustomerCheckupComparisonService :
             var beforeGroup = beforeGroups[key];
             var afterGroup = afterGroups[key];
 
+            /*
+             * SCHRITT 52.5:
+             *
+             * Ein identischer Titel oder dieselbe
+             * Ursachengruppe genügt nicht, wenn
+             * beide Seiten unterschiedliche,
+             * eindeutige Befundcodes besitzen.
+             *
+             * Solche Befunde bleiben getrennt
+             * und werden anschließend als
+             * verschwundene bzw. neue Befunde
+             * bewertet.
+             *
+             * Bei historischen Daten ohne Code
+             * bleibt eine vorsichtige Fallback-
+             * Zuordnung weiterhin möglich.
+             */
+            if (!CanMatchFindingGroups(
+                    beforeGroup,
+                    afterGroup,
+                    matchBasis))
+            {
+                continue;
+            }
+
             comparisons.Add(CreateFindingComparison(
                 key,
                 matchBasis,
@@ -272,6 +320,87 @@ public sealed class CustomerCheckupComparisonService :
             RemoveFindings(remainingBefore, beforeGroup);
             RemoveFindings(remainingAfter, afterGroup);
         }
+    }
+
+    /// <summary>
+    /// Schützt stabile Befundidentitäten vor
+    /// fehlerhaften Fallback-Zuordnungen.
+    ///
+    /// Bei einer direkten Code-Zuordnung hat
+    /// der vorangegangene Gruppenschlüssel
+    /// die Identität bereits bestätigt.
+    ///
+    /// Bei einer Fallback-Zuordnung gilt:
+    ///
+    /// - Unterschiedliche vorhandene Codes
+    ///   dürfen nicht zusammengeführt werden.
+    ///
+    /// - Mehrere unterschiedliche Codes innerhalb
+    ///   einer Gruppe sind nicht eindeutig genug.
+    ///
+    /// - Wenn mindestens eine Seite keinen
+    ///   stabilen Code besitzt, bleibt die
+    ///   historische Fallback-Zuordnung möglich.
+    ///
+    /// Mehrdeutige Gruppen bleiben unzugeordnet.
+    /// </summary>
+    private static bool CanMatchFindingGroups(
+        IReadOnlyCollection<CheckupFinding> beforeGroup,
+        IReadOnlyCollection<CheckupFinding> afterGroup,
+        CustomerCheckupMatchBasis matchBasis)
+    {
+        if (matchBasis == CustomerCheckupMatchBasis.Code)
+        {
+            return true;
+        }
+
+        var beforeCodes = beforeGroup
+            .Select(finding =>
+                NormalizeStableValue(finding.Code))
+            .Where(code =>
+                !string.IsNullOrWhiteSpace(code))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var afterCodes = afterGroup
+            .Select(finding =>
+                NormalizeStableValue(finding.Code))
+            .Where(code =>
+                !string.IsNullOrWhiteSpace(code))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        /*
+         * Eine Fallback-Gruppe mit mehreren
+         * verschiedenen stabilen Codes ist
+         * fachlich nicht eindeutig.
+         */
+        if (beforeCodes.Count > 1
+            || afterCodes.Count > 1)
+        {
+            return false;
+        }
+
+        /*
+         * Historische Daten ohne stabilen
+         * Code dürfen weiterhin über
+         * Ursachengruppe oder Titel
+         * abgeglichen werden.
+         */
+        if (beforeCodes.Count == 0
+            || afterCodes.Count == 0)
+        {
+            return true;
+        }
+
+        /*
+         * Sind auf beiden Seiten Codes
+         * vorhanden, müssen sie identisch sein.
+         */
+        return string.Equals(
+            beforeCodes[0],
+            afterCodes[0],
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private static Dictionary<string, List<CheckupFinding>>
@@ -638,6 +767,22 @@ public sealed class CustomerCheckupComparisonService :
                     && item.AfterSeverity != FindingSeverity.Information)
                 .Sum(item => item.AfterOccurrenceCount);
 
+            /*
+             * Vergleichsmodell V3:
+             *
+             * Die fachliche Bereichsbewertung
+             * berücksichtigt einzelne Befundvergleiche.
+             *
+             * Die Zähler bleiben für die Anzeige
+             * im technischen Bericht erhalten.
+             */
+            var areaStatus =
+                CustomerCheckupAreaStatusPolicy.Determine(
+                    area.Code,
+                    beforeEvaluation.IsEvaluable,
+                    afterEvaluation.IsEvaluable,
+                    findings);
+
             result.Add(new CustomerCheckupAreaComparison
             {
                 AreaCode = area.Code,
@@ -648,56 +793,11 @@ public sealed class CustomerCheckupComparisonService :
                 AfterEvaluationNote = afterEvaluation.Note,
                 BeforeActionableFindingCount = beforeCount,
                 AfterActionableFindingCount = afterCount,
-                Status = DetermineAreaStatus(
-                    beforeEvaluation.IsEvaluable,
-                    afterEvaluation.IsEvaluable,
-                    beforeCount,
-                    afterCount)
+                Status = areaStatus
             });
         }
 
         return result;
-    }
-
-    private static CustomerCheckupAreaComparisonStatus DetermineAreaStatus(
-        bool wasBeforeEvaluable,
-        bool isAfterEvaluable,
-        int beforeCount,
-        int afterCount)
-    {
-        if (!wasBeforeEvaluable || !isAfterEvaluable)
-        {
-            return CustomerCheckupAreaComparisonStatus.NotComparable;
-        }
-
-        if (beforeCount == 0 && afterCount == 0)
-        {
-            return CustomerCheckupAreaComparisonStatus.UnchangedHealthy;
-        }
-
-        if (beforeCount == 0)
-        {
-            return CustomerCheckupAreaComparisonStatus.NewlyNeedsAttention;
-        }
-
-        if (afterCount == 0)
-        {
-            return CustomerCheckupAreaComparisonStatus.Improved;
-        }
-
-        if (afterCount < beforeCount)
-        {
-            return CustomerCheckupAreaComparisonStatus
-                .ImprovedButStillNeedsAttention;
-        }
-
-        if (afterCount > beforeCount)
-        {
-            return CustomerCheckupAreaComparisonStatus.Worsened;
-        }
-
-        return CustomerCheckupAreaComparisonStatus
-            .UnchangedNeedsAttention;
     }
 
     private static CustomerCheckupScoreComparison CompareScore(
@@ -802,8 +902,6 @@ public sealed class CustomerCheckupComparisonService :
         }
 
         /*
-         * SCHRITT 49.4:
-         *
          * Die Anzahl und die prozentuale Abdeckung
          * reichen nicht aus, um zwei Bewertungen
          * zuverlässig miteinander zu vergleichen.
@@ -959,7 +1057,6 @@ public sealed class CustomerCheckupComparisonService :
         var fallbackCount = comparison.Findings.Count(finding =>
             finding.MatchBasis != CustomerCheckupMatchBasis.Code);
 
-        // Singular und Plural korrekt unterscheiden.
         if (fallbackCount == 1)
         {
             notes.Add(

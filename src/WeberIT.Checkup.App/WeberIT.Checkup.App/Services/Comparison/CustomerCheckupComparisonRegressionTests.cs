@@ -7,7 +7,7 @@ namespace WeberIT.Checkup.App.Services.Comparison;
 
 /// <summary>
 /// Wiederholbare Regressionstests für den
-/// Vorher-/Nachher-Scorevergleich.
+/// Vorher-/Nachher-Vergleich.
 ///
 /// Ausschließlich für Debug-Builds.
 ///
@@ -21,6 +21,12 @@ namespace WeberIT.Checkup.App.Services.Comparison;
 /// </summary>
 public static class CustomerCheckupComparisonRegressionTests
 {
+    private const string SyntheticAreaCode =
+        "synthetic-area";
+
+    private const string OperatingSystemAreaCode =
+        "operating-system";
+
     private static readonly string[] SystemAreas =
     [
         "system.operating-system",
@@ -55,6 +61,8 @@ public static class CustomerCheckupComparisonRegressionTests
     public static string RunAll()
     {
         var results = new List<string>();
+
+        // Bestehende Score-Regressionstests
 
         Execute(
             "Identische Bewertungsbereiche",
@@ -106,6 +114,85 @@ public static class CustomerCheckupComparisonRegressionTests
             TestMissingScore,
             results);
 
+        // Neue Integrationstests für Vergleichsmodell V3
+
+        Execute(
+            "Integration: Gemischte Veränderungen bei gleicher Befundzahl",
+            TestIntegratedMixedChanges,
+            results);
+
+        Execute(
+            "Integration: Geringerer Schweregrad",
+            TestIntegratedSeverityImprovement,
+            results);
+
+        Execute(
+            "Integration: Höherer Schweregrad",
+            TestIntegratedSeverityWorsening,
+            results);
+
+        Execute(
+            "Integration: Geringere Befundhäufigkeit",
+            TestIntegratedReducedOccurrenceCount,
+            results);
+
+        Execute(
+            "Integration: Fehlende Abschlussauswertung",
+            TestIntegratedMissingAreaEvaluation,
+            results);
+
+        // Isolierte fachliche Bereichstests
+
+        Execute(
+            "Bereich: Keine Auffälligkeiten",
+            TestHealthyArea,
+            results);
+
+        Execute(
+            "Bereich: Behobener Befund",
+            TestResolvedAreaFinding,
+            results);
+
+        Execute(
+            "Bereich: Neuer Befund",
+            TestNewAreaFinding,
+            results);
+
+        Execute(
+            "Bereich: Unveränderter Handlungsbedarf",
+            TestUnchangedAreaFinding,
+            results);
+
+        Execute(
+            "Bereich: Gemischte Veränderungen",
+            TestMixedAreaFindings,
+            results);
+
+        Execute(
+            "Bereich: Schweregrad und Häufigkeit gegenläufig",
+            TestOpposingSeverityAndOccurrence,
+            results);
+
+        Execute(
+            "Bereich: Fehlende Vergleichbarkeit",
+            TestAreaNotComparable,
+            results);
+
+        Execute(
+            "Bereich: Befund nicht erneut auswertbar",
+            TestFindingNotComparable,
+            results);
+
+        Execute(
+            "Bereich: Neutrale Informationen",
+            TestInformationalFinding,
+            results);
+
+        Execute(
+            "Bereich: Widersprüchliche Befunddaten",
+            TestContradictoryFindingData,
+            results);
+
         return
             $"Alle {results.Count} Regressionstests "
             + "wurden erfolgreich abgeschlossen."
@@ -116,13 +203,17 @@ public static class CustomerCheckupComparisonRegressionTests
                 results);
     }
 
+    // =====================================================
+    // BESTEHENDE TESTS – SCOREVERGLEICH
+    // =====================================================
+
     private static void TestIdenticalAreas()
     {
         var comparison = CreateComparison();
 
         Require(
-            comparison.ComparisonModelVersion == 2,
-            "Die Vergleichsmodell-Version muss 2 sein.");
+            comparison.ComparisonModelVersion == 3,
+            "Die Vergleichsmodell-Version muss 3 sein.");
 
         Require(
             comparison.SystemScore.IsComparable,
@@ -419,6 +510,339 @@ public static class CustomerCheckupComparisonRegressionTests
             + "muss vergleichbar bleiben.");
     }
 
+    // =====================================================
+    // SCHRITT 52.4 – INTEGRATIONSTESTS
+    // =====================================================
+
+    private static void TestIntegratedMixedChanges()
+    {
+        var comparison = CreateComparison(
+            (before, after) =>
+            {
+                EnableOperatingSystemEvaluation(
+                    before,
+                    after);
+
+                /*
+                 * Vorher ein kleinerer Befund,
+                 * nachher ein anderer, kritischer
+                 * Befund.
+                 *
+                 * Anzahl vorher: 1
+                 * Anzahl nachher: 1
+                 *
+                 * Eine bloße Zählung würde
+                 * keine Änderung erkennen.
+                 */
+                before.Assessment.Findings.Add(
+                    CreateScanFinding(
+                        "system.operating-system.synthetic-old",
+                        FindingSeverity.Recommendation));
+
+                after.Assessment.Findings.Add(
+                    CreateScanFinding(
+                        "system.operating-system.synthetic-new",
+                        FindingSeverity.Critical));
+            });
+
+        RequireOperatingSystemAreaStatus(
+            comparison,
+            CustomerCheckupAreaComparisonStatus.MixedChanges);
+
+        Require(
+            comparison.ResolvedFindingCount == 1,
+            "Der alte Befund muss als "
+            + "nicht mehr festgestellt gelten.");
+
+        Require(
+            comparison.NewlyDetectedFindingCount == 1,
+            "Der neue kritische Befund "
+            + "muss erhalten bleiben.");
+    }
+
+    private static void TestIntegratedSeverityImprovement()
+    {
+        var comparison = CreateComparison(
+            (before, after) =>
+            {
+                EnableOperatingSystemEvaluation(
+                    before,
+                    after);
+
+                const string code =
+                    "system.operating-system.synthetic-severity";
+
+                before.Assessment.Findings.Add(
+                    CreateScanFinding(
+                        code,
+                        FindingSeverity.Warning));
+
+                after.Assessment.Findings.Add(
+                    CreateScanFinding(
+                        code,
+                        FindingSeverity.Recommendation));
+            });
+
+        RequireOperatingSystemAreaStatus(
+            comparison,
+            CustomerCheckupAreaComparisonStatus
+                .ImprovedButStillNeedsAttention);
+    }
+
+    private static void TestIntegratedSeverityWorsening()
+    {
+        var comparison = CreateComparison(
+            (before, after) =>
+            {
+                EnableOperatingSystemEvaluation(
+                    before,
+                    after);
+
+                const string code =
+                    "system.operating-system.synthetic-severity";
+
+                before.Assessment.Findings.Add(
+                    CreateScanFinding(
+                        code,
+                        FindingSeverity.Recommendation));
+
+                after.Assessment.Findings.Add(
+                    CreateScanFinding(
+                        code,
+                        FindingSeverity.Critical));
+            });
+
+        RequireOperatingSystemAreaStatus(
+            comparison,
+            CustomerCheckupAreaComparisonStatus.Worsened);
+    }
+
+    private static void TestIntegratedReducedOccurrenceCount()
+    {
+        var comparison = CreateComparison(
+            (before, after) =>
+            {
+                EnableOperatingSystemEvaluation(
+                    before,
+                    after);
+
+                const string code =
+                    "system.operating-system.synthetic-frequency";
+
+                before.Assessment.Findings.Add(
+                    CreateScanFinding(
+                        code,
+                        FindingSeverity.Warning));
+
+                before.Assessment.Findings.Add(
+                    CreateScanFinding(
+                        code,
+                        FindingSeverity.Warning));
+
+                after.Assessment.Findings.Add(
+                    CreateScanFinding(
+                        code,
+                        FindingSeverity.Warning));
+            });
+
+        RequireOperatingSystemAreaStatus(
+            comparison,
+            CustomerCheckupAreaComparisonStatus
+                .ImprovedButStillNeedsAttention);
+    }
+
+    private static void TestIntegratedMissingAreaEvaluation()
+    {
+        var comparison = CreateComparison(
+            (before, after) =>
+            {
+                /*
+                 * Nur im Eingangsscan sind
+                 * Betriebssystemdaten vorhanden.
+                 */
+                before.OperatingSystemInformation.Name =
+                    "SYNTHETIC-OPERATING-SYSTEM";
+
+                after.OperatingSystemInformation.Name =
+                    string.Empty;
+
+                before.Assessment.Findings.Add(
+                    CreateScanFinding(
+                        "system.operating-system.synthetic-missing",
+                        FindingSeverity.Warning));
+            });
+
+        RequireOperatingSystemAreaStatus(
+            comparison,
+            CustomerCheckupAreaComparisonStatus.NotComparable);
+    }
+
+    // =====================================================
+    // SCHRITT 52.4 – ISOLIERTE FACHLICHE TESTS
+    // =====================================================
+
+    private static void TestHealthyArea()
+    {
+        RequireAreaStatus(
+            CustomerCheckupAreaComparisonStatus.UnchangedHealthy);
+    }
+
+    private static void TestResolvedAreaFinding()
+    {
+        RequireAreaStatus(
+            CustomerCheckupAreaComparisonStatus.Improved,
+            CreateAreaFinding(
+                CustomerCheckupFindingComparisonStatus.Resolved,
+                FindingSeverity.Warning,
+                null,
+                beforeCount: 1,
+                afterCount: 0));
+    }
+
+    private static void TestNewAreaFinding()
+    {
+        RequireAreaStatus(
+            CustomerCheckupAreaComparisonStatus.NewlyNeedsAttention,
+            CreateAreaFinding(
+                CustomerCheckupFindingComparisonStatus.NewlyDetected,
+                null,
+                FindingSeverity.Critical,
+                beforeCount: 0,
+                afterCount: 1));
+    }
+
+    private static void TestUnchangedAreaFinding()
+    {
+        RequireAreaStatus(
+            CustomerCheckupAreaComparisonStatus.UnchangedNeedsAttention,
+            CreateAreaFinding(
+                CustomerCheckupFindingComparisonStatus.StillOpen,
+                FindingSeverity.Warning,
+                FindingSeverity.Warning,
+                beforeCount: 1,
+                afterCount: 1));
+    }
+
+    private static void TestMixedAreaFindings()
+    {
+        RequireAreaStatus(
+            CustomerCheckupAreaComparisonStatus.MixedChanges,
+            CreateAreaFinding(
+                CustomerCheckupFindingComparisonStatus.Resolved,
+                FindingSeverity.Recommendation,
+                null,
+                beforeCount: 1,
+                afterCount: 0),
+            CreateAreaFinding(
+                CustomerCheckupFindingComparisonStatus.NewlyDetected,
+                null,
+                FindingSeverity.Critical,
+                beforeCount: 0,
+                afterCount: 1));
+    }
+
+    private static void TestOpposingSeverityAndOccurrence()
+    {
+        /*
+         * Derselbe Befund:
+         *
+         * Vorher: eine Warnung.
+         * Nachher: zwei Empfehlungen.
+         *
+         * Schweregrad verbessert,
+         * Häufigkeit verschlechtert.
+         *
+         * Keine eindeutige Gesamtrichtung.
+         */
+        RequireAreaStatus(
+            CustomerCheckupAreaComparisonStatus.MixedChanges,
+            CreateAreaFinding(
+                CustomerCheckupFindingComparisonStatus.StillOpen,
+                FindingSeverity.Warning,
+                FindingSeverity.Recommendation,
+                beforeCount: 1,
+                afterCount: 2));
+    }
+
+    private static void TestAreaNotComparable()
+    {
+        var finding = CreateAreaFinding(
+            CustomerCheckupFindingComparisonStatus.Resolved,
+            FindingSeverity.Warning,
+            null,
+            beforeCount: 1,
+            afterCount: 0);
+
+        var status =
+            CustomerCheckupAreaStatusPolicy.Determine(
+                SyntheticAreaCode,
+                wasBeforeEvaluable: true,
+                isAfterEvaluable: false,
+                [finding]);
+
+        Require(
+            status == CustomerCheckupAreaComparisonStatus.NotComparable,
+            "Ein nicht auswertbarer Nachher-Bereich "
+            + "darf keine Verbesserung melden.");
+    }
+
+    private static void TestFindingNotComparable()
+    {
+        RequireAreaStatus(
+            CustomerCheckupAreaComparisonStatus.NotComparable,
+            CreateAreaFinding(
+                CustomerCheckupFindingComparisonStatus.NotReevaluatable,
+                FindingSeverity.Warning,
+                null,
+                beforeCount: 1,
+                afterCount: 0,
+                wasBeforeEvaluable: true,
+                isAfterEvaluable: false));
+    }
+
+    private static void TestInformationalFinding()
+    {
+        /*
+         * Neutrale Informationen dürfen weder
+         * als Mangel noch als Verbesserung
+         * oder Verschlechterung zählen.
+         */
+        RequireAreaStatus(
+            CustomerCheckupAreaComparisonStatus.UnchangedHealthy,
+            CreateAreaFinding(
+                CustomerCheckupFindingComparisonStatus.Informational,
+                FindingSeverity.Information,
+                FindingSeverity.Information,
+                beforeCount: 1,
+                afterCount: 1,
+                wasBeforeEvaluable: false,
+                isAfterEvaluable: false));
+    }
+
+    private static void TestContradictoryFindingData()
+    {
+        /*
+         * Der Befund behauptet "behoben",
+         * besitzt nachher aber weiterhin
+         * einen handlungsrelevanten Status.
+         *
+         * Eine solche Kombination darf
+         * nicht positiv gewertet werden.
+         */
+        RequireAreaStatus(
+            CustomerCheckupAreaComparisonStatus.NotComparable,
+            CreateAreaFinding(
+                CustomerCheckupFindingComparisonStatus.Resolved,
+                FindingSeverity.Warning,
+                FindingSeverity.Warning,
+                beforeCount: 1,
+                afterCount: 1));
+    }
+
+    // =====================================================
+    // SYNTHETISCHE TESTDATEN
+    // =====================================================
+
     private static CustomerCheckupComparison CreateComparison(
         Action<CheckupSession, CheckupSession>? configure = null)
     {
@@ -549,6 +973,124 @@ public static class CustomerCheckupComparisonRegressionTests
             AvailableAreaCodes =
                 availableCodes.ToList()
         };
+    }
+
+    private static void EnableOperatingSystemEvaluation(
+        CheckupSession before,
+        CheckupSession after)
+    {
+        /*
+         * Der fachliche Bereich "Betriebssystem"
+         * soll in beiden künstlichen Scans
+         * zuverlässig auswertbar sein.
+         */
+        before.OperatingSystemInformation.Name =
+            "SYNTHETIC-OPERATING-SYSTEM";
+
+        after.OperatingSystemInformation.Name =
+            "SYNTHETIC-OPERATING-SYSTEM";
+    }
+
+    private static CheckupFinding CreateScanFinding(
+        string code,
+        FindingSeverity severity)
+    {
+        return new CheckupFinding
+        {
+            Code = code,
+            Title = "Künstlicher Betriebsystembefund",
+            Description = "Ausschließlich synthetischer Testbefund",
+            Category = FindingCategory.OperatingSystem,
+            Severity = severity
+        };
+    }
+
+    private static CustomerCheckupFindingComparison CreateAreaFinding(
+        CustomerCheckupFindingComparisonStatus status,
+        FindingSeverity? beforeSeverity,
+        FindingSeverity? afterSeverity,
+        int beforeCount,
+        int afterCount,
+        bool wasBeforeEvaluable = true,
+        bool isAfterEvaluable = true)
+    {
+        return new CustomerCheckupFindingComparison
+        {
+            AreaCode =
+                SyntheticAreaCode,
+
+            MatchKey =
+                Guid.NewGuid().ToString("N"),
+
+            Title =
+                "Künstlicher Bereichsbefund",
+
+            Status =
+                status,
+
+            BeforeSeverity =
+                beforeSeverity,
+
+            AfterSeverity =
+                afterSeverity,
+
+            BeforeOccurrenceCount =
+                beforeCount,
+
+            AfterOccurrenceCount =
+                afterCount,
+
+            WasBeforeAreaEvaluable =
+                wasBeforeEvaluable,
+
+            IsAfterAreaEvaluable =
+                isAfterEvaluable
+        };
+    }
+
+    // =====================================================
+    // AUSWERTUNG UND TESTHILFEN
+    // =====================================================
+
+    private static void RequireOperatingSystemAreaStatus(
+        CustomerCheckupComparison comparison,
+        CustomerCheckupAreaComparisonStatus expected)
+    {
+        var area =
+            comparison.Areas.FirstOrDefault(item =>
+                string.Equals(
+                    item.AreaCode,
+                    OperatingSystemAreaCode,
+                    StringComparison.OrdinalIgnoreCase));
+
+        Require(
+            area is not null,
+            "Der integrierte Bereich "
+            + "'Betriebssystem' fehlt.");
+
+        Require(
+            area!.Status == expected,
+            "Unerwartete integrierte Bereichsbewertung. "
+            + $"Erwartet: {expected}. "
+            + $"Tatsächlich: {area.Status}.");
+    }
+
+    private static void RequireAreaStatus(
+        CustomerCheckupAreaComparisonStatus expected,
+        params CustomerCheckupFindingComparison[] findings)
+    {
+        var actual =
+            CustomerCheckupAreaStatusPolicy.Determine(
+                SyntheticAreaCode,
+                wasBeforeEvaluable: true,
+                isAfterEvaluable: true,
+                findings);
+
+        Require(
+            actual == expected,
+            "Unerwartete fachliche Bereichsbewertung. "
+            + $"Erwartet: {expected}. "
+            + $"Tatsächlich: {actual}.");
     }
 
     private static void Execute(
