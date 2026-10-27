@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿
+using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -7,6 +8,7 @@ using System.Windows.Controls;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 using WeberIT.Checkup.App.Services.Tasks;
+using WeberIT.Checkup.App.Services.Updates;
 
 namespace WeberIT.Checkup.App.Views.Dialogs;
 
@@ -27,6 +29,8 @@ public partial class ProgramUpdateSelectionDialog :
     private readonly IRestartInformationProvider
         _restartInformationProvider;
 
+    private readonly string _filterNotice;
+
     private string _selectionStatusText =
         "Noch kein Programmupdate ausgewählt.";
 
@@ -35,61 +39,102 @@ public partial class ProgramUpdateSelectionDialog :
         ProgramUpdateInformation programUpdateInformation,
         CheckupTaskList taskList)
     {
-        ArgumentNullException.ThrowIfNull(
-            task);
+        ArgumentNullException.ThrowIfNull(task);
 
         ArgumentNullException.ThrowIfNull(
             programUpdateInformation);
 
-        ArgumentNullException.ThrowIfNull(
-            taskList);
+        ArgumentNullException.ThrowIfNull(taskList);
 
-        _task =
-            task;
-
-        _programUpdateInformation =
-            programUpdateInformation;
-
-        _taskList =
-            taskList;
+        _task = task;
+        _taskList = taskList;
 
         _restartInformationProvider =
             ResolveRestartInformationProvider();
 
-        AvailableUpdates =
-            programUpdateInformation
-                .AvailableUpdates
+        /*
+         * SCHRITT 55.7.2
+         *
+         * Alle drei bekannten Einstiegspunkte
+         * verwenden diesen Dialog.
+         *
+         * Der Paketstatus wird deshalb zentral
+         * ausgewertet.
+         *
+         * Die ursprünglichen Scanergebnisse und
+         * gespeicherten Aktionsprotokolle bleiben
+         * vollständig unverändert.
+         */
+        var packageStatuses =
+            ProgramUpdatePackageWorkStatusService
+                .Evaluate(
+                    programUpdateInformation,
+                    taskList);
+
+        var selectableUpdates =
+            packageStatuses
+                .Where(status =>
+                    status.CanOfferInstallation)
+                .Select(status => status.Update)
+                .Where(update =>
+                    update is not null)
+                .Select(update =>
+                    CloneUpdate(update))
                 .OrderBy(
-                    update =>
-                        update.Name,
+                    update => update.Name,
                     StringComparer.CurrentCultureIgnoreCase)
                 .ThenBy(
-                    update =>
-                        update.PackageId,
+                    update => update.PackageId,
                     StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+        /*
+         * Die gefilterte Liste ist gleichzeitig
+         * Grundlage für die Anzeige UND den
+         * Aktionsplan-Builder.
+         *
+         * "Alle auswählen" kann dadurch keine
+         * bereits erfolgreich bearbeiteten
+         * Pakete erneut in den Plan aufnehmen.
+         */
+        _programUpdateInformation =
+            CreateSelectionInformation(
+                programUpdateInformation,
+                selectableUpdates);
+
+        AvailableUpdates =
+            selectableUpdates;
+
+        _filterNotice =
+            BuildFilterNotice(
+                packageStatuses);
+
+        _selectionStatusText =
+            BuildSelectionStatusText(0);
+
         InitializeComponent();
 
-        DataContext =
-            this;
+        DataContext = this;
     }
 
-    public event PropertyChangedEventHandler? PropertyChanged;
+    public event PropertyChangedEventHandler?
+        PropertyChanged;
 
     public IReadOnlyList<AvailableProgramUpdate>
         AvailableUpdates
-    { get; }
+    {
+        get;
+    }
 
     public string AvailableUpdateCountText =>
         AvailableUpdates.Count == 1
-            ? "1 erkanntes Programmupdate"
-            : $"{AvailableUpdates.Count} erkannte Programmupdates";
+            ? "1 Programmupdate zur Installation verfügbar"
+            : $"{AvailableUpdates.Count} Programmupdates "
+              + "zur Installation verfügbar";
 
     public string SelectionStatusText
     {
-        get =>
-            _selectionStatusText;
+        get => _selectionStatusText;
 
         private set
         {
@@ -98,12 +143,220 @@ public partial class ProgramUpdateSelectionDialog :
                 return;
             }
 
-            _selectionStatusText =
-                value;
+            _selectionStatusText = value;
 
             OnPropertyChanged();
         }
     }
+
+    // =============================================
+    // SCHRITT 55.7.2: ZENTRALE FILTERUNG
+    // =============================================
+
+    private static ProgramUpdateInformation
+        CreateSelectionInformation(
+            ProgramUpdateInformation original,
+            IReadOnlyList<AvailableProgramUpdate> updates)
+    {
+        return new ProgramUpdateInformation
+        {
+            IsWingetAvailable =
+                original.IsWingetAvailable,
+
+            WingetVersion =
+                original.WingetVersion,
+
+            IsAnalysisPerformed =
+                original.IsAnalysisPerformed,
+
+            IsAnalysisSuccessful =
+                original.IsAnalysisSuccessful,
+
+            AnalysisDate =
+                original.AnalysisDate,
+
+            AnalysisDetails =
+                original.AnalysisDetails,
+
+            AvailableUpdateCount =
+                updates.Count,
+
+            IsResultTruncated =
+                original.IsResultTruncated,
+
+            AvailableUpdates =
+                updates
+                    .Select(CloneUpdate)
+                    .ToList()
+        };
+    }
+
+    private static AvailableProgramUpdate CloneUpdate(
+        AvailableProgramUpdate update)
+    {
+        return new AvailableProgramUpdate
+        {
+            PackageId = update.PackageId,
+            Name = update.Name,
+
+            InstalledVersion =
+                update.InstalledVersion,
+
+            AvailableVersion =
+                update.AvailableVersion,
+
+            Source = update.Source
+        };
+    }
+
+    /// <summary>
+    /// Die ausgeblendeten Pakete werden nicht
+    /// als endgültig installiert bezeichnet.
+    ///
+    /// Der Techniker erhält eine verständliche
+    /// Erklärung darüber, warum bestimmte
+    /// Programme nicht angeboten werden.
+    ///
+    /// Unklare Ergebnisse bleiben ausdrücklich
+    /// kontrollbedürftig.
+    /// </summary>
+    private static string BuildFilterNotice(
+        IReadOnlyList<ProgramUpdatePackageWorkStatus>
+            statuses)
+    {
+        if (statuses.Count == 0)
+        {
+            return
+                "Die übergebene Arbeitsliste enthält "
+                + "keine auswählbaren Programmupdates.";
+        }
+
+        var awaitingCount =
+            statuses.Count(status =>
+                status.IsAwaitingVerification);
+
+        var reviewCount =
+            statuses.Count(status =>
+                status.State ==
+                ProgramUpdatePackageWorkState
+                    .NeedsReview);
+
+        var notAssessableCount =
+            statuses.Count(status =>
+                status.State ==
+                ProgramUpdatePackageWorkState
+                    .NotAssessable);
+
+        var failedCount =
+            statuses.Count(status =>
+                status.State ==
+                ProgramUpdatePackageWorkState
+                    .Failed);
+
+        var messages =
+            new List<string>();
+
+        if (awaitingCount > 0)
+        {
+            messages.Add(
+                awaitingCount == 1
+                    ? "Ein Programmupdate wurde bereits "
+                      + "technisch erfolgreich ausgeführt "
+                      + "und wird bis zur erneuten Kontrolle "
+                      + "nicht nochmals angeboten."
+                    : $"{awaitingCount} Programmupdates "
+                      + "wurden bereits technisch erfolgreich "
+                      + "ausgeführt und werden bis zur erneuten "
+                      + "Kontrolle nicht nochmals angeboten.");
+        }
+
+        if (failedCount > 0)
+        {
+            messages.Add(
+                failedCount == 1
+                    ? "Ein fehlgeschlagenes Update "
+                      + "bleibt zur Bearbeitung verfügbar."
+                    : $"{failedCount} fehlgeschlagene Updates "
+                      + "bleiben zur Bearbeitung verfügbar.");
+        }
+
+        if (reviewCount > 0)
+        {
+            messages.Add(
+                reviewCount == 1
+                    ? "Ein Paket besitzt ein unklar "
+                      + "dokumentiertes Ergebnis. "
+                      + "Es wird vorsorglich nicht "
+                      + "automatisch zur erneuten "
+                      + "Installation angeboten."
+                    : $"{reviewCount} Pakete besitzen "
+                      + "unklar dokumentierte Ergebnisse. "
+                      + "Sie werden vorsorglich nicht "
+                      + "automatisch erneut angeboten.");
+        }
+
+        if (notAssessableCount > 0)
+        {
+            messages.Add(
+                "Die WinGet-Analyse ist für "
+                + "mindestens ein Paket nicht "
+                + "belastbar. Eine erneute "
+                + "zuverlässige Prüfung ist nötig, "
+                + "bevor ein Installationsplan "
+                + "erstellt werden kann.");
+        }
+
+        return string.Join(
+            Environment.NewLine
+            + Environment.NewLine,
+            messages);
+    }
+
+    private string BuildSelectionStatusText(
+        int selectedCount)
+    {
+        string selectionText;
+
+        if (AvailableUpdates.Count == 0)
+        {
+            selectionText =
+                "Aktuell stehen keine Programmupdates "
+                + "für eine sichere automatische "
+                + "Installationsauswahl bereit.";
+        }
+        else
+        {
+            selectionText =
+                selectedCount switch
+                {
+                    0 =>
+                        "Noch kein Programmupdate ausgewählt.",
+
+                    1 =>
+                        "Ein Programmupdate ist für die "
+                        + "Planvorschau ausgewählt.",
+
+                    _ =>
+                        $"{selectedCount} Programmupdates sind "
+                        + "für die Planvorschau ausgewählt."
+                };
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                _filterNotice))
+        {
+            return selectionText;
+        }
+
+        return selectionText
+               + Environment.NewLine
+               + Environment.NewLine
+               + _filterNotice;
+    }
+
+    // =============================================
+    // DIENSTE
+    // =============================================
 
     private static IRestartInformationProvider
         ResolveRestartInformationProvider()
@@ -122,6 +375,10 @@ public partial class ProgramUpdateSelectionDialog :
             .GetRequiredService<
                 IRestartInformationProvider>();
     }
+
+    // =============================================
+    // AUSWAHL
+    // =============================================
 
     private void SelectAllButton_OnClick(
         object sender,
@@ -148,19 +405,8 @@ public partial class ProgramUpdateSelectionDialog :
             selectedCount > 0;
 
         SelectionStatusText =
-            selectedCount switch
-            {
-                0 =>
-                    "Noch kein Programmupdate ausgewählt.",
-
-                1 =>
-                    "Ein Programmupdate ist für die "
-                    + "Planvorschau ausgewählt.",
-
-                _ =>
-                    $"{selectedCount} Programmupdates sind "
-                    + "für die Planvorschau ausgewählt."
-            };
+            BuildSelectionStatusText(
+                selectedCount);
     }
 
     private void PreviewPlanButton_OnClick(
@@ -171,8 +417,7 @@ public partial class ProgramUpdateSelectionDialog :
 
         try
         {
-            plan =
-                BuildPlan();
+            plan = BuildPlan();
         }
         catch (Exception exception)
         {
@@ -188,11 +433,9 @@ public partial class ProgramUpdateSelectionDialog :
         }
 
         var previewDialog =
-            new TaskActionPlanPreviewDialog(
-                plan)
+            new TaskActionPlanPreviewDialog(plan)
             {
-                Owner =
-                    this
+                Owner = this
             };
 
         var previewResult =
@@ -206,8 +449,7 @@ public partial class ProgramUpdateSelectionDialog :
 
         try
         {
-            ExecuteConfirmedPlan(
-                plan);
+            ExecuteConfirmedPlan(plan);
         }
         catch (Exception exception)
         {
@@ -227,18 +469,19 @@ public partial class ProgramUpdateSelectionDialog :
             UpdatesListBox
                 .SelectedItems
                 .Cast<AvailableProgramUpdate>()
-                .Select(
-                    update =>
-                        new ProgramUpdateActionSelection
-                        {
-                            PackageId =
-                                update.PackageId,
-
-                            Source =
-                                update.Source
-                        })
+                .Select(update =>
+                    new ProgramUpdateActionSelection
+                    {
+                        PackageId = update.PackageId,
+                        Source = update.Source
+                    })
                 .ToList();
 
+        /*
+         * Der Builder verwendet ausdrücklich
+         * dieselbe gefilterte Programmliste,
+         * die im Dialog angezeigt wird.
+         */
         var planBuilder =
             new ProgramUpdateActionPlanBuilder();
 
@@ -247,6 +490,10 @@ public partial class ProgramUpdateSelectionDialog :
             _programUpdateInformation,
             selections);
     }
+
+    // =============================================
+    // AUSFÜHRUNG
+    // =============================================
 
     private void ExecuteConfirmedPlan(
         CheckupTaskActionPlan plan)
@@ -267,8 +514,7 @@ public partial class ProgramUpdateSelectionDialog :
                 plan,
                 executor)
             {
-                Owner =
-                    this
+                Owner = this
             };
 
         executionDialog.ShowDialog();
@@ -283,9 +529,28 @@ public partial class ProgramUpdateSelectionDialog :
             return;
         }
 
-        PersistExecutionResult(
-            plan,
-            executionResult);
+        /*
+         * Der Auswahldialog besitzt eine
+         * Momentaufnahme der verfügbaren
+         * Programmupdates.
+         *
+         * Nach einer tatsächlich ausgeführten
+         * Updateaktion muss diese Auswahl
+         * verworfen werden.
+         *
+         * Beim erneuten Öffnen erfolgt
+         * eine neue Statusberechnung.
+         */
+        try
+        {
+            PersistExecutionResult(
+                plan,
+                executionResult);
+        }
+        finally
+        {
+            Close();
+        }
     }
 
     private void PersistExecutionResult(
@@ -326,6 +591,10 @@ public partial class ProgramUpdateSelectionDialog :
                 + exception.Message);
         }
     }
+
+    // =============================================
+    // NEUSTARTPRÜFUNG
+    // =============================================
 
     private ProgramUpdateRestartEvaluation
         EvaluateRestartRequirement(
@@ -388,8 +657,7 @@ public partial class ProgramUpdateSelectionDialog :
         ArgumentNullException.ThrowIfNull(
             restartInformation);
 
-        var builder =
-            new StringBuilder();
+        var builder = new StringBuilder();
 
         builder.Append("Neustartanalyse durchgeführt: ");
         builder.AppendLine(
@@ -408,14 +676,9 @@ public partial class ProgramUpdateSelectionDialog :
         builder.AppendLine(
             restartInformation.IsRestartRequired switch
             {
-                true =>
-                    "Ja",
-
-                false =>
-                    "Nein",
-
-                _ =>
-                    "Nicht eindeutig"
+                true => "Ja",
+                false => "Nein",
+                _ => "Nicht eindeutig"
             });
 
         if (restartInformation.AnalysisDate.HasValue)
@@ -424,8 +687,7 @@ public partial class ProgramUpdateSelectionDialog :
 
             builder.AppendLine(
                 restartInformation.AnalysisDate.Value
-                    .ToString(
-                        "dd.MM.yyyy HH:mm")
+                    .ToString("dd.MM.yyyy HH:mm")
                 + " Uhr");
         }
 
@@ -441,6 +703,7 @@ public partial class ProgramUpdateSelectionDialog :
         }
 
         builder.AppendLine();
+
         builder.AppendLine(
             "Ausgewertete Neustartquellen:");
 
@@ -448,6 +711,7 @@ public partial class ProgramUpdateSelectionDialog :
                  in restartInformation.Sources)
         {
             builder.Append("• ");
+
             builder.Append(
                 string.IsNullOrWhiteSpace(
                     source.DisplayName)
@@ -466,14 +730,9 @@ public partial class ProgramUpdateSelectionDialog :
                 builder.AppendLine(
                     source.IsRestartRequired switch
                     {
-                        true =>
-                            "Neustarthinweis erkannt",
-
-                        false =>
-                            "kein Neustarthinweis erkannt",
-
-                        _ =>
-                            "Ergebnis nicht eindeutig"
+                        true => "Neustarthinweis erkannt",
+                        false => "kein Neustarthinweis erkannt",
+                        _ => "Ergebnis nicht eindeutig"
                     });
             }
 
@@ -481,6 +740,7 @@ public partial class ProgramUpdateSelectionDialog :
                     source.Details))
             {
                 builder.Append("  ");
+
                 builder.AppendLine(
                     source.Details.Trim());
             }
@@ -490,6 +750,10 @@ public partial class ProgramUpdateSelectionDialog :
             .ToString()
             .Trim();
     }
+
+    // =============================================
+    // AKTIONSPROTOKOLL
+    // =============================================
 
     private static CheckupTaskActionResult
         CreateTaskActionResult(
@@ -503,11 +767,8 @@ public partial class ProgramUpdateSelectionDialog :
 
         return new CheckupTaskActionResult
         {
-            ActionCode =
-                plan.ActionCode,
-
-            ActionTitle =
-                plan.ActionTitle,
+            ActionCode = plan.ActionCode,
+            ActionTitle = plan.ActionTitle,
 
             TargetDescription =
                 plan.TargetDescription,
@@ -649,8 +910,7 @@ public partial class ProgramUpdateSelectionDialog :
         ProgramUpdateActionExecutionResult executionResult,
         ProgramUpdateRestartEvaluation restartEvaluation)
     {
-        var builder =
-            new StringBuilder();
+        var builder = new StringBuilder();
 
         if (!string.IsNullOrWhiteSpace(
                 executionResult.ErrorMessage))
@@ -673,8 +933,7 @@ public partial class ProgramUpdateSelectionDialog :
                     ? plan.Commands[index].DisplayText
                     : "Nicht zuordenbarer Einzelbefehl";
 
-            builder.AppendLine(
-                commandText);
+            builder.AppendLine(commandText);
 
             builder.Append("Gestartet: ");
             builder.AppendLine(
@@ -701,6 +960,7 @@ public partial class ProgramUpdateSelectionDialog :
                     processResult.ErrorMessage))
             {
                 builder.Append("Technischer Fehler: ");
+
                 builder.AppendLine(
                     LimitOutput(
                         processResult.ErrorMessage));
@@ -732,6 +992,7 @@ public partial class ProgramUpdateSelectionDialog :
                 restartEvaluation.Details))
         {
             builder.AppendLine();
+
             builder.AppendLine(
                 LimitOutput(
                     restartEvaluation.Details));
@@ -747,8 +1008,7 @@ public partial class ProgramUpdateSelectionDialog :
         string heading,
         string output)
     {
-        if (string.IsNullOrWhiteSpace(
-                output))
+        if (string.IsNullOrWhiteSpace(output))
         {
             return;
         }
@@ -757,8 +1017,7 @@ public partial class ProgramUpdateSelectionDialog :
         builder.AppendLine(":");
 
         builder.AppendLine(
-            LimitOutput(
-                output));
+            LimitOutput(output));
     }
 
     private static string LimitOutput(
@@ -795,8 +1054,7 @@ public partial class ProgramUpdateSelectionDialog :
                 title,
                 message)
             {
-                Owner =
-                    this
+                Owner = this
             };
 
         dialog.ShowDialog();
@@ -827,14 +1085,9 @@ public partial class ProgramUpdateSelectionDialog :
         {
             return new ProgramUpdateRestartEvaluation
             {
-                RestartRequired =
-                    restartRequired,
-
-                IsConclusive =
-                    true,
-
-                Details =
-                    details
+                RestartRequired = restartRequired,
+                IsConclusive = true,
+                Details = details
             };
         }
 
@@ -844,14 +1097,9 @@ public partial class ProgramUpdateSelectionDialog :
         {
             return new ProgramUpdateRestartEvaluation
             {
-                RestartRequired =
-                    false,
-
-                IsConclusive =
-                    false,
-
-                Details =
-                    details
+                RestartRequired = false,
+                IsConclusive = false,
+                Details = details
             };
         }
     }
