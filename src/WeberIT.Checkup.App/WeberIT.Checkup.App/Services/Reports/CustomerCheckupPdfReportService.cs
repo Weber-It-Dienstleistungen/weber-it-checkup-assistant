@@ -65,8 +65,7 @@ public sealed class CustomerCheckupPdfReportService :
                 nameof(filePath));
         }
 
-        var normalizedFilePath =
-            NormalizePdfFilePath(filePath);
+        var normalizedFilePath = NormalizePdfFilePath(filePath);
 
         EnsureTargetDirectoryExists(normalizedFilePath);
 
@@ -178,9 +177,9 @@ public sealed class CustomerCheckupPdfReportService :
 
         ConfigureStyles(document);
 
-        // =================================================
-        // TEIL 1: KUNDENVERSTÄNDLICHER HAUPTBERICHT
-        // =================================================
+        // ===============================================
+        // TEIL 1: KUNDENBERICHT
+        // ===============================================
 
         var customerSection = document.AddSection();
 
@@ -216,9 +215,9 @@ public sealed class CustomerCheckupPdfReportService :
             customerSection,
             comparison);
 
-        // =================================================
+        // ===============================================
         // TEIL 2: TECHNISCHER ANHANG
-        // =================================================
+        // ===============================================
 
         var appendixSection = document.AddSection();
 
@@ -228,8 +227,7 @@ public sealed class CustomerCheckupPdfReportService :
             appendixSection,
             "Technischer Anhang");
 
-        AddTechnicalAppendixIntroduction(
-            appendixSection);
+        AddTechnicalAppendixIntroduction(appendixSection);
 
         AddTechnicalDeviceDetails(
             appendixSection,
@@ -237,38 +235,18 @@ public sealed class CustomerCheckupPdfReportService :
             device,
             visit);
 
-        AddResultOverview(
-            appendixSection,
-            comparison);
-
-        AddScoreComparison(
-            appendixSection,
-            comparison);
-
-        AddAreaComparison(
-            appendixSection,
-            comparison);
-
-        AddActions(
-            appendixSection,
-            comparison);
-
-        AddFindings(
-            appendixSection,
-            comparison);
-
-        AddTasks(
-            appendixSection,
-            comparison);
+        AddResultOverview(appendixSection, comparison);
+        AddScoreComparison(appendixSection, comparison);
+        AddAreaComparison(appendixSection, comparison);
+        AddActions(appendixSection, comparison);
+        AddFindings(appendixSection, comparison);
+        AddTasks(appendixSection, comparison);
 
         AddProgramUpdateDecisions(
             appendixSection,
             programUpdateReport);
 
-        AddComparisonNotes(
-            appendixSection,
-            comparison);
-
+        AddComparisonNotes(appendixSection, comparison);
         AddReportNotice(appendixSection);
 
         return document;
@@ -320,13 +298,8 @@ public sealed class CustomerCheckupPdfReportService :
     }
 
     /// <summary>
-    /// Fügt ausschließlich den Abschnittstitel im Seitenkopf ein.
-    ///
-    /// Die vollständige Unternehmensfußzeile einschließlich
-    /// Seitennummerierung wird nach dem PDF-Export zentral
-    /// durch BrandedCustomerCheckupPdfReportService erzeugt.
-    ///
-    /// Hier darf keine zweite Fußzeile angelegt werden.
+    /// Die Unternehmensfußzeile wird ausschließlich
+    /// im nachgelagerten Branding-Service erzeugt.
     /// </summary>
     private static void AddSectionHeader(
         Section section,
@@ -338,13 +311,12 @@ public sealed class CustomerCheckupPdfReportService :
         header.Format.Font.Name = "Arial";
         header.Format.Font.Size = Unit.FromPoint(8);
         header.Format.Font.Color = MutedTextColor;
-        header.Format.Alignment =
-            ParagraphAlignment.Right;
+        header.Format.Alignment = ParagraphAlignment.Right;
     }
 
-    // =====================================================
-    // TEIL 1 – KUNDENBERICHT
-    // =====================================================
+    // ===============================================
+    // KUNDENHAUPTBERICHT
+    // ===============================================
 
     private static void AddCustomerTitle(
         Section section,
@@ -359,50 +331,39 @@ public sealed class CustomerCheckupPdfReportService :
         title.Format.Font.Size = Unit.FromPoint(21);
         title.Format.Font.Bold = true;
         title.Format.Font.Color = HeadingColor;
-
-        title.Format.SpaceAfter =
-            Unit.FromPoint(4);
+        title.Format.SpaceAfter = Unit.FromPoint(4);
 
         var subtitle = section.AddParagraph(
             "Die Ergebnisse der Computerprüfung "
             + "verständlich zusammengefasst.");
 
-        subtitle.Format.Font.Size =
-            Unit.FromPoint(11);
-
-        subtitle.Format.Font.Color =
-            MutedTextColor;
-
-        subtitle.Format.SpaceAfter =
-            Unit.FromPoint(10);
+        subtitle.Format.Font.Size = Unit.FromPoint(11);
+        subtitle.Format.Font.Color = MutedTextColor;
+        subtitle.Format.SpaceAfter = Unit.FromPoint(10);
 
         AddKeyValueTable(
             section,
             new[]
             {
-                (
-                    "Kunde",
-                    SafeText(customer.DisplayName)
-                ),
-                (
-                    "Geprüftes Gerät",
-                    SafeText(device.DisplayName)
-                ),
+                ("Kunde", SafeText(customer.DisplayName)),
+                ("Geprüftes Gerät", SafeText(device.DisplayName)),
                 (
                     "Datum der Kontrolle",
-                    FormatDateTime(
-                        visit.AfterCheckup!.ScanDate)
+                    FormatDateTime(visit.AfterCheckup!.ScanDate)
                 )
             });
     }
+
+    // ===============================================
+    // SCHRITT 55.2: TACHOS IM KUNDENBERICHT
+    // ===============================================
 
     private static void AddCustomerSummary(
         Section section,
         CustomerCheckupComparison comparison)
     {
         var summary =
-            CustomerCheckupCustomerSummary.Create(
-                comparison);
+            CustomerCheckupCustomerSummary.Create(comparison);
 
         AddSectionHeading(
             section,
@@ -421,11 +382,19 @@ public sealed class CustomerCheckupPdfReportService :
             summary.Headline,
             headlineColor);
 
-        AddCallout(
+        /*
+         * Statt der bisherigen langen Erklärung
+         * in einem weiteren Callout erhält der
+         * Kunde jetzt zwei grafische Tachos.
+         *
+         * Die Grafiken verwenden ausschließlich
+         * den gespeicherten Vergleich.
+         *
+         * Es werden keine Scores neu berechnet.
+         */
+        AddCustomerScoreGauges(
             section,
-            "Wie geht es Ihrem Rechner?",
-            summary.ConditionText,
-            AccentColor);
+            comparison);
 
         AddCallout(
             section,
@@ -443,16 +412,143 @@ public sealed class CustomerCheckupPdfReportService :
                 ? WarningColor
                 : SuccessColor);
 
+        /*
+         * Der Hinweis zur Vergleichbarkeit bleibt
+         * erhalten, wird aber platzsparender
+         * dargestellt.
+         */
         if (comparison.Areas.Any(area =>
                 area.Status ==
                 CustomerCheckupAreaComparisonStatus.NotComparable))
         {
-            AddCallout(
-                section,
-                "Hinweis zur Prüfung",
-                summary.CheckupCoverageText,
-                MutedTextColor);
+            var notice = section.AddParagraph();
+
+            notice.AddFormattedText(
+                "Hinweis zur Prüfung: ",
+                TextFormat.Bold);
+
+            notice.AddText(summary.CheckupCoverageText);
+
+            notice.Format.Font.Size = Unit.FromPoint(8);
+            notice.Format.Font.Color = MutedTextColor;
+            notice.Format.SpaceBefore = Unit.FromPoint(3);
+            notice.Format.SpaceAfter = Unit.FromPoint(4);
         }
+    }
+
+    /// <summary>
+    /// Fügt zwei halbkreisförmige Score-Anzeigen
+    /// direkt nebeneinander in den Hauptbericht ein.
+    ///
+    /// Die PNG-Daten werden vollständig im
+    /// Arbeitsspeicher erzeugt und von MigraDoc
+    /// über das base64-Protokoll eingebunden.
+    ///
+    /// Die Bilddarstellung selbst überprüft
+    /// nochmals die fachliche Vergleichbarkeit.
+    ///
+    /// Bei fehlender Vergleichbarkeit erscheint
+    /// nur der aktuelle Punktwert, aber kein
+    /// behaupteter Vorher-/Nachher-Trend.
+    /// </summary>
+    private static void AddCustomerScoreGauges(
+        Section section,
+        CustomerCheckupComparison comparison)
+    {
+        var table = CreateTable(
+            section,
+            8.9,
+            8.9);
+
+        /*
+         * Die Grafik soll nicht wie eine
+         * gewöhnliche Datentabelle wirken.
+         */
+        table.Borders.Visible = false;
+
+        var row = table.AddRow();
+
+        AddCustomerGaugeCell(
+            row.Cells[0],
+            "SYSTEMZUSTAND",
+            comparison.SystemScore);
+
+        AddCustomerGaugeCell(
+            row.Cells[1],
+            "HARDWAREZUSTAND",
+            comparison.HardwareScore);
+
+        /*
+         * Die Erklärung ist bewusst kurz.
+         * Die vollständigen fachlichen
+         * Bewertungsdetails stehen weiterhin
+         * im technischen Anhang.
+         */
+        var explanation = section.AddParagraph(
+            "Äußerer Bogen: aktueller Zustand. "
+            + "Innerer Bogen: Eingangswert, sofern "
+            + "zuverlässig vergleichbar.");
+
+        explanation.Format.Font.Size =
+            Unit.FromPoint(7.5);
+
+        explanation.Format.Font.Color =
+            MutedTextColor;
+
+        explanation.Format.Alignment =
+            ParagraphAlignment.Center;
+
+        explanation.Format.SpaceAfter =
+            Unit.FromPoint(5);
+    }
+
+    private static void AddCustomerGaugeCell(
+        Cell cell,
+        string title,
+        CustomerCheckupScoreComparison score)
+    {
+        var titleParagraph =
+            cell.AddParagraph(title);
+
+        titleParagraph.Format.Alignment =
+            ParagraphAlignment.Center;
+
+        titleParagraph.Format.Font.Name = "Arial";
+        titleParagraph.Format.Font.Size = Unit.FromPoint(10);
+        titleParagraph.Format.Font.Bold = true;
+        titleParagraph.Format.Font.Color = HeadingColor;
+
+        titleParagraph.Format.SpaceAfter =
+            Unit.FromPoint(0);
+
+        var imageParagraph = cell.AddParagraph();
+
+        imageParagraph.Format.Alignment =
+            ParagraphAlignment.Center;
+
+        imageParagraph.Format.SpaceBefore =
+            Unit.FromPoint(0);
+
+        imageParagraph.Format.SpaceAfter =
+            Unit.FromPoint(0);
+
+        /*
+         * Bei einer Bildbreite von 7,4 cm
+         * ist der Tacho groß genug für die
+         * Kundenseite, lässt aber Raum für
+         * die nachfolgenden Empfehlungen.
+         *
+         * Das Seitenlayout wird im folgenden
+         * PDF-Sichttest überprüft.
+         */
+        var gaugeImage = imageParagraph.AddImage(
+            CustomerCheckupGaugeImage.CreateBase64Png(
+                score));
+
+        gaugeImage.LockAspectRatio = true;
+
+        gaugeImage.Width =
+            Unit.FromCentimeter(7.4);
     }
 
     private static void AddCustomerProgramUpdateDecisions(
@@ -476,8 +572,7 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return comparison.Findings.Any(finding =>
             IsOpenFinding(finding)
-            && (finding.AfterSeverity
-                ?? finding.BeforeSeverity)
+            && (finding.AfterSeverity ?? finding.BeforeSeverity)
                 == FindingSeverity.Critical);
     }
 
@@ -507,9 +602,7 @@ public sealed class CustomerCheckupPdfReportService :
 
         paragraph.Format.Font.Bold = true;
         paragraph.Format.Font.Color = HeadingColor;
-
-        paragraph.Format.SpaceAfter =
-            Unit.FromPoint(6);
+        paragraph.Format.SpaceAfter = Unit.FromPoint(6);
     }
 
     private static void AddCustomerRecommendations(
@@ -587,9 +680,7 @@ public sealed class CustomerCheckupPdfReportService :
             row.Cells[2].Format.Font.Color =
                 GetFindingStatusColor(finding.Status);
 
-            ShadeAlternatingRow(
-                row,
-                rowIndex++);
+            ShadeAlternatingRow(row, rowIndex++);
         }
 
         AddSpacer(section, 4);
@@ -597,13 +688,27 @@ public sealed class CustomerCheckupPdfReportService :
         var remainingCount =
             findings.Count - visibleFindings.Count;
 
-        var note = remainingCount > 0
-            ? $"Weitere {remainingCount} Hinweise "
-              + "und alle Einzelheiten finden Sie "
-              + "im technischen Anhang."
-            : "Die ausführlichen Erläuterungen "
-              + "zu diesen Hinweisen finden Sie "
-              + "im technischen Anhang.";
+        /*
+         * Die grammatikalische Korrektur
+         * aus dem Praxistest ist hier bereits
+         * berücksichtigt.
+         */
+        var note = remainingCount switch
+        {
+            1 =>
+                "Ein weiterer Hinweis und alle Einzelheiten "
+                + "finden Sie im technischen Anhang.",
+
+            > 1 =>
+                $"{remainingCount} weitere Hinweise und "
+                + "alle Einzelheiten finden Sie "
+                + "im technischen Anhang.",
+
+            _ =>
+                "Die ausführlichen Erläuterungen "
+                + "zu diesen Hinweisen finden Sie "
+                + "im technischen Anhang."
+        };
 
         var paragraph = section.AddParagraph(note);
 
@@ -617,23 +722,21 @@ public sealed class CustomerCheckupPdfReportService :
             Unit.FromPoint(6);
     }
 
-    // =====================================================
-    // NUR BESTÄTIGTE SCHUTZFUNKTIONEN
-    // =====================================================
+    // ===============================================
+    // BESTÄTIGTE SCHUTZFUNKTIONEN
+    // ===============================================
 
     private static void AddPositiveFindings(
         Section section,
         CustomerCheckupComparison comparison)
     {
-        // Neutrale Informationsbefunde sind nicht
-        // automatisch positive Systemeigenschaften.
-        //
-        // Im Kundenhauptteil erscheinen ausschließlich
-        // bekannte, bestätigte Sicherheitsbefunde.
-        //
-        // Verwendet werden stabile Befundcodes statt
-        // von der Sprache abhängiger Titel.
-
+        /*
+         * Ausschließlich bekannte, durch den
+         * Befundcode bestätigte Schutzfunktionen
+         * werden positiv dargestellt.
+         *
+         * Neutrale Informationen bleiben neutral.
+         */
         var positiveFindings = comparison.Findings
             .Where(finding =>
                 finding.Status ==
@@ -657,33 +760,42 @@ public sealed class CustomerCheckupPdfReportService :
             return;
         }
 
-        AddSectionHeading(
-            section,
-            "Bestätigte Schutzfunktionen");
+        /*
+         * SCHRITT 55.2:
+         *
+         * Die Schutzfunktionen bleiben auf
+         * der Kundenseite erhalten, werden
+         * jedoch in einer kompakten Zeile
+         * zusammengefasst.
+         *
+         * Dadurch erhalten die Tachos mehr
+         * Platz, ohne diese Information
+         * aus dem Bericht zu entfernen.
+         */
+        var text = string.Join(
+            " · ",
+            positiveFindings.Select(finding =>
+                SafeText(finding.Title)));
 
-        var paragraph = section.AddParagraph(
-            "Bei der Kontrolle wurden unter anderem "
-            + "folgende aktivierte Schutzfunktionen erkannt:");
+        var paragraph = section.AddParagraph();
+
+        paragraph.AddFormattedText(
+            "Bestätigte Schutzfunktionen: ",
+            TextFormat.Bold);
+
+        paragraph.AddText(text);
+
+        paragraph.Format.Font.Size =
+            Unit.FromPoint(8.5);
+
+        paragraph.Format.Font.Color =
+            TextColor;
+
+        paragraph.Format.SpaceBefore =
+            Unit.FromPoint(5);
 
         paragraph.Format.SpaceAfter =
-            Unit.FromPoint(4);
-
-        foreach (var finding in positiveFindings)
-        {
-            var item = section.AddParagraph(
-                "• " + SafeText(finding.Title));
-
-            item.Format.LeftIndent =
-                Unit.FromCentimeter(0.3);
-
-            item.Format.FirstLineIndent =
-                Unit.FromCentimeter(-0.3);
-
-            item.Format.SpaceAfter =
-                Unit.FromPoint(2);
-
-            item.Format.Font.Color = TextColor;
-        }
+            Unit.FromPoint(5);
     }
 
     private static int GetPositiveSecurityFindingOrder(
@@ -692,15 +804,10 @@ public sealed class CustomerCheckupPdfReportService :
         return code switch
         {
             "system.security.antivirus-enabled" => 0,
-
             "system.security.active-firewall-enabled" => 1,
-
             "system.security.secure-boot-enabled" => 2,
-
             "hardware.tpm.version-2-active" => 3,
-
             "system.security.uac-enabled" => 4,
-
             _ => int.MaxValue
         };
     }
@@ -714,9 +821,9 @@ public sealed class CustomerCheckupPdfReportService :
             or CustomerCheckupFindingComparisonStatus.NotReevaluatable;
     }
 
-    // =====================================================
-    // TEIL 2 – TECHNISCHER ANHANG
-    // =====================================================
+    // ===============================================
+    // TECHNISCHER ANHANG
+    // ===============================================
 
     private static void AddTechnicalAppendixIntroduction(
         Section section)
@@ -728,9 +835,7 @@ public sealed class CustomerCheckupPdfReportService :
         heading.Format.Font.Size = Unit.FromPoint(19);
         heading.Format.Font.Bold = true;
         heading.Format.Font.Color = HeadingColor;
-
-        heading.Format.SpaceAfter =
-            Unit.FromPoint(5);
+        heading.Format.SpaceAfter = Unit.FromPoint(5);
 
         var introduction = section.AddParagraph(
             "Dieser Teil enthält die ausführlichen "
@@ -757,40 +862,20 @@ public sealed class CustomerCheckupPdfReportService :
 
         var after = visit.AfterCheckup!;
 
-        var deviceInformation =
-            after.DeviceInformation;
+        var deviceInformation = after.DeviceInformation;
 
-        var operatingSystem =
-            after.OperatingSystemInformation;
+        var operatingSystem = after.OperatingSystemInformation;
 
         AddKeyValueTable(
             section,
             new[]
             {
-                (
-                    "Kunde",
-                    SafeText(customer.DisplayName)
-                ),
-                (
-                    "Kundennummer",
-                    SafeText(customer.CustomerNumber)
-                ),
-                (
-                    "Kontakt",
-                    BuildCustomerContactText(customer)
-                ),
-                (
-                    "Anschrift",
-                    BuildCustomerAddressText(customer)
-                ),
-                (
-                    "Gespeichertes Gerät",
-                    SafeText(device.DisplayName)
-                ),
-                (
-                    "Computername",
-                    SafeText(deviceInformation.Name)
-                ),
+                ("Kunde", SafeText(customer.DisplayName)),
+                ("Kundennummer", SafeText(customer.CustomerNumber)),
+                ("Kontakt", BuildCustomerContactText(customer)),
+                ("Anschrift", BuildCustomerAddressText(customer)),
+                ("Gespeichertes Gerät", SafeText(device.DisplayName)),
+                ("Computername", SafeText(deviceInformation.Name)),
                 (
                     "Hersteller / Modell",
                     SafeText(deviceInformation.Manufacturer)
@@ -811,8 +896,7 @@ public sealed class CustomerCheckupPdfReportService :
                 ),
                 (
                     "Eingangsscan",
-                    FormatDateTime(
-                        visit.BeforeCheckup.ScanDate)
+                    FormatDateTime(visit.BeforeCheckup.ScanDate)
                 ),
                 (
                     "Abschlusskontrolle",
@@ -854,21 +938,10 @@ public sealed class CustomerCheckupPdfReportService :
             comparison.NewlyDetectedFindingCount.ToString(),
             comparison.NotReevaluatableFindingCount.ToString());
 
-        SetCellHighlight(
-            row.Cells[0],
-            SuccessColor);
-
-        SetCellHighlight(
-            row.Cells[1],
-            WarningColor);
-
-        SetCellHighlight(
-            row.Cells[2],
-            DangerColor);
-
-        SetCellHighlight(
-            row.Cells[3],
-            MutedTextColor);
+        SetCellHighlight(row.Cells[0], SuccessColor);
+        SetCellHighlight(row.Cells[1], WarningColor);
+        SetCellHighlight(row.Cells[2], DangerColor);
+        SetCellHighlight(row.Cells[3], MutedTextColor);
 
         AddSpacer(section, 5);
 
@@ -978,9 +1051,9 @@ public sealed class CustomerCheckupPdfReportService :
             GetScoreChangeColor(score.Change);
     }
 
-    // =====================================================
-    // SCHRITT 53.2 – BEREICHSVERGLEICH MODELL V3
-    // =====================================================
+    // ===============================================
+    // BEREICHSVERGLEICH MODELL V3
+    // ===============================================
 
     private static void AddAreaComparison(
         Section section,
@@ -1050,18 +1123,6 @@ public sealed class CustomerCheckupPdfReportService :
 
         AddSpacer(section, 5);
 
-        /*
-         * Bei gemischten Veränderungen sind
-         * einzelne positive und negative
-         * Entwicklungen belastbar nachgewiesen.
-         *
-         * Sie dürfen nicht mit fehlender
-         * Vergleichbarkeit verwechselt werden.
-         *
-         * Die Erklärung erscheint nur,
-         * wenn ein Bereich tatsächlich
-         * den Status MixedChanges besitzt.
-         */
         if (areas.Any(area =>
                 area.Status ==
                 CustomerCheckupAreaComparisonStatus.MixedChanges))
@@ -1076,9 +1137,9 @@ public sealed class CustomerCheckupPdfReportService :
         }
     }
 
-    // =====================================================
-    // SCHRITT 36/37 – WARTUNGSDOKUMENTATION
-    // =====================================================
+    // ===============================================
+    // WARTUNGSDOKUMENTATION
+    // ===============================================
 
     private static void AddActions(
         Section section,
@@ -1090,8 +1151,7 @@ public sealed class CustomerCheckupPdfReportService :
 
         var actions = comparison.Actions
             .OrderBy(action =>
-                action.StartedAt
-                ?? DateTimeOffset.MaxValue)
+                action.StartedAt ?? DateTimeOffset.MaxValue)
             .ThenBy(
                 action => action.ActionTitle,
                 StringComparer.CurrentCultureIgnoreCase)
@@ -1121,21 +1181,13 @@ public sealed class CustomerCheckupPdfReportService :
             + "automatisch, dass ein zuvor gemessener "
             + "Befund behoben wurde.");
 
-        introduction.Format.Font.Color =
-            MutedTextColor;
-
-        introduction.Format.SpaceAfter =
-            Unit.FromPoint(7);
+        introduction.Format.Font.Color = MutedTextColor;
+        introduction.Format.SpaceAfter = Unit.FromPoint(7);
 
         /*
-         * Abschnitt E zeigt alle ursprünglich
-         * dokumentierten Aktionen.
-         *
-         * Die gespeicherten Inhalte werden nicht
-         * verändert. Ausschließlich für die Ausgabe
-         * im Abschlussbericht werden historische
-         * Kontrollhinweise zeitlich eingeordnet und
-         * fehlerhafte Laufwerksbezeichnungen korrigiert.
+         * Gespeicherte Aktionsdaten bleiben unverändert.
+         * Lediglich historische Hinweise werden bei
+         * der PDF-Darstellung zeitlich eingeordnet.
          */
         foreach (var action in actions)
         {
@@ -1235,8 +1287,7 @@ public sealed class CustomerCheckupPdfReportService :
         paragraph.Format.Font.Size =
             Unit.FromPoint(8.5);
 
-        paragraph.Format.Font.Color =
-            TextColor;
+        paragraph.Format.Font.Color = TextColor;
 
         paragraph.Format.SpaceBefore =
             Unit.FromPoint(3);
@@ -1245,13 +1296,6 @@ public sealed class CustomerCheckupPdfReportService :
             Unit.FromPoint(2);
     }
 
-    /// <summary>
-    /// Bereitet historische Aktionsprotokolle nur für
-    /// die Anzeige im fertigen PDF-Bericht auf.
-    ///
-    /// Die ursprünglichen Aktionsdaten bleiben
-    /// vollständig und unverändert gespeichert.
-    /// </summary>
     private static string PrepareCompletedActionReportText(
         string? value,
         string fallback = "Nicht dokumentiert")
@@ -1263,16 +1307,6 @@ public sealed class CustomerCheckupPdfReportService :
 
         var text = value.Trim();
 
-        /*
-         * Der Aktionsvermerk wurde vor der
-         * Abschlusskontrolle erzeugt. Ein fertiger
-         * Bericht besitzt dagegen bereits einen
-         * gespeicherten Nachher-Scan.
-         *
-         * Wir bewahren die historische Aussage,
-         * geben aber den korrekten zeitlichen Kontext
-         * statt eines vermeintlich offenen Schritts an.
-         */
         text = Regex.Replace(
             text,
             @"\b(?:Die\s+)?Abschlusskontrolle\s+steht\s+(?:noch\s+)?aus\.?",
@@ -1282,12 +1316,6 @@ public sealed class CustomerCheckupPdfReportService :
             RegexOptions.IgnoreCase
             | RegexOptions.CultureInvariant);
 
-        /*
-         * Die Quelle kann Laufwerksangaben wie
-         * "C::" oder "C::\" enthalten. Nur genau
-         * dieses Doppelpunktmuster wird berichtigt,
-         * nicht etwa der Inhalt anderer Pfade.
-         */
         text = Regex.Replace(
             text,
             @"(?<![A-Za-z0-9])([A-Za-z])::(?=\\|/|\s|$|[.,;])",
@@ -1449,9 +1477,7 @@ public sealed class CustomerCheckupPdfReportService :
             row.Cells[2].Format.Font.Color =
                 GetTaskStatusColor(task.Status);
 
-            ShadeAlternatingRow(
-                row,
-                rowIndex++);
+            ShadeAlternatingRow(row, rowIndex++);
         }
 
         AddSpacer(section, 5);
@@ -1478,11 +1504,8 @@ public sealed class CustomerCheckupPdfReportService :
             + "Eine Zurückstellung zählt nicht als "
             + "erfolgreich installierte Aktualisierung.");
 
-        introduction.Format.Font.Color =
-            MutedTextColor;
-
-        introduction.Format.SpaceAfter =
-            Unit.FromPoint(6);
+        introduction.Format.Font.Color = MutedTextColor;
+        introduction.Format.SpaceAfter = Unit.FromPoint(6);
 
         var table = CreateTable(
             section,
@@ -1550,9 +1573,7 @@ public sealed class CustomerCheckupPdfReportService :
                     ? WarningColor
                     : MutedTextColor;
 
-            ShadeAlternatingRow(
-                row,
-                rowIndex++);
+            ShadeAlternatingRow(row, rowIndex++);
         }
 
         AddSpacer(section, 5);
@@ -1594,8 +1615,7 @@ public sealed class CustomerCheckupPdfReportService :
             paragraph.Format.FirstLineIndent =
                 Unit.FromCentimeter(-0.3);
 
-            paragraph.Format.Font.Color =
-                MutedTextColor;
+            paragraph.Format.Font.Color = MutedTextColor;
 
             paragraph.Format.SpaceAfter =
                 Unit.FromPoint(4);
@@ -1604,8 +1624,7 @@ public sealed class CustomerCheckupPdfReportService :
         AddSpacer(section, 4);
     }
 
-    private static void AddReportNotice(
-        Section section)
+    private static void AddReportNotice(Section section)
     {
         var paragraph = section.AddParagraph(
             "Hinweis: Die technische Dokumentation "
@@ -1617,19 +1636,14 @@ public sealed class CustomerCheckupPdfReportService :
             + "Laborprüfung. Nicht auswertbare Bereiche "
             + "sind entsprechend gekennzeichnet.");
 
-        paragraph.Format.Font.Size =
-            Unit.FromPoint(8);
-
-        paragraph.Format.Font.Color =
-            MutedTextColor;
-
-        paragraph.Format.SpaceBefore =
-            Unit.FromPoint(7);
+        paragraph.Format.Font.Size = Unit.FromPoint(8);
+        paragraph.Format.Font.Color = MutedTextColor;
+        paragraph.Format.SpaceBefore = Unit.FromPoint(7);
     }
 
-    // =====================================================
-    // GEMEINSAME LAYOUT-HILFSMETHODEN
-    // =====================================================
+    // ===============================================
+    // LAYOUT-HILFSMETHODEN
+    // ===============================================
 
     private static void AddSectionHeading(
         Section section,
@@ -1684,26 +1698,19 @@ public sealed class CustomerCheckupPdfReportService :
 
         cell.Shading.Color = SurfaceColor;
         cell.Borders.Color = accentColor;
+        cell.Borders.Width = Unit.FromPoint(0.8);
 
-        cell.Borders.Width =
-            Unit.FromPoint(0.8);
-
-        var titleParagraph = cell.AddParagraph(
-            SafeText(title));
+        var titleParagraph =
+            cell.AddParagraph(SafeText(title));
 
         titleParagraph.Format.Font.Bold = true;
+        titleParagraph.Format.Font.Color = accentColor;
+        titleParagraph.Format.SpaceAfter = Unit.FromPoint(3);
 
-        titleParagraph.Format.Font.Color =
-            accentColor;
+        var messageParagraph =
+            cell.AddParagraph(SafeText(message));
 
-        titleParagraph.Format.SpaceAfter =
-            Unit.FromPoint(3);
-
-        var messageParagraph = cell.AddParagraph(
-            SafeText(message));
-
-        messageParagraph.Format.Font.Color =
-            TextColor;
+        messageParagraph.Format.Font.Color = TextColor;
 
         AddSpacer(section, 6);
     }
@@ -1715,19 +1722,14 @@ public sealed class CustomerCheckupPdfReportService :
         var table = section.AddTable();
 
         table.Borders.Color = BorderColor;
-
-        table.Borders.Width =
-            Unit.FromPoint(0.5);
+        table.Borders.Width = Unit.FromPoint(0.5);
 
         table.Format.Font.Name = "Arial";
-
-        table.Format.Font.Size =
-            Unit.FromPoint(8.5);
+        table.Format.Font.Size = Unit.FromPoint(8.5);
 
         foreach (var width in columnWidthsCentimeters)
         {
-            table.AddColumn(
-                Unit.FromCentimeter(width));
+            table.AddColumn(Unit.FromCentimeter(width));
         }
 
         return table;
@@ -1741,20 +1743,15 @@ public sealed class CustomerCheckupPdfReportService :
 
         row.HeadingFormat = true;
 
-        for (var index = 0;
-             index < headings.Length;
-             index++)
+        for (var index = 0; index < headings.Length; index++)
         {
             var cell = row.Cells[index];
 
             cell.Shading.Color = HeadingColor;
-
             cell.Format.Font.Bold = true;
-
             cell.Format.Font.Color = Colors.White;
 
-            cell.AddParagraph(
-                SafeText(headings[index]));
+            cell.AddParagraph(SafeText(headings[index]));
         }
     }
 
@@ -1764,12 +1761,10 @@ public sealed class CustomerCheckupPdfReportService :
     {
         var row = table.AddRow();
 
-        for (var index = 0;
-             index < values.Length;
-             index++)
+        for (var index = 0; index < values.Length; index++)
         {
-            var paragraph = row.Cells[index]
-                .AddParagraph(
+            var paragraph =
+                row.Cells[index].AddParagraph(
                     SafeText(values[index]));
 
             paragraph.Format.SpaceAfter =
@@ -1784,14 +1779,9 @@ public sealed class CustomerCheckupPdfReportService :
         Color color)
     {
         cell.Format.Font.Bold = true;
-
-        cell.Format.Font.Size =
-            Unit.FromPoint(15);
-
+        cell.Format.Font.Size = Unit.FromPoint(15);
         cell.Format.Font.Color = color;
-
-        cell.Format.Alignment =
-            ParagraphAlignment.Center;
+        cell.Format.Alignment = ParagraphAlignment.Center;
     }
 
     private static void ShadeAlternatingRow(
@@ -1803,12 +1793,9 @@ public sealed class CustomerCheckupPdfReportService :
             return;
         }
 
-        for (var index = 0;
-             index < row.Cells.Count;
-             index++)
+        for (var index = 0; index < row.Cells.Count; index++)
         {
-            row.Cells[index].Shading.Color =
-                SurfaceColor;
+            row.Cells[index].Shading.Color = SurfaceColor;
         }
     }
 
@@ -1826,14 +1813,13 @@ public sealed class CustomerCheckupPdfReportService :
         Section section,
         double points)
     {
-        section.AddParagraph()
-            .Format.SpaceAfter =
-                Unit.FromPoint(points);
+        section.AddParagraph().Format.SpaceAfter =
+            Unit.FromPoint(points);
     }
 
-    // =====================================================
+    // ===============================================
     // TEXT- UND DATENAUFBEREITUNG
-    // =====================================================
+    // ===============================================
 
     private static string BuildCustomerContactText(
         Customer customer)
@@ -1878,18 +1864,12 @@ public sealed class CustomerCheckupPdfReportService :
     {
         var values = new List<string>();
 
-        AddIfPresent(
-            values,
-            task.TechnicianNote);
-
-        AddIfPresent(
-            values,
-            task.StatusReason);
+        AddIfPresent(values, task.TechnicianNote);
+        AddIfPresent(values, task.StatusReason);
 
         if (task.RestartRequired)
         {
-            values.Add(
-                "Neustartbedarf dokumentiert");
+            values.Add("Neustartbedarf dokumentiert");
         }
 
         return values.Count == 0
@@ -1910,8 +1890,7 @@ public sealed class CustomerCheckupPdfReportService :
     private static string GetAreaEvaluationText(
         CustomerCheckupAreaComparison area)
     {
-        if (area.WasBeforeEvaluable
-            && area.IsAfterEvaluable)
+        if (area.WasBeforeEvaluable && area.IsAfterEvaluable)
         {
             return "Vorher und nachher auswertbar";
         }
@@ -1931,8 +1910,7 @@ public sealed class CustomerCheckupPdfReportService :
     private static string GetScoreChangeText(
         CustomerCheckupScoreComparison score)
     {
-        if (!score.IsComparable
-            || !score.Difference.HasValue)
+        if (!score.IsComparable || !score.Difference.HasValue)
         {
             return "Nicht direkt vergleichbar";
         }
@@ -1963,21 +1941,9 @@ public sealed class CustomerCheckupPdfReportService :
         };
     }
 
-    // =====================================================
-    // SCHRITT 53.2 – STATUSANZEIGE
-    // =====================================================
-
     private static string GetAreaStatusText(
         CustomerCheckupAreaComparisonStatus status)
     {
-        /*
-         * Die bewährten Bezeichnungen der
-         * bisherigen Statuswerte bleiben erhalten.
-         *
-         * MixedChanges wird ausdrücklich über
-         * die zentrale kundenverständliche
-         * Formulierung ausgegeben.
-         */
         return status switch
         {
             CustomerCheckupAreaComparisonStatus.UnchangedHealthy =>
@@ -2002,8 +1968,7 @@ public sealed class CustomerCheckupPdfReportService :
                     "Neuer technischer Befund",
 
             CustomerCheckupAreaComparisonStatus.MixedChanges =>
-                CustomerCheckupReportWording.GetAreaStatusText(
-                    status),
+                CustomerCheckupReportWording.GetAreaStatusText(status),
 
             _ => "Technisch nicht direkt vergleichbar"
         };
@@ -2035,14 +2000,6 @@ public sealed class CustomerCheckupPdfReportService :
                 .NewlyNeedsAttention =>
                     DangerColor,
 
-            /*
-             * Gemischte Veränderungen sind
-             * weder ein rein positives noch
-             * ein rein negatives Ergebnis.
-             *
-             * Sie erscheinen deshalb in
-             * der Warnfarbe.
-             */
             CustomerCheckupAreaComparisonStatus.MixedChanges =>
                 WarningColor,
 
@@ -2053,19 +2010,12 @@ public sealed class CustomerCheckupPdfReportService :
     private static int GetAreaStatusOrder(
         CustomerCheckupAreaComparisonStatus status)
     {
-        /*
-         * Negative und gemischte Entwicklungen
-         * werden im Bericht vor unveränderten
-         * oder positiven Bereichen angezeigt.
-         *
-         * Die Sortierung verändert keine
-         * gespeicherten Vergleichsdaten.
-         */
         return status switch
         {
             CustomerCheckupAreaComparisonStatus.Worsened => 0,
 
-            CustomerCheckupAreaComparisonStatus.NewlyNeedsAttention => 1,
+            CustomerCheckupAreaComparisonStatus
+                .NewlyNeedsAttention => 1,
 
             CustomerCheckupAreaComparisonStatus.MixedChanges => 2,
 
@@ -2117,15 +2067,10 @@ public sealed class CustomerCheckupPdfReportService :
         return status switch
         {
             CustomerCheckupFindingComparisonStatus.NewlyDetected => 0,
-
             CustomerCheckupFindingComparisonStatus.StillOpen => 1,
-
             CustomerCheckupFindingComparisonStatus.NotReevaluatable => 2,
-
             CustomerCheckupFindingComparisonStatus.Resolved => 3,
-
             CustomerCheckupFindingComparisonStatus.Informational => 4,
-
             _ => 5
         };
     }
@@ -2173,15 +2118,9 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return status switch
         {
-            CheckupTaskActionStatus.Successful =>
-                "Erfolgreich",
-
-            CheckupTaskActionStatus.Failed =>
-                "Fehlgeschlagen",
-
-            CheckupTaskActionStatus.Cancelled =>
-                "Abgebrochen",
-
+            CheckupTaskActionStatus.Successful => "Erfolgreich",
+            CheckupTaskActionStatus.Failed => "Fehlgeschlagen",
+            CheckupTaskActionStatus.Cancelled => "Abgebrochen",
             _ => "Unbekannt"
         };
     }
@@ -2191,15 +2130,9 @@ public sealed class CustomerCheckupPdfReportService :
     {
         return status switch
         {
-            CheckupTaskActionStatus.Successful =>
-                SuccessColor,
-
-            CheckupTaskActionStatus.Failed =>
-                DangerColor,
-
-            CheckupTaskActionStatus.Cancelled =>
-                WarningColor,
-
+            CheckupTaskActionStatus.Successful => SuccessColor,
+            CheckupTaskActionStatus.Failed => DangerColor,
+            CheckupTaskActionStatus.Cancelled => WarningColor,
             _ => MutedTextColor
         };
     }
@@ -2212,8 +2145,9 @@ public sealed class CustomerCheckupPdfReportService :
             CustomerCheckupTaskComparisonStatus.Completed =>
                 "Abgeschlossen",
 
-            CustomerCheckupTaskComparisonStatus.CompletedButStillDetected =>
-                "Abgeschlossen",
+            CustomerCheckupTaskComparisonStatus
+                .CompletedButStillDetected =>
+                    "Abgeschlossen",
 
             CustomerCheckupTaskComparisonStatus.StillOpen =>
                 "Aufgabe weiterhin offen",
@@ -2277,7 +2211,6 @@ public sealed class CustomerCheckupPdfReportService :
             CustomerCheckupTaskComparisonStatus.NotReevaluatable => 4,
             CustomerCheckupTaskComparisonStatus.Skipped => 5,
             CustomerCheckupTaskComparisonStatus.Completed => 6,
-
             _ => 7
         };
     }
@@ -2377,9 +2310,7 @@ public sealed class CustomerCheckupPdfReportService :
                 ".pdf",
                 StringComparison.OrdinalIgnoreCase)
             ? normalizedPath
-            : Path.ChangeExtension(
-                normalizedPath,
-                ".pdf");
+            : Path.ChangeExtension(normalizedPath, ".pdf");
     }
 
     private static void EnsureTargetDirectoryExists(

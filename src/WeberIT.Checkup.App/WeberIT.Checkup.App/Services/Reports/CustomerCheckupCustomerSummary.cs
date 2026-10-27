@@ -101,19 +101,6 @@ public sealed class CustomerCheckupCustomerSummary
         summary.ConditionText =
             BuildConditionText(comparison);
 
-        /*
-         * SCHRITT 51.1:
-         *
-         * Die Kundenzusammenfassung erhält
-         * zusätzlich die dokumentierten
-         * technischen Aktionen.
-         *
-         * Dadurch können erfolgreiche Arbeiten
-         * konkret benannt werden, ohne aus
-         * ihnen automatisch behobene
-         * Bewertungsbefunde abzuleiten.
-         */
-
         summary.WorkResultText =
             BuildWorkResultText(
                 summary,
@@ -127,6 +114,10 @@ public sealed class CustomerCheckupCustomerSummary
 
         return summary;
     }
+
+    // =====================================================
+    // SCHRITT 54.1 – KUNDENVERSTÄNDLICHES GESAMTERGEBNIS
+    // =====================================================
 
     private static string BuildHeadline(
         CustomerCheckupComparison comparison,
@@ -145,14 +136,15 @@ public sealed class CustomerCheckupCustomerSummary
 
         if (hasCriticalFindings)
         {
-            return "Bei der Prüfung wurden dringende "
-                   + "Auffälligkeiten festgestellt.";
+            return "Bei der Abschlusskontrolle wurden "
+                   + "noch dringende Probleme festgestellt.";
         }
 
         if (hasWarnings)
         {
-            return "Der Rechner wurde geprüft. "
-                   + "Einige Punkte sollten beachtet werden.";
+            return "Der Rechner wurde überprüft. "
+                   + "Einige wichtige Punkte sind "
+                   + "noch offen.";
         }
 
         if (comparison.NotReevaluatableFindingCount > 0)
@@ -165,30 +157,35 @@ public sealed class CustomerCheckupCustomerSummary
         if (comparison.StillOpenFindingCount > 0
             || comparison.NewlyDetectedFindingCount > 0)
         {
-            return "Der Rechner wurde geprüft. "
-                   + "Es bestehen noch Empfehlungen.";
+            return "Der Rechner wurde überprüft. "
+                   + "Einige Empfehlungen sind "
+                   + "noch offen.";
         }
 
         /*
-         * Wenn keine offenen Befunde vorhanden sind,
-         * einzelne Prüfbereiche aber nicht verglichen
-         * werden konnten, behaupten wir keine
-         * uneingeschränkt vollständige Kontrolle.
+         * Keine uneingeschränkt positive Aussage,
+         * wenn einzelne technische Bereiche
+         * nicht zuverlässig verglichen
+         * werden konnten.
          */
         if (areas.Any(area =>
                 area.Status ==
                 CustomerCheckupAreaComparisonStatus.NotComparable))
         {
-            return "In den auswertbaren Prüfbereichen "
+            return "In den überprüfbaren Bereichen "
                    + "wurden keine offenen Probleme "
-                   + "festgestellt. Einzelne Bereiche "
-                   + "konnten nicht vollständig "
-                   + "verglichen werden.";
+                   + "festgestellt. Einzelne Prüfungen "
+                   + "konnten jedoch nicht vollständig "
+                   + "abgeschlossen werden.";
         }
 
         return "Bei der Abschlusskontrolle wurden "
                + "keine offenen technischen Probleme festgestellt.";
     }
+
+    // =====================================================
+    // SYSTEMZUSTAND UND HARDWARE
+    // =====================================================
 
     private static string BuildConditionText(
         CustomerCheckupComparison comparison)
@@ -200,49 +197,68 @@ public sealed class CustomerCheckupCustomerSummary
 
         /*
          * Die aktuellen Punktwerte dürfen genannt
-         * werden, auch wenn ein direkter Vergleich
-         * zwischen den Scans nicht möglich ist.
+         * werden, auch wenn kein direkter Vergleich
+         * mit dem Eingangsscan möglich ist.
          *
-         * Die Vergleichbarkeit entscheidet jedoch,
-         * ob wir eine Verbesserung oder
-         * Verschlechterung behaupten dürfen.
+         * Eine Veränderung wird aber nur dann
+         * beschrieben, wenn die Vergleichslogik
+         * sie ausdrücklich bestätigt.
+         *
+         * Der Text richtet sich an Privatkunden.
+         * Fachbegriffe wie "Scoring-Version",
+         * "Bewertungsbereiche" und
+         * "Datengrundlagenkompatibilität"
+         * gehören nicht in diesen Abschnitt.
          */
 
         if (systemScore.AfterScore.HasValue)
         {
             parts.Add(
                 "Der allgemeine Systemzustand erreicht "
-                + $"{systemScore.AfterScore.Value} von 100 Punkten.");
+                + $"{systemScore.AfterScore.Value} "
+                + "von 100 Punkten.");
         }
         else
         {
             parts.Add(
-                "Für den allgemeinen Systemzustand liegt "
-                + "keine vollständige Punktbewertung vor.");
+                "Für den allgemeinen Systemzustand "
+                + "liegt keine vollständige "
+                + "Punktbewertung vor.");
         }
 
         if (hardwareScore.AfterScore.HasValue)
         {
             parts.Add(
                 "Die Hardware erreicht "
-                + $"{hardwareScore.AfterScore.Value} von 100 Punkten.");
+                + $"{hardwareScore.AfterScore.Value} "
+                + "von 100 Punkten.");
         }
         else
         {
             parts.Add(
-                "Für die Hardware liegt keine vollständige "
-                + "Punktbewertung vor.");
+                "Für die Hardware liegt keine "
+                + "vollständige Punktbewertung vor.");
         }
 
         parts.Add(
             BuildScoreChangeText(
                 systemScore,
-                "Die Systembewertung"));
+                "Beim Systemzustand"));
 
         parts.Add(
             BuildScoreChangeText(
                 hardwareScore,
-                "Die Hardwarebewertung"));
+                "Bei der Hardware"));
+
+        /*
+         * Eine gute Punktzahl bedeutet nicht,
+         * dass alle technischen Hinweise
+         * automatisch erledigt sind.
+         */
+        parts.Add(
+            "Die Punktzahlen sind nur ein Teil "
+            + "der Prüfung. Noch offene Hinweise "
+            + "finden Sie unter unseren Empfehlungen.");
 
         return string.Join(" ", parts);
     }
@@ -252,24 +268,19 @@ public sealed class CustomerCheckupCustomerSummary
         string label)
     {
         /*
-         * Unterschiedliche Punktzahlen sind für sich
-         * genommen kein Beleg einer Verbesserung,
-         * wenn die Datengrundlagen nicht vergleichbar
-         * sind.
-         *
-         * Das gilt ebenso für identische Punktzahlen:
-         * Ohne Vergleichbarkeit ist auch "unverändert"
-         * keine belastbare Aussage.
+         * Ohne belastbaren Vorher-/Nachher-
+         * Vergleich dürfen wir keine
+         * Verbesserung, Verschlechterung
+         * oder unveränderte Entwicklung
+         * behaupten.
          */
         if (!score.IsComparable
             || !score.Difference.HasValue)
         {
             return label
-                   + " kann nicht zuverlässig mit "
-                   + "dem Eingangsscan verglichen werden. "
-                   + "Eine Verbesserung oder "
-                   + "Verschlechterung lässt sich daraus "
-                   + "nicht sicher ableiten.";
+                   + " lässt sich die Veränderung "
+                   + "gegenüber dem Eingangsscan "
+                   + "nicht zuverlässig bestimmen.";
         }
 
         var difference = score.Difference.Value;
@@ -277,22 +288,29 @@ public sealed class CustomerCheckupCustomerSummary
         if (difference > 0)
         {
             return label
-                   + " hat sich um "
+                   + " ist die Punktzahl gegenüber "
+                   + "dem Eingangsscan um "
                    + difference
-                   + " Punkte verbessert.";
+                   + " Punkte gestiegen.";
         }
 
         if (difference < 0)
         {
             return label
-                   + " hat sich um "
+                   + " ist die Punktzahl gegenüber "
+                   + "dem Eingangsscan um "
                    + Math.Abs(difference)
-                   + " Punkte verschlechtert.";
+                   + " Punkte gesunken.";
         }
 
         return label
-               + " ist unverändert geblieben.";
+               + " ist die Punktzahl gegenüber "
+               + "dem Eingangsscan unverändert geblieben.";
     }
+
+    // =====================================================
+    // WAS WURDE TATSÄCHLICH ERREICHT?
+    // =====================================================
 
     private static string BuildWorkResultText(
         CustomerCheckupCustomerSummary summary,
@@ -314,8 +332,7 @@ public sealed class CustomerCheckupCustomerSummary
          *    Vorher-/Nachher-Vergleich voraus.
          *
          * Die drei Kategorien dürfen nicht
-         * gegenseitig ersetzt oder künstlich
-         * gleichgesetzt werden.
+         * miteinander verwechselt werden.
          */
 
         if (summary.CompletedTaskCount > 0)
@@ -365,8 +382,8 @@ public sealed class CustomerCheckupCustomerSummary
 
         /*
          * Fehlgeschlagene und abgebrochene Aktionen
-         * dürfen durch die positive Zusammenfassung
-         * nicht verdeckt werden.
+         * dürfen nicht durch positive Ergebnisse
+         * verdeckt werden.
          */
 
         if (summary.FailedActionCount > 0)
@@ -387,6 +404,15 @@ public sealed class CustomerCheckupCustomerSummary
                       + "Aktionen wurden abgebrochen.");
         }
 
+        /*
+         * Eine durchgeführte Wartungsaktion
+         * ist keine automatisch bestätigte
+         * Reparatur.
+         *
+         * Hier verzichten wir bewusst auf
+         * den Begriff "Bewertungsbefund".
+         */
+
         if (summary.ResolvedFindingCount > 0)
         {
             parts.Add(
@@ -401,26 +427,14 @@ public sealed class CustomerCheckupCustomerSummary
         }
         else if (summary.SuccessfulActionCount > 0)
         {
-            /*
-             * Eine erfolgreiche Wartungsaktion ist
-             * nicht automatisch eine im Scoring
-             * nachweisbar behobene Auffälligkeit.
-             *
-             * Das bedeutet umgekehrt aber auch
-             * nicht, dass die protokollierte
-             * Wartungsaktion erfolglos war.
-             *
-             * Diese Formulierung ist bewusst
-             * neutral und kundenverständlich.
-             */
-
             parts.Add(
-                "Eine zusätzliche Behebung zuvor "
-                + "erfasster Bewertungsbefunde "
-                + "konnte im Abschlussvergleich "
-                + "nicht eindeutig bestätigt werden. "
-                + "Die dokumentierten Wartungsarbeiten "
-                + "bleiben davon unabhängig.");
+                "Ob dadurch auch zuvor festgestellte "
+                + "Probleme behoben wurden, konnte "
+                + "bei der Abschlusskontrolle nicht "
+                + "eindeutig bestätigt werden. "
+                + "Die erfolgreich ausgeführten "
+                + "Wartungsarbeiten sind unabhängig "
+                + "davon dokumentiert.");
         }
         else
         {
@@ -570,6 +584,10 @@ public sealed class CustomerCheckupCustomerSummary
         return "weitere technische Wartung";
     }
 
+    // =====================================================
+    // EMPFEHLUNGEN UND OFFENE PUNKTE
+    // =====================================================
+
     private static string BuildRecommendationText(
         IReadOnlyCollection<CustomerCheckupFindingComparison> findings)
     {
@@ -655,8 +673,8 @@ public sealed class CustomerCheckupCustomerSummary
         if (categories.Count > 0)
         {
             parts.Add(
-                "Bei der Abschlusskontrolle blieben "
-                + "folgende Punkte offen: "
+                "Nach der Abschlusskontrolle "
+                + "sind noch folgende Punkte offen: "
                 + JoinNaturalLanguage(categories)
                 + ".");
         }
@@ -675,6 +693,10 @@ public sealed class CustomerCheckupCustomerSummary
 
         return string.Join(" ", parts);
     }
+
+    // =====================================================
+    // GEMEINSAME TEXTHILFSMETHODEN
+    // =====================================================
 
     private static string JoinNaturalLanguage(
         IReadOnlyList<string> values)
@@ -717,15 +739,16 @@ public sealed class CustomerCheckupCustomerSummary
         }
 
         return notComparable.Count == 1
-            ? "Ein Prüfbereich konnte nicht vollständig "
-              + "zwischen Eingangsscan und Abschlusskontrolle "
-              + "verglichen werden. Das bedeutet nicht "
-              + "automatisch, dass dort ein Fehler vorliegt."
+            ? "Ein Prüfbereich konnte zwischen "
+              + "Eingangskontrolle und Abschlusskontrolle "
+              + "nicht vollständig verglichen werden. "
+              + "Das bedeutet nicht automatisch, "
+              + "dass dort ein Problem besteht."
             : $"{notComparable.Count} Prüfbereiche konnten "
-              + "nicht vollständig zwischen Eingangsscan "
-              + "und Abschlusskontrolle verglichen werden. "
-              + "Das bedeutet nicht automatisch, dass dort "
-              + "Fehler vorliegen.";
+              + "zwischen Eingangskontrolle und "
+              + "Abschlusskontrolle nicht vollständig "
+              + "verglichen werden. Das bedeutet nicht "
+              + "automatisch, dass dort Probleme bestehen.";
     }
 
     private static FindingSeverity? GetFindingSeverity(
