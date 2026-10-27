@@ -3,12 +3,21 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="clr-namespace:WeberIT.Checkup.App.Infrastructure.Converters"
-    xmlns:models="clr-namespace:WeberIT.Checkup.App.Models">
+    xmlns:models="clr-namespace:WeberIT.Checkup.App.Models"
+    xmlns:checkup="clr-namespace:WeberIT.Checkup.App.Views.Controls.Checkup">
 
     <UserControl.Resources>
 
         <converters:TaskCodeToActionDefinitionConverter
             x:Key="TaskCodeToActionDefinitionConverter" />
+
+        <!--
+            Schritt 55.7.6:
+            Dynamische, ausschließlich lesende
+            WinGet-Aufgabenbeschreibung.
+        -->
+        <converters:ProgramUpdateTaskDescriptionConverter
+            x:Key="ProgramUpdateTaskDescriptionConverter" />
 
     </UserControl.Resources>
 
@@ -613,11 +622,59 @@
                                         Text="{Binding Title}"
                                         TextWrapping="Wrap" />
 
+                                    <!--
+                                        SCHRITT 55.7.6
+
+                                        Die Aufgabenkarte verwendet
+                                        eine dynamische Beschreibung.
+
+                                        Binding 1:
+                                        Aktuelle Aufgabe.
+
+                                        Binding 2:
+                                        Zugehörige CheckupSession.
+
+                                        Binding 3:
+                                        Anzahl protokollierter Aktionen.
+
+                                        Wenn eine neue Aktion gespeichert
+                                        wird, meldet CheckupTask die
+                                        Änderung von ActionResultCount.
+
+                                        Dadurch berechnet WPF den Text
+                                        über den MultiValueConverter neu.
+
+                                        Nur bei Programmupdates wird
+                                        der Text neu zusammengestellt.
+
+                                        Bei allen anderen Aufgaben
+                                        bleibt Description unverändert.
+                                    -->
+
                                     <TextBlock
                                         Margin="0,6,0,0"
                                         Foreground="{StaticResource TextSecondaryBrush}"
-                                        Text="{Binding Description}"
-                                        TextWrapping="Wrap" />
+                                        TextWrapping="Wrap">
+
+                                        <TextBlock.Text>
+
+                                            <MultiBinding
+                                                Mode="OneWay"
+                                                Converter="{StaticResource ProgramUpdateTaskDescriptionConverter}">
+
+                                                <Binding Path="." />
+
+                                                <Binding
+                                                    Path="CheckupSession"
+                                                    RelativeSource="{RelativeSource AncestorType={x:Type checkup:CheckupTaskListCard}}" />
+
+                                                <Binding Path="ActionResultCount" />
+
+                                            </MultiBinding>
+
+                                        </TextBlock.Text>
+
+                                    </TextBlock>
 
                                     <!--
                                         Aktionsdefinition.
@@ -690,9 +747,8 @@
                                     </Border>
 
                                     <!--
-                                        Frühere fehlgeschlagene oder bereits
-                                        kontrollierte technische Versuche
-                                        bleiben nachvollziehbar.
+                                        Bisherige technische Ergebnisse
+                                        bleiben vollständig erhalten.
                                     -->
 
                                     <Border
