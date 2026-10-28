@@ -8,8 +8,11 @@ public sealed class CustomerCheckupVisit
     private List<ProgramUpdateException>
         _programUpdateExceptions = new();
 
+    private List<ProgramUpdateIntermediateScan>
+        _programUpdateIntermediateScans = new();
+
     public const int CurrentVisitModelVersion =
-        4;
+        5;
 
     public int VisitModelVersion { get; set; } =
         CurrentVisitModelVersion;
@@ -56,6 +59,54 @@ public sealed class CustomerCheckupVisit
         set => _programUpdateExceptions =
             value ?? new List<ProgramUpdateException>();
     }
+
+    // =====================================================
+    // SCHRITT 55.10.2 – WINGet-ZWISCHENPRÜFUNGEN
+    // =====================================================
+
+    /// <summary>
+    /// Gespeicherte WinGet-Zwischenprüfungen dieses
+    /// Kundencheckups.
+    ///
+    /// Jede Zwischenprüfung besitzt eine eigene
+    /// Kennung und einen unabhängigen Scanbefund.
+    ///
+    /// Der ursprüngliche Eingangsscan,
+    /// die Aktionsprotokolle und die spätere
+    /// Abschlusskontrolle bleiben unverändert.
+    ///
+    /// Die Liste wird mit dem Kundencheckup
+    /// im bestehenden Datenbank-JSON gespeichert.
+    ///
+    /// Historische Vorgänge ohne diese Eigenschaft
+    /// erhalten automatisch eine leere Liste.
+    /// </summary>
+    public List<ProgramUpdateIntermediateScan>
+        ProgramUpdateIntermediateScans
+    {
+        get => _programUpdateIntermediateScans;
+
+        set => _programUpdateIntermediateScans =
+            value
+            ?? new List<ProgramUpdateIntermediateScan>();
+    }
+
+    /// <summary>
+    /// Gibt an, ob Zwischenprüfungen dokumentiert sind.
+    ///
+    /// Diese Eigenschaft wird nicht separat
+    /// gespeichert, sondern aus der Liste berechnet.
+    /// </summary>
+    [JsonIgnore]
+    public bool HasProgramUpdateIntermediateScans =>
+        ProgramUpdateIntermediateScans.Count > 0;
+
+    /// <summary>
+    /// Anzahl der gespeicherten WinGet-Zwischenprüfungen.
+    /// </summary>
+    [JsonIgnore]
+    public int ProgramUpdateIntermediateScanCount =>
+        ProgramUpdateIntermediateScans.Count;
 
     [JsonIgnore]
     public bool IsInProgress =>
@@ -217,10 +268,13 @@ public sealed class CustomerCheckupVisit
     /// Die bestehenden Scan- und Vergleichsobjekte
     /// werden wie bisher übernommen.
     ///
-    /// Programmupdate-Ausnahmen werden dagegen
-    /// einzeln kopiert. Dadurch besitzen Original
-    /// und Kopie weder dieselbe Ausnahmeliste
-    /// noch dieselben Ausnahmeobjekte.
+    /// Programmupdate-Ausnahmen werden einzeln
+    /// kopiert. Dadurch besitzen Original und Kopie
+    /// weder dieselbe Ausnahmeliste noch dieselben
+    /// Ausnahmeobjekte.
+    ///
+    /// Auch gespeicherte WinGet-Zwischenprüfungen
+    /// werden einzeln und unabhängig kopiert.
     ///
     /// Die Vorgangs-ID und die archivierten
     /// Entscheidungsdaten bleiben unverändert.
@@ -268,6 +322,12 @@ public sealed class CustomerCheckupVisit
             ProgramUpdateExceptions =
                 ProgramUpdateExceptions
                     .Select(CloneProgramUpdateException)
+                    .ToList(),
+
+            ProgramUpdateIntermediateScans =
+                ProgramUpdateIntermediateScans
+                    .Select(scan =>
+                        scan.CreateIndependentCopy())
                     .ToList()
         };
     }
@@ -318,6 +378,60 @@ public sealed class CustomerCheckupVisit
             ApprovedAt =
                 source.ApprovedAt
         };
+    }
+
+    // =====================================================
+    // SCHRITT 55.10.2 – ZWISCHENPRÜFUNG ERFASSEN
+    // =====================================================
+
+    /// <summary>
+    /// Übernimmt ein neues WinGet-Analyseergebnis
+    /// als unabhängige Zwischenprüfung in den
+    /// laufenden Kundencheckup.
+    ///
+    /// Die ursprünglichen Scaninformationen werden
+    /// nicht verändert oder überschrieben.
+    ///
+    /// Auch fehlgeschlagene Zwischenprüfungen
+    /// können dokumentiert werden. Sie gelten
+    /// jedoch nicht als bestätigter Updatezustand.
+    ///
+    /// Nach einer vorbereiteten Abschlusskontrolle
+    /// oder einem endgültigen Abschluss sind keine
+    /// weiteren Zwischenprüfungen zulässig.
+    ///
+    /// Die Persistierung des gesamten Kundencheckups
+    /// erfolgt anschließend durch den aufrufenden
+    /// Anwendungsdienst.
+    /// </summary>
+    public ProgramUpdateIntermediateScan
+        RecordProgramUpdateIntermediateScan(
+            ProgramUpdateInformation information)
+    {
+        ArgumentNullException.ThrowIfNull(information);
+
+        EnsureInProgress();
+
+        if (IsCompletionPrepared)
+        {
+            throw new InvalidOperationException(
+                "Nach der vorbereiteten Abschlusskontrolle "
+                + "dürfen keine weiteren WinGet-"
+                + "Zwischenprüfungen erfasst werden.");
+        }
+
+        var intermediateScan =
+            ProgramUpdateIntermediateScan.Capture(
+                Id,
+                information);
+
+        ProgramUpdateIntermediateScans.Add(
+            intermediateScan);
+
+        VisitModelVersion =
+            CurrentVisitModelVersion;
+
+        return intermediateScan.CreateIndependentCopy();
     }
 
     // =====================================================
