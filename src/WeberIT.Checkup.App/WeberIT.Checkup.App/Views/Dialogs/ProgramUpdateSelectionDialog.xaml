@@ -20,6 +20,8 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <!-- Kopfbereich -->
+
         <Border
             Grid.Row="0"
             Padding="28,24"
@@ -45,6 +47,8 @@
 
         </Border>
 
+        <!-- Hauptbereich -->
+
         <Grid
             Grid.Row="1"
             Margin="28,20">
@@ -57,6 +61,8 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
+            <!-- Anzahl und Auswahlaktionen -->
+
             <Grid Grid.Row="0">
 
                 <Grid.ColumnDefinitions>
@@ -66,26 +72,76 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
+                <!--
+                    SCHRITT 55.10.30
+
+                    Während einer gesperrten Auswahl
+                    darf die bisherige Paketliste nicht
+                    als aktuell zur Installation
+                    freigegeben bezeichnet werden.
+
+                    Die Liste bleibt als vorheriger
+                    Befund sichtbar.
+                -->
+
                 <TextBlock
                     Grid.Column="0"
                     VerticalAlignment="Center"
                     FontWeight="SemiBold"
-                    Foreground="{StaticResource TextPrimaryBrush}"
-                    Text="{Binding AvailableUpdateCountText}" />
+                    Foreground="{StaticResource TextPrimaryBrush}">
+
+                    <TextBlock.Style>
+
+                        <Style TargetType="{x:Type TextBlock}">
+
+                            <Setter
+                                Property="Text"
+                                Value="{Binding AvailableUpdateCountText}" />
+
+                            <Style.Triggers>
+
+                                <DataTrigger
+                                    Binding="{Binding ElementName=UpdatesListBox, Path=IsEnabled}"
+                                    Value="False">
+
+                                    <Setter
+                                        Property="Text"
+                                        Value="Vorheriger Updatebestand – Auswahl derzeit gesperrt" />
+
+                                </DataTrigger>
+
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </TextBlock.Style>
+
+                </TextBlock>
+
+                <!--
+                    Die Sammelauswahl darf keine
+                    deaktivierte Paketliste über
+                    einen programmatischen Aufruf
+                    wieder auswählbar machen.
+                -->
 
                 <Button
                     Grid.Column="1"
                     MinWidth="120"
                     Content="Alle auswählen"
+                    IsEnabled="{Binding ElementName=UpdatesListBox, Path=IsEnabled}"
                     Click="SelectAllButton_OnClick" />
 
                 <Button
                     Grid.Column="3"
                     MinWidth="130"
                     Content="Auswahl aufheben"
+                    IsEnabled="{Binding ElementName=UpdatesListBox, Path=IsEnabled}"
                     Click="ClearSelectionButton_OnClick" />
 
             </Grid>
+
+            <!-- Paketliste -->
 
             <ListBox
                 x:Name="UpdatesListBox"
@@ -159,9 +215,13 @@
                                         FontSize="11"
                                         Foreground="{StaticResource TextSecondaryBrush}">
 
-                                        <Run Text="{Binding InstalledVersion}" />
+                                        <Run
+                                            Text="{Binding InstalledVersion}" />
+
                                         <Run Text=" → " />
-                                        <Run Text="{Binding AvailableVersion}" />
+
+                                        <Run
+                                            Text="{Binding AvailableVersion}" />
 
                                     </TextBlock>
 
@@ -184,6 +244,8 @@
 
             </ListBox>
 
+            <!-- Status der Programmauswahl -->
+
             <Border
                 Grid.Row="4"
                 Padding="12"
@@ -201,6 +263,8 @@
 
         </Grid>
 
+        <!-- Fußbereich -->
+
         <Border
             Grid.Row="2"
             Padding="28,18"
@@ -215,6 +279,8 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock
@@ -225,21 +291,55 @@
                     Text="Noch keine Installation"
                     TextWrapping="Wrap" />
 
+                <!--
+                    Die Zwischenprüfung wird weiterhin
+                    ausschließlich durch den bisherigen
+                    Code-Behind-Dienst gesteuert.
+                -->
+
                 <Button
+                    x:Name="RefreshProgramUpdatesButton"
                     Grid.Column="1"
+                    MinWidth="225"
+                    Height="40"
+                    Content="Programmupdates erneut prüfen"
+                    IsEnabled="False"
+                    Visibility="Collapsed" />
+
+                <Button
+                    Grid.Column="3"
                     Width="120"
                     Content="Schließen"
                     IsCancel="True"
                     Click="CloseButton_OnClick" />
 
-                <Button
-                    x:Name="PreviewPlanButton"
-                    Grid.Column="3"
-                    MinWidth="170"
-                    Content="Aktionsplan prüfen"
-                    IsEnabled="False"
-                    Style="{StaticResource AccentButtonStyle}"
-                    Click="PreviewPlanButton_OnClick" />
+                <!--
+                    SCHRITT 55.10.30
+
+                    Der übergeordnete Container
+                    bildet eine zusätzliche Sperre.
+
+                    Selbst wenn SelectionChanged
+                    PreviewPlanButton.IsEnabled
+                    versehentlich auf true setzt,
+                    bleibt der gesamte Container
+                    bei gesperrter Paketliste
+                    deaktiviert.
+                -->
+
+                <Grid
+                    Grid.Column="5"
+                    IsEnabled="{Binding ElementName=UpdatesListBox, Path=IsEnabled}">
+
+                    <Button
+                        x:Name="PreviewPlanButton"
+                        MinWidth="170"
+                        Content="Aktionsplan prüfen"
+                        IsEnabled="False"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Click="PreviewPlanButton_OnClick" />
+
+                </Grid>
 
             </Grid>
 

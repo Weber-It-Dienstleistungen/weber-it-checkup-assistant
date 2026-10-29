@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Windows;
 using WeberIT.Checkup.App.Infrastructure.Persistence;
@@ -183,9 +184,96 @@ public partial class App : Application
                             IWindowsUpdateInformationProvider,
                             WindowsUpdateInformationProvider>();
 
+                        // =========================================
+                        // STANDARD-WINGET-PROVIDER
+                        // =========================================
+
+                        /*
+                         * Dieser Provider bleibt für
+                         * sämtliche regulären Scans
+                         * unverändert zuständig.
+                         *
+                         * Insbesondere:
+                         *
+                         * - Allgemeiner Systemcheck
+                         * - Eingangsscan eines Kunden
+                         * - Abschlusskontrolle
+                         *
+                         * Die neue Quellenprüfung wird
+                         * hier ausdrücklich NICHT
+                         * global eingeschaltet.
+                         */
                         services.AddSingleton<
                             IProgramUpdateInformationProvider,
                             ProgramUpdateInformationProvider>();
+
+                        // =========================================
+                        // SCHRITT 55.10.24
+                        // ABGESICHERTE ZWISCHENPRÜFUNG
+                        // =========================================
+
+                        /*
+                         * Prüft, ob die öffentliche
+                         * WinGet-Quelle über HTTPS
+                         * erreichbar ist und eine
+                         * gezielte Quellenaktualisierung
+                         * erfolgreich durchgeführt
+                         * werden konnte.
+                         */
+                        services.AddSingleton<
+                            WingetSourceFreshnessService>();
+
+                        /*
+                         * Dieser Provider kapselt
+                         * den bisherigen WinGet-Provider.
+                         *
+                         * Vor einer Zwischenanalyse
+                         * wird zunächst die Quelle
+                         * geprüft und aktualisiert.
+                         *
+                         * Schlägt diese Vorprüfung
+                         * fehl, liefert der Decorator
+                         * ausdrücklich einen nicht
+                         * zuverlässigen Befund.
+                         */
+                        services.AddSingleton<
+                            FreshnessCheckedProgramUpdateInformationProvider>();
+
+                        /*
+                         * Der Zwischenprüfungsdienst
+                         * erhält ausdrücklich den
+                         * abgesicherten Provider.
+                         *
+                         * Die restlichen Abhängigkeiten
+                         * stammen unverändert aus
+                         * der bestehenden DI-Struktur.
+                         *
+                         * Dadurch wird der normale
+                         * IProgramUpdateInformationProvider
+                         * nicht überschrieben.
+                         */
+                        services.AddSingleton<
+                            ProgramUpdateIntermediateScanService>(
+                            serviceProvider =>
+                                new ProgramUpdateIntermediateScanService(
+                                    serviceProvider.GetRequiredService<
+                                        FreshnessCheckedProgramUpdateInformationProvider>(),
+
+                                    serviceProvider.GetRequiredService<
+                                        IDeviceInformationScanner>(),
+
+                                    serviceProvider.GetRequiredService<
+                                        IDeviceIdentityService>(),
+
+                                    serviceProvider.GetRequiredService<
+                                        ICheckupTaskActionExecutionCoordinator>(),
+
+                                    serviceProvider.GetRequiredService<
+                                        ICustomerService>()));
+
+                        // =========================================
+                        // ÜBRIGE SYSTEMDIENSTE
+                        // =========================================
 
                         services.AddSingleton<
                             IRestartInformationProvider,
