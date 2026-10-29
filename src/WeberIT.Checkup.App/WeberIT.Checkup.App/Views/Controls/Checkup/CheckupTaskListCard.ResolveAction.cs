@@ -1,6 +1,9 @@
 ﻿
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Media;
+using WeberIT.Checkup.App.Infrastructure.Converters;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Assessment;
 using WeberIT.Checkup.App.Services.Tasks;
@@ -424,6 +427,22 @@ public partial class CheckupTaskListCard
                 };
 
             dialog.ShowDialog();
+
+            /*
+             * SCHRITT 55.11.4
+             *
+             * Ein gespeicherter WinGet-Zwischenbefund
+             * ändert nicht automatisch eine der drei
+             * Quellen der bestehenden MultiBinding.
+             *
+             * Deshalb werten wir nach dem Schließen
+             * des Dialogs nur die betroffenen
+             * Beschreibungs-Bindings neu aus.
+             *
+             * Es werden keine Aufgaben, Scanwerte
+             * oder technischen Ergebnisse verändert.
+             */
+            RefreshProgramUpdateDescriptionBindings(this);
         }
         catch (Exception exception)
         {
@@ -434,6 +453,51 @@ public partial class CheckupTaskListCard
                       + "konnte nicht sicher "
                       + "vorbereitet werden."
                     : exception.Message);
+        }
+    }
+
+    // =====================================================
+    // SCHRITT 55.11.4: AUFGABENBESCHREIBUNG AKTUALISIEREN
+    // =====================================================
+
+    /// <summary>
+    /// Erzwingt ausschließlich für TextBlock-Bindings
+    /// des Programmupdate-Aufgabenkonverters eine
+    /// erneute Berechnung des sichtbaren Textes.
+    ///
+    /// Die Methode greift nicht in das Aufgabenmodell
+    /// oder die persistierten Checkup-Daten ein.
+    /// </summary>
+    private static void RefreshProgramUpdateDescriptionBindings(
+        DependencyObject element)
+    {
+        if (element is TextBlock textBlock)
+        {
+            var bindingExpression =
+                BindingOperations.GetMultiBindingExpression(
+                    textBlock,
+                    TextBlock.TextProperty);
+
+            if (bindingExpression?.ParentMultiBinding.Converter
+                is ProgramUpdateTaskDescriptionConverter)
+            {
+                bindingExpression.UpdateTarget();
+            }
+        }
+
+        /*
+         * Die Aufgabenbeschreibungen befinden sich
+         * in DataTemplates. Daher durchsuchen wir
+         * den bereits aufgebauten visuellen Baum
+         * dieser Aufgabenkarte.
+         */
+        var childCount =
+            VisualTreeHelper.GetChildrenCount(element);
+
+        for (var index = 0; index < childCount; index++)
+        {
+            RefreshProgramUpdateDescriptionBindings(
+                VisualTreeHelper.GetChild(element, index));
         }
     }
 }
