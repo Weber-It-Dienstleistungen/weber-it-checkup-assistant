@@ -17,6 +17,21 @@
                     Text="Zentrale Auswertung bekannter lokaler Windows-Neustartindikatoren."
                     TextWrapping="Wrap" />
 
+                <!--
+                    SCHRITT 55.12.5
+
+                    Die Statusanzeige unterscheidet:
+
+                    - bestätigten Neustartbedarf
+                    - keinen bestätigten Neustartbedarf
+                    - informativen Dateioperationshinweis
+                    - unvollständige Prüfergebnisse
+
+                    Ein Dateioperationshinweis allein
+                    darf keine Neustartaufforderung
+                    suggerieren.
+                -->
+
                 <Border
                     Margin="0,16,0,0"
                     Padding="12,7"
@@ -35,6 +50,8 @@
 
                             <Style.Triggers>
 
+                                <!-- Bestätigter Neustartbedarf -->
+
                                 <DataTrigger
                                     Binding="{Binding IsRestartRequired}"
                                     Value="True">
@@ -44,6 +61,8 @@
                                         Value="{StaticResource WarningBrush}" />
 
                                 </DataTrigger>
+
+                                <!-- Kein bestätigter Neustartbedarf -->
 
                                 <MultiDataTrigger>
 
@@ -65,15 +84,39 @@
 
                                 </MultiDataTrigger>
 
-                                <DataTrigger
-                                    Binding="{Binding HasAdvisoryRestartHint}"
-                                    Value="True">
+                                <!--
+                                    Bestätigender Gesamtbefund ist
+                                    negativ, aber Dateioperationen
+                                    sind für einen Systemstart
+                                    vorgemerkt.
+
+                                    Das ist ein informativer Hinweis,
+                                    keine Neustartwarnung.
+                                -->
+
+                                <MultiDataTrigger>
+
+                                    <MultiDataTrigger.Conditions>
+
+                                        <Condition
+                                            Binding="{Binding IsAnalysisConclusive}"
+                                            Value="True" />
+
+                                        <Condition
+                                            Binding="{Binding IsRestartRequired}"
+                                            Value="False" />
+
+                                        <Condition
+                                            Binding="{Binding HasAdvisoryRestartHint}"
+                                            Value="True" />
+
+                                    </MultiDataTrigger.Conditions>
 
                                     <Setter
                                         Property="BorderBrush"
                                         Value="{StaticResource InformationBrush}" />
 
-                                </DataTrigger>
+                                </MultiDataTrigger>
 
                             </Style.Triggers>
 
@@ -106,6 +149,8 @@
 
                                     </DataTrigger>
 
+                                    <!-- Tatsächlich bestätigter Bedarf -->
+
                                     <DataTrigger
                                         Binding="{Binding IsRestartRequired}"
                                         Value="True">
@@ -115,6 +160,8 @@
                                             Value="Neustart erforderlich" />
 
                                     </DataTrigger>
+
+                                    <!-- Alle Prüfungen ohne Bedarf -->
 
                                     <MultiDataTrigger>
 
@@ -136,15 +183,44 @@
 
                                     </MultiDataTrigger>
 
-                                    <DataTrigger
-                                        Binding="{Binding HasAdvisoryRestartHint}"
-                                        Value="True">
+                                    <!--
+                                        SCHRITT 55.12.5
+
+                                        Keine bestätigende Quelle
+                                        verlangt einen Neustart.
+
+                                        Vorgemerkte Dateioperationen
+                                        bleiben trotzdem erkennbar.
+
+                                        Die Formulierung behauptet
+                                        ausdrücklich nicht, dass
+                                        diese Operationen bereits
+                                        ausgeführt worden sind.
+                                    -->
+
+                                    <MultiDataTrigger>
+
+                                        <MultiDataTrigger.Conditions>
+
+                                            <Condition
+                                                Binding="{Binding IsAnalysisConclusive}"
+                                                Value="True" />
+
+                                            <Condition
+                                                Binding="{Binding IsRestartRequired}"
+                                                Value="False" />
+
+                                            <Condition
+                                                Binding="{Binding HasAdvisoryRestartHint}"
+                                                Value="True" />
+
+                                        </MultiDataTrigger.Conditions>
 
                                         <Setter
                                             Property="Text"
-                                            Value="Möglicher Neustartbedarf" />
+                                            Value="Kein bestätigter Neustartbedarf · Dateioperationen vorgemerkt" />
 
-                                    </DataTrigger>
+                                    </MultiDataTrigger>
 
                                 </Style.Triggers>
 
@@ -155,6 +231,8 @@
                     </TextBlock>
 
                 </Border>
+
+                <!-- Analysezeitpunkt -->
 
                 <Grid Margin="0,20,0,0">
 
@@ -173,6 +251,14 @@
                         Text="{Binding AnalysisDate, StringFormat={}{0:dd.MM.yyyy HH:mm}}" />
 
                 </Grid>
+
+                <!--
+                    INFORMATIVER DATEIOPERATIONSHINWEIS
+
+                    Unabhängig von der bestätigenden
+                    Neustartbewertung bleibt dieser
+                    Hinweis sichtbar.
+                -->
 
                 <Border
                     Margin="0,18,0,0"
@@ -215,6 +301,14 @@
 
                 </Border>
 
+                <!--
+                    UNVOLLSTÄNDIGE QUELLENPRÜFUNG
+
+                    Fehler in einzelnen Quellen
+                    werden weiterhin separat
+                    ausgewiesen.
+                -->
+
                 <Border
                     Margin="0,18,0,0"
                     Padding="12"
@@ -255,6 +349,8 @@
                         TextWrapping="Wrap" />
 
                 </Border>
+
+                <!-- Einzelquellen -->
 
                 <TextBlock
                     Margin="0,22,0,10"
@@ -359,6 +455,13 @@
                                                             Value="{StaticResource WarningBrush}" />
 
                                                     </MultiDataTrigger>
+
+                                                    <!--
+                                                        Ausstehende Dateioperationen
+                                                        sind eine Hinweisquelle,
+                                                        keine bestätigende
+                                                        Neustartanforderung.
+                                                    -->
 
                                                     <MultiDataTrigger>
 

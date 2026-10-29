@@ -1,4 +1,5 @@
-﻿using Microsoft.Win32;
+﻿
+using Microsoft.Win32;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
@@ -371,13 +372,40 @@ public class RestartInformationProvider :
         };
     }
 
+    // =============================================
+    // SCHRITT 55.12.3
+    // ZENTRALE NEUSTARTBEWERTUNG
+    // =============================================
+
     private static void ApplyOverallResult(
         RestartInformation information)
     {
+        /*
+         * Drei Quellen können einen bestätigten
+         * Neustartbedarf begründen:
+         *
+         * - Windows Update
+         * - Windows-Komponentenwartung
+         * - Ausstehende Computername-Änderung
+         *
+         * PendingFileRenameOperations ist dagegen
+         * ein gesonderter Hinweis auf geplante
+         * Dateioperationen.
+         *
+         * Dieser Hinweis bleibt im Modell
+         * vollständig erhalten, darf aber nicht
+         * allein die bestätigende Neustartprüfung
+         * als uneindeutig bewerten.
+         */
+
         var authoritativeSources =
             information.Sources
                 .Where(IsAuthoritativeSource)
                 .ToList();
+
+        // =========================================
+        // 1. BESTÄTIGTER NEUSTARTBEDARF
+        // =========================================
 
         var confirmedRestartRequired =
             authoritativeSources.Any(
@@ -396,26 +424,13 @@ public class RestartInformationProvider :
             return;
         }
 
-        var advisoryRestartHint =
-            information.Sources.Any(
-                source =>
-                    !IsAuthoritativeSource(source)
-                    && source.IsCheckSuccessful
-                    && source.IsRestartRequired == true);
-
-        if (advisoryRestartHint)
-        {
-            information.IsAnalysisConclusive =
-                false;
-
-            information.IsRestartRequired =
-                null;
-
-            return;
-        }
+        // =========================================
+        // 2. ALLE QUELLEN ERFOLGREICH GEPRÜFT
+        // =========================================
 
         var allChecksSuccessful =
             information.Sources.Count > 0
+            && authoritativeSources.Count == 3
             && information.Sources.All(
                 source =>
                     source.IsCheckSuccessful
@@ -423,6 +438,25 @@ public class RestartInformationProvider :
 
         if (allChecksSuccessful)
         {
+            /*
+             * Es wurde kein bestätigter
+             * Neustartbedarf gefunden.
+             *
+             * Ein zusätzlicher Hinweis aus
+             * PendingFileRenameOperations
+             * bleibt weiterhin unter Sources
+             * gespeichert.
+             *
+             * HasAdvisoryRestartHint wird
+             * deshalb auch weiterhin true,
+             * wenn solche Dateioperationen
+             * tatsächlich vorgemerkt sind.
+             *
+             * Der Hinweis verfälscht aber
+             * nicht mehr das eindeutige
+             * Ergebnis der Neustartprüfung.
+             */
+
             information.IsAnalysisConclusive =
                 true;
 
@@ -431,6 +465,20 @@ public class RestartInformationProvider :
 
             return;
         }
+
+        // =========================================
+        // 3. UNVOLLSTÄNDIGE PRÜFUNG
+        // =========================================
+
+        /*
+         * Mindestens eine Quelle konnte nicht
+         * zuverlässig ausgewertet werden.
+         *
+         * Ohne positiven bestätigenden Befund
+         * behaupten wir deshalb weder einen
+         * erforderlichen noch einen sicher
+         * ausgeschlossenen Neustart.
+         */
 
         information.IsAnalysisConclusive =
             false;
