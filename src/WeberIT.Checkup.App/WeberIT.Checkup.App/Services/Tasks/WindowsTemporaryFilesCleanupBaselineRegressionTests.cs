@@ -4,11 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.13.14
+/// Sprint 55.13.28a
 ///
 /// Struktur- und Vertragstests für den
 /// erhöhten Windows-Temp-Executor.
@@ -329,9 +330,28 @@ public static class
             "[System.IO.File]::WriteAllText(",
             "Die Ergebnisdatei wird nicht geschrieben.");
 
-        RequireContains(
-            script,
-            "[System.Console]::Out.WriteLine($json)",
+        /*
+         * Schritt 55.13.28a
+         *
+         * Die alte Prüfung erwartete exakt:
+         *
+         * [System.Console]::Out.WriteLine($json)
+         *
+         * Das neue Skript schreibt denselben
+         * Aufruf über mehrere Zeilen.
+         *
+         * Wir erlauben deshalb ausschließlich
+         * zusätzlichen Leerraum an den
+         * syntaktischen Trennstellen.
+         *
+         * Der konkrete Methodenaufruf und
+         * das Argument $json bleiben Pflicht.
+         */
+        Require(
+            Regex.IsMatch(
+                script,
+                @"\[System\.Console\]::Out\.WriteLine\s*\(\s*\$json\s*\)",
+                RegexOptions.CultureInvariant),
             "Die zusätzliche Standardausgabe fehlt.");
     }
 

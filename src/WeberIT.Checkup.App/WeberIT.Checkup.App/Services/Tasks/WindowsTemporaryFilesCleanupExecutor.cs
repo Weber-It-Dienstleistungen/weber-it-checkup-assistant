@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -7,6 +8,19 @@ using WeberIT.Checkup.App.Services.Interfaces;
 
 namespace WeberIT.Checkup.App.Services.Tasks;
 
+/// <summary>
+/// Führt die kontrollierte Windows-Temp-Bereinigung
+/// über einen gesonderten, erhöhten PowerShell-Prozess aus.
+///
+/// Sprint 55.13.27:
+/// - Ausgelagerten Skriptgenerator verwenden.
+/// - Überspringursachen aus Worker-JSON übernehmen.
+/// - Ursachen vor Übernahme streng validieren.
+///
+/// Die bestehenden Prüfungen für Aktionsplan,
+/// Administratorrechte, Skriptintegrität und
+/// Zielpfad bleiben bestehen.
+/// </summary>
 public sealed class WindowsTemporaryFilesCleanupExecutor
 {
     private const string RestoreCapacityTaskCode =
@@ -17,12 +31,6 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
 
     private const string SupportedActionCode =
         "action.cleanup.selected-safe-categories";
-
-    private const string CancellationMarkerPlaceholder =
-        "__WEBERIT_CANCELLATION_MARKER__";
-
-    private const string ResultFilePlaceholder =
-        "__WEBERIT_RESULT_FILE__";
 
     private const int MaximumDiagnosticLength =
         3000;
@@ -116,6 +124,13 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
                     temporaryDirectory,
                     "windows-temp-cleanup.ps1");
 
+            /*
+             * Sprint 55.13.27:
+             *
+             * BuildCleanupScript verwendet jetzt
+             * ausschließlich den ausgelagerten
+             * und zuvor geprüften Skriptgenerator.
+             */
             var cleanupScript =
                 BuildCleanupScript(
                     cancellationMarkerPath,
@@ -245,6 +260,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         }
     }
 
+    // =============================================
+    // AKTIONSPLAN VALIDIEREN
+    // =============================================
+
     private static void ValidatePlan(
         CheckupTaskActionPlan plan)
     {
@@ -317,6 +336,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         }
     }
 
+    // =============================================
+    // TEMPORÄREN ARBEITSBEREICH ERSTELLEN
+    // =============================================
+
     private static string CreateTemporaryDirectory()
     {
         var temporaryRoot =
@@ -343,6 +366,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
 
         return temporaryDirectory;
     }
+
+    // =============================================
+    // SKRIPT SCHREIBEN UND HASH ERMITTELN
+    // =============================================
 
     private static string WriteCleanupScript(
         string cleanupScriptPath,
@@ -418,6 +445,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
             scriptHashBytes);
     }
 
+    // =============================================
+    // WINDOWS-POWERSHELL ERMITTELN
+    // =============================================
+
     private static string ResolvePowerShellPath()
     {
         if (!OperatingSystem.IsWindows())
@@ -461,6 +492,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
 
         return powershellPath;
     }
+
+    // =============================================
+    // INTEGRITÄTSGEPRÜFTEN STARTER ERZEUGEN
+    // =============================================
 
     private static string BuildVerifiedLauncherScript(
         string cleanupScriptPath,
@@ -510,459 +545,32 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
             + "& $scriptPath;";
     }
 
+    // =============================================
+    // NEUEN SKRIPTGENERATOR VERWENDEN
+    // =============================================
+
     private static string BuildCleanupScript(
         string cancellationMarkerPath,
         string resultFilePath)
     {
-        var escapedCancellationMarkerPath =
-            EscapePowerShellLiteral(
-                cancellationMarkerPath);
-
-        var escapedResultFilePath =
-            EscapePowerShellLiteral(
-                resultFilePath);
-
-        const string script =
-            """
-            $ErrorActionPreference = 'Stop'
-
-            $cancellationMarkerPath = '__WEBERIT_CANCELLATION_MARKER__'
-            $resultFilePath = '__WEBERIT_RESULT_FILE__'
-
-            $result = [ordered]@{
-                WasStarted = $false
-                WasCancelled = $false
-                TargetPath = ''
-                DeletedFileCount = [int64]0
-                DeletedDirectoryCount = [int64]0
-                DeletedSizeBytes = [uint64]0
-                FailedEntryCount = [int64]0
-                SkippedEntryCount = [int64]0
-                ErrorMessage = ''
-            }
-
-            function Test-CancellationRequested
-            {
-                return [System.IO.File]::Exists($cancellationMarkerPath)
-            }
-
-            function Write-WorkerResult
-            {
-                param(
-                    [System.Collections.IDictionary]$WorkerResult
-                )
-
-                $json = $WorkerResult | ConvertTo-Json -Compress -Depth 4
-
-                [System.IO.File]::WriteAllText(
-                    $resultFilePath,
-                    $json,
-                    [System.Text.Encoding]::UTF8)
-
-                [System.Console]::Out.WriteLine($json)
-            }
-
-            $exitCode = 0
-
-            try
-            {
-                $windowsDirectory =
-                    [System.Environment]::GetFolderPath(
-                        [System.Environment+SpecialFolder]::Windows)
-
-                if ([string]::IsNullOrWhiteSpace($windowsDirectory))
-                {
-                    $windowsDirectory = $env:WINDIR
-                }
-
-                if ([string]::IsNullOrWhiteSpace($windowsDirectory))
-                {
-                    throw 'Das Windows-Verzeichnis konnte nicht bestimmt werden.'
-                }
-
-                $trimCharacters = [char[]]@(
-                    [System.IO.Path]::DirectorySeparatorChar,
-                    [System.IO.Path]::AltDirectorySeparatorChar)
-
-                $normalizedWindowsDirectory =
-                    [System.IO.Path]::GetFullPath(
-                        $windowsDirectory).TrimEnd(
-                            $trimCharacters)
-
-                $targetPath =
-                    [System.IO.Path]::GetFullPath(
-                        [System.IO.Path]::Combine(
-                            $normalizedWindowsDirectory,
-                            'Temp')).TrimEnd(
-                                $trimCharacters)
-
-                $targetRoot =
-                    [System.IO.Path]::GetPathRoot(
-                        $targetPath)
-
-                if ([string]::IsNullOrWhiteSpace($targetRoot))
-                {
-                    throw 'Der Windows-Temp-Pfad besitzt kein Stammverzeichnis.'
-                }
-
-                if ([string]::Equals(
-                        $targetPath,
-                        $targetRoot,
-                        [System.StringComparison]::OrdinalIgnoreCase))
-                {
-                    throw 'Der Windows-Temp-Pfad entspricht einem Laufwerksstamm.'
-                }
-
-                $targetParent =
-                    [System.IO.Directory]::GetParent(
-                        $targetPath)
-
-                if ($null -eq $targetParent)
-                {
-                    throw 'Der übergeordnete Windows-Ordner konnte nicht bestimmt werden.'
-                }
-
-                $normalizedTargetParent =
-                    $targetParent.FullName.TrimEnd(
-                        $trimCharacters)
-
-                if (-not [string]::Equals(
-                        $normalizedTargetParent,
-                        $normalizedWindowsDirectory,
-                        [System.StringComparison]::OrdinalIgnoreCase))
-                {
-                    throw 'Der Zielbereich liegt nicht direkt im Windows-Verzeichnis.'
-                }
-
-                $targetDirectoryName =
-                    [System.IO.Path]::GetFileName(
-                        $targetPath)
-
-                if (-not [string]::Equals(
-                        $targetDirectoryName,
-                        'Temp',
-                        [System.StringComparison]::OrdinalIgnoreCase))
-                {
-                    throw 'Der Zielbereich entspricht nicht dem Windows-Temp-Ordner.'
-                }
-
-                $result.TargetPath =
-                    $targetPath
-
-                $result.WasStarted =
-                    $true
-
-                if (Test-CancellationRequested)
-                {
-                    $result.WasCancelled =
-                        $true
-                }
-                elseif ([System.IO.Directory]::Exists($targetPath))
-                {
-                    $targetAttributes =
-                        [System.IO.File]::GetAttributes(
-                            $targetPath)
-
-                    if (($targetAttributes -band
-                         [System.IO.FileAttributes]::ReparsePoint) -ne 0)
-                    {
-                        throw 'Der Windows-Temp-Stammordner ist ein Umleitungs- oder Verknüpfungspunkt.'
-                    }
-
-                    $rootPrefix =
-                        $targetPath +
-                        [System.IO.Path]::DirectorySeparatorChar
-
-                    $pendingEntries =
-                        New-Object System.Collections.Stack
-
-                    try
-                    {
-                        $rootEntries =
-                            [System.IO.Directory]::GetFileSystemEntries(
-                                $targetPath)
-                    }
-                    catch
-                    {
-                        $rootEntries =
-                            @()
-
-                        $result.FailedEntryCount =
-                            [int64]$result.FailedEntryCount + 1
-
-                        $result.ErrorMessage =
-                            'Der Inhalt des Windows-Temp-Ordners konnte nicht vollständig aufgelistet werden.'
-                    }
-
-                    foreach ($rootEntry in $rootEntries)
-                    {
-                        $workItem = [pscustomobject]@{
-                            Path = $rootEntry
-                            DeleteAfterChildren = $false
-                        }
-
-                        $pendingEntries.Push(
-                            $workItem)
-                    }
-
-                    while ($pendingEntries.Count -gt 0)
-                    {
-                        if (Test-CancellationRequested)
-                        {
-                            $result.WasCancelled =
-                                $true
-
-                            break
-                        }
-
-                        $workItem =
-                            $pendingEntries.Pop()
-
-                        $candidatePath =
-                            [System.IO.Path]::GetFullPath(
-                                [string]$workItem.Path)
-
-                        if (-not $candidatePath.StartsWith(
-                                $rootPrefix,
-                                [System.StringComparison]::OrdinalIgnoreCase))
-                        {
-                            throw 'Ein zu verarbeitender Eintrag liegt außerhalb des Windows-Temp-Ordners.'
-                        }
-
-                        if ([bool]$workItem.DeleteAfterChildren)
-                        {
-                            try
-                            {
-                                [System.IO.Directory]::Delete(
-                                    $candidatePath,
-                                    $false)
-
-                                $result.DeletedDirectoryCount =
-                                    [int64]$result.DeletedDirectoryCount + 1
-                            }
-                            catch [System.IO.DirectoryNotFoundException]
-                            {
-                                $result.SkippedEntryCount =
-                                    [int64]$result.SkippedEntryCount + 1
-                            }
-                            catch
-                            {
-                                $result.FailedEntryCount =
-                                    [int64]$result.FailedEntryCount + 1
-                            }
-
-                            continue
-                        }
-
-                        try
-                        {
-                            $attributes =
-                                [System.IO.File]::GetAttributes(
-                                    $candidatePath)
-                        }
-                        catch [System.IO.FileNotFoundException]
-                        {
-                            $result.SkippedEntryCount =
-                                [int64]$result.SkippedEntryCount + 1
-
-                            continue
-                        }
-                        catch [System.IO.DirectoryNotFoundException]
-                        {
-                            $result.SkippedEntryCount =
-                                [int64]$result.SkippedEntryCount + 1
-
-                            continue
-                        }
-                        catch
-                        {
-                            $result.FailedEntryCount =
-                                [int64]$result.FailedEntryCount + 1
-
-                            continue
-                        }
-
-                        if (($attributes -band
-                             [System.IO.FileAttributes]::ReparsePoint) -ne 0)
-                        {
-                            $result.SkippedEntryCount =
-                                [int64]$result.SkippedEntryCount + 1
-
-                            continue
-                        }
-
-                        $isDirectory =
-                            ($attributes -band
-                             [System.IO.FileAttributes]::Directory) -ne 0
-
-                        if (-not $isDirectory)
-                        {
-                            [uint64]$fileSize =
-                                0
-
-                            try
-                            {
-                                $fileInformation =
-                                    New-Object System.IO.FileInfo(
-                                        $candidatePath)
-
-                                if ($fileInformation.Exists -and
-                                    $fileInformation.Length -gt 0)
-                                {
-                                    $fileSize =
-                                        [uint64]$fileInformation.Length
-                                }
-                            }
-                            catch
-                            {
-                                $fileSize =
-                                    0
-                            }
-
-                            try
-                            {
-                                [System.IO.File]::Delete(
-                                    $candidatePath)
-
-                                $result.DeletedFileCount =
-                                    [int64]$result.DeletedFileCount + 1
-
-                                [uint64]$currentDeletedSize =
-                                    [uint64]$result.DeletedSizeBytes
-
-                                if ($fileSize -gt
-                                    ([uint64]::MaxValue -
-                                     $currentDeletedSize))
-                                {
-                                    $result.DeletedSizeBytes =
-                                        [uint64]::MaxValue
-                                }
-                                else
-                                {
-                                    $result.DeletedSizeBytes =
-                                        [uint64](
-                                            $currentDeletedSize +
-                                            $fileSize)
-                                }
-                            }
-                            catch [System.IO.FileNotFoundException]
-                            {
-                                $result.SkippedEntryCount =
-                                    [int64]$result.SkippedEntryCount + 1
-                            }
-                            catch [System.IO.DirectoryNotFoundException]
-                            {
-                                $result.SkippedEntryCount =
-                                    [int64]$result.SkippedEntryCount + 1
-                            }
-                            catch
-                            {
-                                $result.FailedEntryCount =
-                                    [int64]$result.FailedEntryCount + 1
-                            }
-
-                            continue
-                        }
-
-                        try
-                        {
-                            $childEntries =
-                                [System.IO.Directory]::GetFileSystemEntries(
-                                    $candidatePath)
-                        }
-                        catch [System.IO.DirectoryNotFoundException]
-                        {
-                            $result.SkippedEntryCount =
-                                [int64]$result.SkippedEntryCount + 1
-
-                            continue
-                        }
-                        catch
-                        {
-                            $result.FailedEntryCount =
-                                [int64]$result.FailedEntryCount + 1
-
-                            continue
-                        }
-
-                        $directoryWorkItem =
-                            [pscustomobject]@{
-                                Path = $candidatePath
-                                DeleteAfterChildren = $true
-                            }
-
-                        $pendingEntries.Push(
-                            $directoryWorkItem)
-
-                        foreach ($childEntry in $childEntries)
-                        {
-                            $childWorkItem =
-                                [pscustomobject]@{
-                                    Path = $childEntry
-                                    DeleteAfterChildren = $false
-                                }
-
-                            $pendingEntries.Push(
-                                $childWorkItem)
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                $exitCode =
-                    1
-
-                $technicalMessage =
-                    $_.Exception.Message
-
-                if ([string]::IsNullOrWhiteSpace(
-                        $technicalMessage))
-                {
-                    $result.ErrorMessage =
-                        'Die Windows-Temp-Bereinigung wurde unerwartet abgebrochen.'
-                }
-                else
-                {
-                    $result.ErrorMessage =
-                        $technicalMessage
-                }
-            }
-            finally
-            {
-                try
-                {
-                    Write-WorkerResult -WorkerResult $result
-                }
-                catch
-                {
-                    $resultWriteError =
-                        $_.Exception.Message
-
-                    $resultWriteMessage =
-                        'Das technische Bereinigungsergebnis konnte nicht gespeichert werden: {0}' `
-                        -f $resultWriteError
-
-                    [System.Console]::Error.WriteLine(
-                        $resultWriteMessage)
-
-                    $exitCode =
-                        1
-                }
-            }
-
-            exit $exitCode
-            """;
-
-        return script
-            .Replace(
-                CancellationMarkerPlaceholder,
-                escapedCancellationMarkerPath,
-                StringComparison.Ordinal)
-            .Replace(
-                ResultFilePlaceholder,
-                escapedResultFilePath,
-                StringComparison.Ordinal);
+        /*
+         * Diese Methode bleibt absichtlich
+         * als eindeutiger Einstiegspunkt
+         * erhalten.
+         *
+         * Vorhandene Regressionstests
+         * verwenden diesen Vertrag.
+         *
+         * Der eigentliche PowerShell-Code
+         * liegt nun vollständig in:
+         *
+         * WindowsTemporaryFilesCleanupPowerShellScript
+         */
+        return
+            WindowsTemporaryFilesCleanupPowerShellScript
+                .Build(
+                    cancellationMarkerPath,
+                    resultFilePath);
     }
 
     private static string EscapePowerShellLiteral(
@@ -973,6 +581,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
             "''",
             StringComparison.Ordinal);
     }
+
+    // =============================================
+    // WORKER-ERGEBNIS EINLESEN
+    // =============================================
 
     private static WindowsTemporaryFilesWorkerResult
         ParseWorkerResult(
@@ -1182,6 +794,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
                + "… technische Ausgabe gekürzt.";
     }
 
+    // =============================================
+    // ERGEBNIS VALIDIEREN
+    // =============================================
+
     private static void ValidateWorkerResult(
         WindowsTemporaryFilesWorkerResult result)
     {
@@ -1299,11 +915,33 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
             Path.AltDirectorySeparatorChar);
     }
 
+    // =============================================
+    // KATEGORIEERGEBNIS ERSTELLEN
+    // =============================================
+
     private static CleanupActionCategoryExecutionResult
         CreateCategoryResult(
             CleanupActionCategory category,
             WindowsTemporaryFilesWorkerResult workerResult)
     {
+        /*
+         * Erst jetzt werden die vom erhöhten
+         * Prozess übertragenen Ursachennamen
+         * in unser persistiertes Enum-Modell
+         * übernommen.
+         *
+         * Ungültige Einträge, Dubletten oder
+         * widersprüchliche Zähler führen
+         * ausdrücklich zu einem technischen
+         * Fehler, statt stillschweigend
+         * akzeptiert zu werden.
+         */
+        var skippedEntryReasons =
+            WindowsTemporaryFilesSkipReasonContract
+                .Normalize(
+                    workerResult.SkippedEntryReasons,
+                    workerResult.SkippedEntryCount);
+
         return new CleanupActionCategoryExecutionResult
         {
             Category =
@@ -1339,10 +977,17 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
             SkippedEntryCount =
                 workerResult.SkippedEntryCount,
 
+            SkippedEntryReasons =
+                skippedEntryReasons,
+
             ErrorMessage =
                 workerResult.ErrorMessage
         };
     }
+
+    // =============================================
+    // GESAMTSTATUS BESTIMMEN
+    // =============================================
 
     private static string DetermineOverallErrorMessage(
         CleanupActionCategoryExecutionResult categoryResult,
@@ -1418,6 +1063,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
             "Die erhöhte Windows-Temp-Bereinigung "
             + "konnte nicht technisch gestartet werden.";
     }
+
+    // =============================================
+    // AUSFÜHRUNGSKOORDINATION
+    // =============================================
 
     private string BuildExecutionBlockedMessage()
     {
@@ -1511,6 +1160,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         };
     }
 
+    // =============================================
+    // ABBRUCHMARKER UND AUFRÄUMEN
+    // =============================================
+
     private static void TryCreateCancellationMarker(
         string cancellationMarkerPath)
     {
@@ -1521,7 +1174,7 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
                     cancellationMarkerPath);
 
             if (string.IsNullOrWhiteSpace(
-                    parentDirectory)
+                parentDirectory)
                 || !Directory.Exists(
                     parentDirectory))
             {
@@ -1576,6 +1229,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
                    StringComparison.Ordinal);
     }
 
+    // =============================================
+    // JSON-DATENVERTRAG DES ERHÖHTEN WORKERS
+    // =============================================
+
     private sealed class WindowsTemporaryFilesWorkerResult
     {
         public bool WasStarted { get; set; }
@@ -1594,6 +1251,23 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         public long FailedEntryCount { get; set; }
 
         public long SkippedEntryCount { get; set; }
+
+        /*
+         * Neues optionales JSON-Feld.
+         *
+         * Bei älteren Ergebnissen fehlt
+         * dieses Feld vollständig.
+         *
+         * Normalize akzeptiert deshalb
+         * null und behält den historischen
+         * Gesamtzähler unverändert bei.
+         */
+        public List<WindowsTemporaryFilesSkipReasonRecord?>?
+            SkippedEntryReasons
+        {
+            get;
+            set;
+        }
 
         public string ErrorMessage { get; set; } =
             string.Empty;
