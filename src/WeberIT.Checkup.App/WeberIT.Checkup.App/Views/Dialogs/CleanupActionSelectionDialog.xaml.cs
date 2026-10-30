@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿
+using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -415,6 +416,11 @@ public partial class CleanupActionSelectionDialog :
             CheckupTaskActionStatus.Failed;
     }
 
+    // =============================================
+    // SCHRITT 55.13.8
+    // VERSTÄNDLICHE ERGEBNISZUSAMMENFASSUNG
+    // =============================================
+
     private static string BuildResultSummary(
         CleanupActionExecutionResult executionResult)
     {
@@ -422,13 +428,29 @@ public partial class CleanupActionSelectionDialog :
             BuildDeletionSummary(
                 executionResult);
 
+        /*
+         * Erwartete Ausnahmen dürfen
+         * weder verschwiegen noch als
+         * unerledigte Löschaufgabe
+         * dargestellt werden.
+         */
+        var skippedSummary =
+            executionResult.SkippedEntryCount > 0
+                ? $" {executionResult.SkippedEntryCount:N0} "
+                  + "Einträge wurden kontrolliert "
+                  + "übersprungen; Einzelheiten "
+                  + "stehen im technischen Protokoll."
+                : string.Empty;
+
         if (executionResult.IsSuccessful)
         {
             return
                 "Die kontrollierte Bereinigung wurde "
                 + "technisch erfolgreich beendet. "
                 + deletionSummary
-                + ". Die Abschlusskontrolle steht aus.";
+                + "."
+                + skippedSummary
+                + " Die Abschlusskontrolle steht aus.";
         }
 
         if (executionResult.IsPartiallySuccessful)
@@ -440,9 +462,9 @@ public partial class CleanupActionSelectionDialog :
                 + $". {executionResult.FailedEntryCount:N0} "
                 + "Einträge konnten nicht gelöscht und "
                 + $"{executionResult.SkippedEntryCount:N0} "
-                + "Einträge wurden sicherheitsbedingt oder "
-                + "wegen zwischenzeitlicher Änderungen "
-                + "übersprungen. Die Abschlusskontrolle steht aus.";
+                + "Einträge wurden kontrolliert "
+                + "übersprungen. Die Abschlusskontrolle "
+                + "steht aus.";
         }
 
         if (executionResult.WasCancelled)
@@ -455,13 +477,15 @@ public partial class CleanupActionSelectionDialog :
                     + "abgebrochen. Bereits ausgeführte "
                     + "Änderungen bleiben bestehen: "
                     + deletionSummary
-                    + ".";
+                    + "."
+                    + skippedSummary;
             }
 
             return
                 "Die kontrollierte Bereinigung wurde "
                 + "vor einer protokollierten "
-                + "Dateiänderung abgebrochen.";
+                + "Dateiänderung abgebrochen."
+                + skippedSummary;
         }
 
         if (executionResult.WasStarted)
@@ -470,7 +494,8 @@ public partial class CleanupActionSelectionDialog :
                 "Die kontrollierte Bereinigung wurde "
                 + "mit technischen Fehlern beendet. "
                 + deletionSummary
-                + ".";
+                + "."
+                + skippedSummary;
         }
 
         return
@@ -535,6 +560,11 @@ public partial class CleanupActionSelectionDialog :
             $"{executionResult.DeletedSizeBytes:N0} Byte";
     }
 
+    // =============================================
+    // SCHRITT 55.13.8
+    // TECHNISCHES PROTOKOLL MIT URSACHEN
+    // =============================================
+
     private static string BuildTechnicalDetails(
         CheckupTaskActionPlan plan,
         CleanupActionExecutionResult executionResult)
@@ -574,6 +604,7 @@ public partial class CleanupActionSelectionDialog :
                  in executionResult.CategoryResults)
         {
             builder.AppendLine();
+
             builder.Append("Kategorie: ");
             builder.AppendLine(
                 categoryResult.CategoryTitle);
@@ -616,14 +647,40 @@ public partial class CleanupActionSelectionDialog :
                 categoryResult.FailedEntryCount
                     .ToString("N0"));
 
-            builder.Append("Sicherheitsbedingt übersprungen: ");
+            /*
+             * Der bisherige Gesamtzähler
+             * bleibt vollständig erhalten.
+             */
+            builder.Append("Kontrolliert übersprungen: ");
             builder.AppendLine(
                 categoryResult.SkippedEntryCount
                     .ToString("N0"));
 
+            /*
+             * NEU:
+             * Aufschlüsselung nach den
+             * tatsächlich dokumentierten
+             * Überspringursachen.
+             *
+             * Bei historischen Ergebnissen
+             * wird ausdrücklich festgehalten,
+             * wenn Detaildaten fehlen.
+             */
+            if (categoryResult.SkippedEntryCount > 0)
+            {
+                builder.AppendLine();
+                builder.AppendLine(
+                    "Ursachen der übersprungenen Einträge:");
+
+                builder.AppendLine(
+                    categoryResult.SkippedEntryReasonsText);
+            }
+
             if (!string.IsNullOrWhiteSpace(
                     categoryResult.ErrorMessage))
             {
+                builder.AppendLine();
+
                 builder.Append(
                     categoryResult.IsPartiallySuccessful
                         ? "Kategoriehinweis: "

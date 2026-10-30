@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -416,30 +417,56 @@ public partial class CleanupActionExecutionDialog :
             "Technische Prüfung erforderlich";
     }
 
+    // =============================================
+    // SCHRITT 55.13.9
+    // ERFOLGREICHE BEREINIGUNG MIT AUSNAHMEN
+    // =============================================
+
     private static string BuildCompletionText(
         CleanupActionExecutionResult executionResult)
     {
         var categoryResult =
-            executionResult.CategoryResults
-                .Single();
+            executionResult.CategoryResults.Single();
 
-        return
+        var summary =
             categoryResult.DeletedFileCountText
             + ", "
             + categoryResult.DeletedDirectoryCountText
             + ". Protokollierte Dateigröße: "
             + categoryResult.DeletedSizeText
             + ".";
+
+        /*
+         * Ein technisch erfolgreicher Durchlauf
+         * darf kontrolliert übersprungene Einträge
+         * nicht verschweigen.
+         *
+         * Sie sind kein technischer Fehler.
+         */
+        if (categoryResult.SkippedEntryCount > 0)
+        {
+            summary +=
+                " "
+                + categoryResult.SkippedEntryCountText
+                + ". Die Ursachen sind in den "
+                + "technischen Einzelergebnissen dokumentiert.";
+        }
+
+        return summary;
     }
+
+    // =============================================
+    // SCHRITT 55.13.9
+    // TEILERFOLG MIT GETRENNTER FEHLERBEWERTUNG
+    // =============================================
 
     private static string BuildPartialCompletionText(
         CleanupActionExecutionResult executionResult)
     {
         var categoryResult =
-            executionResult.CategoryResults
-                .Single();
+            executionResult.CategoryResults.Single();
 
-        return
+        var summary =
             categoryResult.DeletedFileCountText
             + ", "
             + categoryResult.DeletedDirectoryCountText
@@ -447,11 +474,18 @@ public partial class CleanupActionExecutionDialog :
             + categoryResult.DeletedSizeText
             + ". "
             + categoryResult.FailureCountText
-            + ". "
-            + categoryResult.SkippedEntryCountText
-            + ". Gesperrte, bereits entfernte oder "
-            + "sicherheitsbedingt nicht freigegebene Einträge "
-            + "blieben unverändert.";
+            + ".";
+
+        if (categoryResult.SkippedEntryCount > 0)
+        {
+            summary +=
+                " "
+                + categoryResult.SkippedEntryCountText
+                + ". Die Ursachen sind in den "
+                + "technischen Einzelergebnissen dokumentiert.";
+        }
+
+        return summary;
     }
 
     private void CancelButton_OnClick(
@@ -527,6 +561,11 @@ public partial class CleanupActionExecutionDialog :
                 propertyName));
     }
 
+    // =============================================
+    // SCHRITT 55.13.9
+    // DATEN FÜR DIE ERGEBNISKARTEN
+    // =============================================
+
     public sealed class CleanupCategoryExecutionDisplayItem
     {
         public CleanupCategoryExecutionDisplayItem(
@@ -563,6 +602,21 @@ public partial class CleanupActionExecutionDialog :
             SkippedEntryCountText =
                 result.SkippedEntryCountText;
 
+            /*
+             * Die neue Detailansicht erscheint
+             * ausschließlich dann, wenn tatsächlich
+             * Einträge übersprungen wurden.
+             *
+             * Auch historische Daten ohne
+             * Ursachenaufschlüsselung bleiben
+             * korrekt darstellbar.
+             */
+            HasSkippedEntries =
+                result.SkippedEntryCount > 0;
+
+            SkippedEntryReasonsText =
+                result.SkippedEntryReasonsText;
+
             StatusText =
                 DetermineStatusText(
                     result);
@@ -592,6 +646,10 @@ public partial class CleanupActionExecutionDialog :
 
         public string SkippedEntryCountText { get; }
 
+        public bool HasSkippedEntries { get; }
+
+        public string SkippedEntryReasonsText { get; }
+
         public string StatusText { get; }
 
         public string ErrorText { get; }
@@ -603,30 +661,25 @@ public partial class CleanupActionExecutionDialog :
         {
             if (result.WasCancelled)
             {
-                return
-                    "Abgebrochen";
+                return "Abgebrochen";
             }
 
             if (result.IsSuccessful)
             {
-                return
-                    "Technisch erfolgreich";
+                return "Technisch erfolgreich";
             }
 
             if (result.IsPartiallySuccessful)
             {
-                return
-                    "Mit Hinweisen abgeschlossen";
+                return "Mit Hinweisen abgeschlossen";
             }
 
             if (!result.WasStarted)
             {
-                return
-                    "Nicht gestartet";
+                return "Nicht gestartet";
             }
 
-            return
-                "Mit Fehlern beendet";
+            return "Mit Fehlern beendet";
         }
     }
 }

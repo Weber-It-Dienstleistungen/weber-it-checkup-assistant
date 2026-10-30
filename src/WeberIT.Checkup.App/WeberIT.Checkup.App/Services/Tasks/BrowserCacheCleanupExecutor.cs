@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿
+using System.IO;
 using System.Text;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Cleanup;
@@ -459,12 +460,21 @@ public sealed class BrowserCacheCleanupExecutor
                 continue;
             }
 
-            if ((attributes
-                 & FileAttributes.ReparsePoint)
-                != 0)
+            /*
+             * SCHRITT 55.13.11:
+             *
+             * Reparse Points, Systemschutz
+             * und Schreibschutz werden vor
+             * dem Löschversuch erkannt.
+             *
+             * Ein geschütztes Verzeichnis
+             * wird auch nicht weiter
+             * durchlaufen.
+             */
+            if (SkipProtectedEntry(
+                    attributes,
+                    metrics))
             {
-                metrics.SkippedEntryCount++;
-
                 continue;
             }
 
@@ -474,7 +484,8 @@ public sealed class BrowserCacheCleanupExecutor
             {
                 TryDeleteFile(
                     workItem.Path,
-                    metrics);
+                    metrics,
+                    attributes);
 
                 continue;
             }
@@ -524,16 +535,19 @@ public sealed class BrowserCacheCleanupExecutor
             entries =
                 Array.Empty<string>();
 
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
 
             return false;
         }
-        catch
+        catch (Exception exception)
         {
             entries =
                 Array.Empty<string>();
 
-            metrics.FailedEntryCount++;
+            RecordIssue(
+                metrics,
+                exception);
 
             return false;
         }
@@ -557,7 +571,8 @@ public sealed class BrowserCacheCleanupExecutor
             attributes =
                 default;
 
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
 
             return false;
         }
@@ -566,16 +581,19 @@ public sealed class BrowserCacheCleanupExecutor
             attributes =
                 default;
 
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
 
             return false;
         }
-        catch
+        catch (Exception exception)
         {
             attributes =
                 default;
 
-            metrics.FailedEntryCount++;
+            RecordIssue(
+                metrics,
+                exception);
 
             return false;
         }
@@ -583,13 +601,21 @@ public sealed class BrowserCacheCleanupExecutor
 
     private static void TryDeleteFile(
         string path,
-        BrowserDeletionMetrics metrics)
+        BrowserDeletionMetrics metrics,
+        FileAttributes knownAttributes)
     {
         ulong fileSize =
             0;
 
         try
         {
+            if (SkipProtectedEntry(
+                    knownAttributes,
+                    metrics))
+            {
+                return;
+            }
+
             var fileInformation =
                 new FileInfo(
                     path);
@@ -611,15 +637,20 @@ public sealed class BrowserCacheCleanupExecutor
         }
         catch (FileNotFoundException)
         {
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
         }
         catch (DirectoryNotFoundException)
         {
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
         }
-        catch
+        catch (Exception exception)
         {
-            metrics.FailedEntryCount++;
+            RecordIssue(
+                metrics,
+                exception,
+                knownAttributes);
         }
     }
 
@@ -627,8 +658,22 @@ public sealed class BrowserCacheCleanupExecutor
         string path,
         BrowserDeletionMetrics metrics)
     {
+        FileAttributes? knownAttributes =
+            null;
+
         try
         {
+            knownAttributes =
+                File.GetAttributes(
+                    path);
+
+            if (SkipProtectedEntry(
+                    knownAttributes.Value,
+                    metrics))
+            {
+                return;
+            }
+
             Directory.Delete(
                 path,
                 recursive: false);
@@ -637,13 +682,122 @@ public sealed class BrowserCacheCleanupExecutor
         }
         catch (DirectoryNotFoundException)
         {
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
         }
-        catch
+        catch (Exception exception)
         {
-            metrics.FailedEntryCount++;
+            RecordIssue(
+                metrics,
+                exception,
+                knownAttributes);
         }
     }
+
+    // =============================================
+    // SCHRITT 55.13.11
+    // ZENTRALE KLASSIFIZIERUNG
+    // =============================================
+
+    private static bool SkipProtectedEntry(
+        FileAttributes attributes,
+        BrowserDeletionMetrics metrics)
+    {
+        var issue =
+            CleanupEntryIssueClassifier
+                .ClassifyProtectedFileAttributes(
+                    attributes);
+
+        if (issue is null)
+        {
+            return false;
+        }
+
+        if (!issue.IsExpectedSkip)
+        {
+            throw new InvalidOperationException(
+                "Ein geschützter Browsercache-Eintrag "
+                + "wurde nicht als sicherer Ausschluss "
+                + "klassifiziert.");
+        }
+
+        metrics.RecordSkipped(
+            MapSkippedReason(issue.Kind));
+
+        return true;
+    }
+
+    private static void RecordIssue(
+        BrowserDeletionMetrics metrics,
+        Exception exception,
+        FileAttributes? knownAttributes = null)
+    {
+        /*
+         * Ein Abbruch bleibt ein Abbruch.
+         * Er darf weder als Dateisperre
+         * noch als Fehler gezählt werden.
+         */
+        if (exception is OperationCanceledException)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo
+                .Capture(exception)
+                .Throw();
+        }
+
+        var issue =
+            CleanupEntryIssueClassifier
+                .ClassifyException(
+                    exception,
+                    knownAttributes);
+
+        if (issue.IsExpectedSkip)
+        {
+            metrics.RecordSkipped(
+                MapSkippedReason(issue.Kind));
+
+            return;
+        }
+
+        /*
+         * Ungeklärte Zugriffsausnahmen,
+         * unerwartete E/A-Probleme und
+         * sonstige Fehler bleiben echte
+         * technische Fehler.
+         */
+        metrics.FailedEntryCount++;
+    }
+
+    private static CleanupSkippedEntryReason MapSkippedReason(
+        CleanupEntryIssueKind kind)
+    {
+        return kind switch
+        {
+            CleanupEntryIssueKind.AlreadyMissing =>
+                CleanupSkippedEntryReason.AlreadyMissing,
+
+            CleanupEntryIssueKind.ReparsePoint =>
+                CleanupSkippedEntryReason.ReparsePoint,
+
+            CleanupEntryIssueKind.ReadOnly =>
+                CleanupSkippedEntryReason.ReadOnly,
+
+            CleanupEntryIssueKind.SystemProtected =>
+                CleanupSkippedEntryReason.SystemProtected,
+
+            CleanupEntryIssueKind.LockedByProcess =>
+                CleanupSkippedEntryReason.LockedByProcess,
+
+            CleanupEntryIssueKind.DirectoryNotEmpty =>
+                CleanupSkippedEntryReason.DirectoryNotEmpty,
+
+            _ =>
+                CleanupSkippedEntryReason.OtherSafetySkip
+        };
+    }
+
+    // =============================================
+    // BESTEHENDE ZIELPFAD-SICHERHEIT
+    // =============================================
 
     private static void ValidateTargetDirectory(
         string targetPath,
@@ -857,6 +1011,11 @@ public sealed class BrowserCacheCleanupExecutor
             .TrimEnd();
     }
 
+    // =============================================
+    // SCHRITT 55.13.11
+    // PERSISTENZ DER URSACHEN
+    // =============================================
+
     private static CleanupActionCategoryExecutionResult
         CreateCategoryResult(
             CleanupActionCategory category,
@@ -899,6 +1058,17 @@ public sealed class BrowserCacheCleanupExecutor
 
             SkippedEntryCount =
                 metrics.SkippedEntryCount,
+
+            SkippedEntryReasons =
+                metrics.SkippedEntryReasons
+                    .OrderBy(pair => pair.Key)
+                    .Select(pair =>
+                        new CleanupSkippedEntryReasonCount
+                        {
+                            Reason = pair.Key,
+                            Count = pair.Value
+                        })
+                    .ToList(),
 
             ErrorMessage =
                 errorMessage
@@ -950,7 +1120,29 @@ public sealed class BrowserCacheCleanupExecutor
 
         public long FailedEntryCount { get; set; }
 
-        public long SkippedEntryCount { get; set; }
+        public long SkippedEntryCount { get; private set; }
+
+        public Dictionary<CleanupSkippedEntryReason, long>
+            SkippedEntryReasons
+        { get; } = new();
+
+        public void RecordSkipped(
+            CleanupSkippedEntryReason reason)
+        {
+            SkippedEntryCount++;
+
+            if (SkippedEntryReasons.TryGetValue(
+                    reason,
+                    out var previousCount))
+            {
+                SkippedEntryReasons[reason] =
+                    previousCount + 1;
+            }
+            else
+            {
+                SkippedEntryReasons[reason] = 1;
+            }
+        }
 
         public bool HasChanges =>
             DeletedFileCount > 0

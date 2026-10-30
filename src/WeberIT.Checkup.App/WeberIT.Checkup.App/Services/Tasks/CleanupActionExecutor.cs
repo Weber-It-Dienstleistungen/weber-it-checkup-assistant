@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿
+using System.IO;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
@@ -16,52 +17,35 @@ public sealed class CleanupActionExecutor :
     private const string SupportedActionCode =
         "action.cleanup.selected-safe-categories";
 
-    private const int MaximumFailureDiagnostics =
-        8;
+    private const int MaximumFailureDiagnostics = 8;
 
     private readonly ICheckupTaskActionExecutionCoordinator
         _executionCoordinator;
 
     public CleanupActionExecutor(
-        ICheckupTaskActionExecutionCoordinator
-            executionCoordinator)
+        ICheckupTaskActionExecutionCoordinator executionCoordinator)
     {
-        ArgumentNullException.ThrowIfNull(
-            executionCoordinator);
-
-        _executionCoordinator =
-            executionCoordinator;
+        ArgumentNullException.ThrowIfNull(executionCoordinator);
+        _executionCoordinator = executionCoordinator;
     }
 
-    public async Task<CleanupActionExecutionResult>
-        ExecuteAsync(
-            CheckupTaskActionPlan plan,
-            CancellationToken cancellationToken = default)
+    public async Task<CleanupActionExecutionResult> ExecuteAsync(
+        CheckupTaskActionPlan plan,
+        CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(
-            plan);
+        ArgumentNullException.ThrowIfNull(plan);
+        ValidatePlan(plan);
 
-        ValidatePlan(
-            plan);
-
-        var startedAt =
-            DateTimeOffset.Now;
+        var startedAt = DateTimeOffset.Now;
 
         if (cancellationToken.IsCancellationRequested)
         {
             return new CleanupActionExecutionResult
             {
-                PlanId =
-                    plan.Id,
-
-                WasCancelled =
-                    true,
-
-                StartedAt =
-                    startedAt,
-
-                FinishedAt =
-                    DateTimeOffset.Now
+                PlanId = plan.Id,
+                WasCancelled = true,
+                StartedAt = startedAt,
+                FinishedAt = DateTimeOffset.Now
             };
         }
 
@@ -74,42 +58,27 @@ public sealed class CleanupActionExecutor :
         {
             return new CleanupActionExecutionResult
             {
-                PlanId =
-                    plan.Id,
-
-                WasBlocked =
-                    true,
-
-                ErrorMessage =
-                    BuildExecutionBlockedMessage(),
-
-                StartedAt =
-                    startedAt,
-
-                FinishedAt =
-                    DateTimeOffset.Now
+                PlanId = plan.Id,
+                WasBlocked = true,
+                ErrorMessage = BuildExecutionBlockedMessage(),
+                StartedAt = startedAt,
+                FinishedAt = DateTimeOffset.Now
             };
         }
 
-        var selectedCategory =
-            plan.CleanupCategories.Single();
+        var selectedCategory = plan.CleanupCategories.Single();
 
         try
         {
-            var categoryResult =
-                await Task.Run(
-                    () =>
-                        ExecuteCategory(
-                            selectedCategory,
-                            cancellationToken));
+            var categoryResult = await Task.Run(
+                () => ExecuteCategory(
+                    selectedCategory,
+                    cancellationToken));
 
             return new CleanupActionExecutionResult
             {
-                PlanId =
-                    plan.Id,
-
-                WasCancelled =
-                    categoryResult.WasCancelled,
+                PlanId = plan.Id,
+                WasCancelled = categoryResult.WasCancelled,
 
                 ErrorMessage =
                     categoryResult.WasCancelled
@@ -117,45 +86,34 @@ public sealed class CleanupActionExecutor :
                         ? string.Empty
                         : categoryResult.ErrorMessage,
 
-                StartedAt =
-                    startedAt,
-
-                FinishedAt =
-                    DateTimeOffset.Now,
+                StartedAt = startedAt,
+                FinishedAt = DateTimeOffset.Now,
 
                 CategoryResults =
-                    new List<
-                        CleanupActionCategoryExecutionResult>
-                    {
-                        categoryResult
-                    }
+                [
+                    categoryResult
+                ]
             };
         }
         catch (Exception exception)
         {
             return new CleanupActionExecutionResult
             {
-                PlanId =
-                    plan.Id,
+                PlanId = plan.Id,
 
                 ErrorMessage =
-                    string.IsNullOrWhiteSpace(
-                        exception.Message)
+                    string.IsNullOrWhiteSpace(exception.Message)
                         ? "Die kontrollierte Bereinigung "
                           + "wurde unerwartet abgebrochen."
                         : exception.Message,
 
-                StartedAt =
-                    startedAt,
-
-                FinishedAt =
-                    DateTimeOffset.Now
+                StartedAt = startedAt,
+                FinishedAt = DateTimeOffset.Now
             };
         }
     }
 
-    private static void ValidatePlan(
-        CheckupTaskActionPlan plan)
+    private static void ValidatePlan(CheckupTaskActionPlan plan)
     {
         plan.Validate();
 
@@ -211,13 +169,10 @@ public sealed class CleanupActionExecutor :
                 + "keinen Neustart vorsehen.");
         }
 
-        var category =
-            plan.CleanupCategories.Single();
-
+        var category = plan.CleanupCategories.Single();
         category.Validate();
 
-        if (!IsExecutableCategory(
-                category))
+        if (!IsExecutableCategory(category))
         {
             throw new InvalidOperationException(
                 "Die ausgewählte Bereinigungskategorie ist "
@@ -276,28 +231,20 @@ public sealed class CleanupActionExecutor :
             string fallbackErrorMessage,
             CancellationToken cancellationToken)
     {
-        var metrics =
-            new DeletionMetrics();
-
-        var targetPath =
-            string.Empty;
+        var metrics = new DeletionMetrics();
+        var targetPath = string.Empty;
 
         try
         {
-            cancellationToken
-                .ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
-            targetPath =
-                resolveTargetPath();
+            targetPath = resolveTargetPath();
 
-            cancellationToken
-                .ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
-            metrics.WasStarted =
-                true;
+            metrics.WasStarted = true;
 
-            if (!Directory.Exists(
-                    targetPath))
+            if (!Directory.Exists(targetPath))
             {
                 return CreateCategoryResult(
                     category,
@@ -340,8 +287,7 @@ public sealed class CleanupActionExecutor :
                 metrics,
                 wasCancelled: false,
                 errorMessage:
-                    string.IsNullOrWhiteSpace(
-                        exception.Message)
+                    string.IsNullOrWhiteSpace(exception.Message)
                         ? fallbackErrorMessage
                         : exception.Message);
         }
@@ -352,28 +298,20 @@ public sealed class CleanupActionExecutor :
             CleanupActionCategory category,
             CancellationToken cancellationToken)
     {
-        var metrics =
-            new DeletionMetrics();
-
-        var targetPath =
-            string.Empty;
+        var metrics = new DeletionMetrics();
+        var targetPath = string.Empty;
 
         try
         {
-            cancellationToken
-                .ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
-            targetPath =
-                ResolveThumbnailCacheDirectory();
+            targetPath = ResolveThumbnailCacheDirectory();
 
-            cancellationToken
-                .ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
-            metrics.WasStarted =
-                true;
+            metrics.WasStarted = true;
 
-            if (!Directory.Exists(
-                    targetPath))
+            if (!Directory.Exists(targetPath))
             {
                 return CreateCategoryResult(
                     category,
@@ -401,11 +339,9 @@ public sealed class CleanupActionExecutor :
                     errorMessage: string.Empty);
             }
 
-            foreach (var file
-                     in files)
+            foreach (var file in files)
             {
-                cancellationToken
-                    .ThrowIfCancellationRequested();
+                cancellationToken.ThrowIfCancellationRequested();
 
                 EnsureSafeDescendant(
                     file,
@@ -419,21 +355,23 @@ public sealed class CleanupActionExecutor :
                     continue;
                 }
 
-                if ((attributes
-                     & FileAttributes.ReparsePoint)
-                    != 0
-                    || (attributes
-                        & FileAttributes.Directory)
-                    != 0)
+                if (SkipProtectedEntry(attributes, metrics))
                 {
-                    metrics.SkippedEntryCount++;
+                    continue;
+                }
+
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    metrics.RecordSkipped(
+                        CleanupSkippedEntryReason.OtherSafetySkip);
 
                     continue;
                 }
 
                 TryDeleteFile(
                     file,
-                    metrics);
+                    metrics,
+                    attributes);
             }
 
             return CreateCategoryResult(
@@ -460,8 +398,7 @@ public sealed class CleanupActionExecutor :
                 metrics,
                 wasCancelled: false,
                 errorMessage:
-                    string.IsNullOrWhiteSpace(
-                        exception.Message)
+                    string.IsNullOrWhiteSpace(exception.Message)
                         ? "Der Windows-Vorschaubildcache konnte "
                           + "nicht sicher bereinigt werden."
                         : exception.Message);
@@ -481,11 +418,9 @@ public sealed class CleanupActionExecutor :
             return;
         }
 
-        var pendingEntries =
-            new Stack<DeletionWorkItem>();
+        var pendingEntries = new Stack<DeletionWorkItem>();
 
-        foreach (var entry
-                 in rootEntries)
+        foreach (var entry in rootEntries)
         {
             pendingEntries.Push(
                 new DeletionWorkItem(
@@ -495,11 +430,9 @@ public sealed class CleanupActionExecutor :
 
         while (pendingEntries.Count > 0)
         {
-            cancellationToken
-                .ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
-            var workItem =
-                pendingEntries.Pop();
+            var workItem = pendingEntries.Pop();
 
             EnsureSafeDescendant(
                 workItem.Path,
@@ -522,22 +455,30 @@ public sealed class CleanupActionExecutor :
                 continue;
             }
 
-            if ((attributes
-                 & FileAttributes.ReparsePoint)
-                != 0)
+            /*
+             * SCHRITT 55.13.5
+             *
+             * Geschützte Einträge werden vor
+             * jedem Löschversuch erkannt.
+             *
+             * Der Executor verändert keine
+             * Attribute oder Berechtigungen.
+             *
+             * Bei einem geschützten Ordner
+             * wird auch dessen Unterbaum
+             * nicht traversiert.
+             */
+            if (SkipProtectedEntry(attributes, metrics))
             {
-                metrics.SkippedEntryCount++;
-
                 continue;
             }
 
-            if ((attributes
-                 & FileAttributes.Directory)
-                == 0)
+            if ((attributes & FileAttributes.Directory) == 0)
             {
                 TryDeleteFile(
                     workItem.Path,
-                    metrics);
+                    metrics,
+                    attributes);
 
                 continue;
             }
@@ -555,8 +496,7 @@ public sealed class CleanupActionExecutor :
                     workItem.Path,
                     DeleteDirectoryAfterChildren: true));
 
-            foreach (var childEntry
-                     in childEntries)
+            foreach (var childEntry in childEntries)
             {
                 pendingEntries.Push(
                     new DeletionWorkItem(
@@ -564,6 +504,47 @@ public sealed class CleanupActionExecutor :
                         DeleteDirectoryAfterChildren: false));
             }
         }
+    }
+
+    // =============================================
+    // SCHRITT 55.13.5
+    // GESCHÜTZTE DATEIATTRIBUTE
+    // =============================================
+
+    private static bool SkipProtectedEntry(
+        FileAttributes attributes,
+        DeletionMetrics metrics)
+    {
+        var issue =
+            CleanupEntryIssueClassifier
+                .ClassifyProtectedFileAttributes(
+                    attributes);
+
+        if (issue is null)
+        {
+            return false;
+        }
+
+        /*
+         * Die Klassifizierung ist die
+         * zentrale Quelle der Entscheidung.
+         *
+         * Ein unerwartetes Ergebnis wird
+         * nicht stillschweigend als
+         * erfolgreich behandelt.
+         */
+        if (!issue.IsExpectedSkip)
+        {
+            throw new InvalidOperationException(
+                "Ein geschützter Dateieintrag "
+                + "wurde nicht als sicherer "
+                + "Ausschluss klassifiziert.");
+        }
+
+        metrics.RecordSkipped(
+            MapSkippedReason(issue.Kind));
+
+        return true;
     }
 
     private static bool TryEnumerateEntries(
@@ -585,24 +566,21 @@ public sealed class CleanupActionExecutor :
         }
         catch (DirectoryNotFoundException)
         {
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
 
-            entries =
-                Array.Empty<string>();
-
+            entries = Array.Empty<string>();
             return false;
         }
         catch (Exception exception)
         {
-            RecordFailure(
+            RecordIssue(
                 metrics,
                 directoryPath,
                 "Ordnerinhalt auflisten",
                 exception);
 
-            entries =
-                Array.Empty<string>();
-
+            entries = Array.Empty<string>();
             return false;
         }
     }
@@ -627,24 +605,21 @@ public sealed class CleanupActionExecutor :
         }
         catch (DirectoryNotFoundException)
         {
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
 
-            files =
-                Array.Empty<string>();
-
+            files = Array.Empty<string>();
             return false;
         }
         catch (Exception exception)
         {
-            RecordFailure(
+            RecordIssue(
                 metrics,
                 directoryPath,
                 "Dateiliste ermitteln",
                 exception);
 
-            files =
-                Array.Empty<string>();
-
+            files = Array.Empty<string>();
             return false;
         }
     }
@@ -656,91 +631,91 @@ public sealed class CleanupActionExecutor :
     {
         try
         {
-            attributes =
-                File.GetAttributes(
-                    path);
-
+            attributes = File.GetAttributes(path);
             return true;
         }
         catch (FileNotFoundException)
         {
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
 
-            attributes =
-                default;
-
+            attributes = default;
             return false;
         }
         catch (DirectoryNotFoundException)
         {
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
 
-            attributes =
-                default;
-
+            attributes = default;
             return false;
         }
         catch (Exception exception)
         {
-            RecordFailure(
+            RecordIssue(
                 metrics,
                 path,
                 "Dateisystemattribute lesen",
                 exception);
 
-            attributes =
-                default;
-
+            attributes = default;
             return false;
         }
     }
 
     private static void TryDeleteFile(
         string filePath,
-        DeletionMetrics metrics)
+        DeletionMetrics metrics,
+        FileAttributes knownAttributes)
     {
-        long fileLength =
-            0;
+        long fileLength = 0;
 
         try
         {
+            /*
+             * Zusätzliche Sicherheitsprüfung,
+             * bevor die Datei verändert wird.
+             */
+            if (SkipProtectedEntry(
+                    knownAttributes,
+                    metrics))
+            {
+                return;
+            }
+
             try
             {
                 fileLength =
-                    new FileInfo(
-                        filePath)
-                        .Length;
+                    new FileInfo(filePath).Length;
             }
             catch
             {
-                fileLength =
-                    0;
+                fileLength = 0;
             }
 
-            File.Delete(
-                filePath);
+            File.Delete(filePath);
 
             metrics.DeletedFileCount++;
-
-            AddDeletedSize(
-                metrics,
-                fileLength);
+            AddDeletedSize(metrics, fileLength);
         }
         catch (FileNotFoundException)
         {
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
         }
         catch (DirectoryNotFoundException)
         {
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
         }
         catch (Exception exception)
         {
-            RecordFailure(
+            RecordIssue(
                 metrics,
                 filePath,
                 "Datei löschen",
-                exception);
+                exception,
+                knownAttributes);
         }
     }
 
@@ -748,18 +723,21 @@ public sealed class CleanupActionExecutor :
         string directoryPath,
         DeletionMetrics metrics)
     {
+        FileAttributes? knownAttributes = null;
+
         try
         {
-            var attributes =
-                File.GetAttributes(
-                    directoryPath);
+            knownAttributes =
+                File.GetAttributes(directoryPath);
 
-            if ((attributes
-                 & FileAttributes.ReparsePoint)
-                != 0)
+            /*
+             * Kein rekursives Erzwingen.
+             * Kein Aufheben von Schreibschutz.
+             */
+            if (SkipProtectedEntry(
+                    knownAttributes.Value,
+                    metrics))
             {
-                metrics.SkippedEntryCount++;
-
                 return;
             }
 
@@ -771,17 +749,98 @@ public sealed class CleanupActionExecutor :
         }
         catch (DirectoryNotFoundException)
         {
-            metrics.SkippedEntryCount++;
+            metrics.RecordSkipped(
+                CleanupSkippedEntryReason.AlreadyMissing);
         }
         catch (Exception exception)
         {
-            RecordFailure(
+            RecordIssue(
                 metrics,
                 directoryPath,
                 "Leeren Ordner löschen",
-                exception);
+                exception,
+                knownAttributes);
         }
     }
+
+    // =============================================
+    // SCHRITT 55.13.5
+    // ZENTRALE FEHLEREINORDNUNG
+    // =============================================
+
+    private static void RecordIssue(
+        DeletionMetrics metrics,
+        string path,
+        string operation,
+        Exception exception,
+        FileAttributes? knownAttributes = null)
+    {
+        /*
+         * Ein Abbruch muss an den
+         * übergeordneten Ablauf gelangen.
+         */
+        if (exception is OperationCanceledException)
+        {
+            throw exception;
+        }
+
+        var issue =
+            CleanupEntryIssueClassifier
+                .ClassifyException(
+                    exception,
+                    knownAttributes);
+
+        if (issue.IsExpectedSkip)
+        {
+            metrics.RecordSkipped(
+                MapSkippedReason(issue.Kind));
+
+            return;
+        }
+
+        /*
+         * Nur echte technische Fehler
+         * erreichen weiterhin die
+         * bestehende Fehlerdiagnose.
+         */
+        RecordFailure(
+            metrics,
+            path,
+            operation,
+            exception);
+    }
+
+    private static CleanupSkippedEntryReason MapSkippedReason(
+        CleanupEntryIssueKind kind)
+    {
+        return kind switch
+        {
+            CleanupEntryIssueKind.AlreadyMissing =>
+                CleanupSkippedEntryReason.AlreadyMissing,
+
+            CleanupEntryIssueKind.ReparsePoint =>
+                CleanupSkippedEntryReason.ReparsePoint,
+
+            CleanupEntryIssueKind.ReadOnly =>
+                CleanupSkippedEntryReason.ReadOnly,
+
+            CleanupEntryIssueKind.SystemProtected =>
+                CleanupSkippedEntryReason.SystemProtected,
+
+            CleanupEntryIssueKind.LockedByProcess =>
+                CleanupSkippedEntryReason.LockedByProcess,
+
+            CleanupEntryIssueKind.DirectoryNotEmpty =>
+                CleanupSkippedEntryReason.DirectoryNotEmpty,
+
+            _ =>
+                CleanupSkippedEntryReason.OtherSafetySkip
+        };
+    }
+
+    // =============================================
+    // TECHNISCHE FEHLERDIAGNOSE
+    // =============================================
 
     private static void RecordFailure(
         DeletionMetrics metrics,
@@ -798,24 +857,19 @@ public sealed class CleanupActionExecutor :
         }
 
         var normalizedPath =
-            string.IsNullOrWhiteSpace(
-                path)
+            string.IsNullOrWhiteSpace(path)
                 ? "(Pfad nicht verfügbar)"
                 : path.Trim();
 
         var normalizedOperation =
-            string.IsNullOrWhiteSpace(
-                operation)
+            string.IsNullOrWhiteSpace(operation)
                 ? "Dateisystemzugriff"
                 : operation.Trim();
 
-        var reason =
-            ClassifyFailure(
-                exception);
+        var reason = ClassifyFailure(exception);
 
         var hResult =
-            unchecked(
-                (uint)exception.HResult);
+            unchecked((uint)exception.HResult);
 
         var diagnostic =
             normalizedOperation
@@ -834,8 +888,7 @@ public sealed class CleanupActionExecutor :
             NormalizeTechnicalMessage(
                 exception.Message);
 
-        if (!string.IsNullOrWhiteSpace(
-                technicalMessage))
+        if (!string.IsNullOrWhiteSpace(technicalMessage))
         {
             diagnostic +=
                 Environment.NewLine
@@ -843,26 +896,21 @@ public sealed class CleanupActionExecutor :
                 + technicalMessage;
         }
 
-        metrics.FailureDiagnostics.Add(
-            diagnostic);
+        metrics.FailureDiagnostics.Add(diagnostic);
     }
 
     private static string ClassifyFailure(
         Exception exception)
     {
-        if (exception
-            is UnauthorizedAccessException)
+        if (exception is UnauthorizedAccessException)
         {
-            return
-                "Zugriff verweigert";
+            return "Zugriff verweigert";
         }
 
-        if (exception
-            is IOException)
+        if (exception is IOException)
         {
             var win32ErrorCode =
-                exception.HResult
-                & 0xFFFF;
+                exception.HResult & 0xFFFF;
 
             return win32ErrorCode switch
             {
@@ -884,21 +932,18 @@ public sealed class CleanupActionExecutor :
             };
         }
 
-        return
-            "Unerwarteter Dateisystemfehler";
+        return "Unerwarteter Dateisystemfehler";
     }
 
     private static string NormalizeTechnicalMessage(
         string? message)
     {
-        if (string.IsNullOrWhiteSpace(
-                message))
+        if (string.IsNullOrWhiteSpace(message))
         {
             return string.Empty;
         }
 
-        const int maximumLength =
-            300;
+        const int maximumLength = 300;
 
         var normalizedMessage =
             message
@@ -912,15 +957,12 @@ public sealed class CleanupActionExecutor :
                     StringComparison.Ordinal)
                 .Trim();
 
-        if (normalizedMessage.Length
-            <= maximumLength)
+        if (normalizedMessage.Length <= maximumLength)
         {
             return normalizedMessage;
         }
 
-        return normalizedMessage[
-                   ..maximumLength]
-               + " …";
+        return normalizedMessage[..maximumLength] + " …";
     }
 
     private static void AddDeletedSize(
@@ -935,8 +977,7 @@ public sealed class CleanupActionExecutor :
         var unsignedFileLength =
             (ulong)fileLength;
 
-        if (ulong.MaxValue
-            - metrics.DeletedSizeBytes
+        if (ulong.MaxValue - metrics.DeletedSizeBytes
             < unsignedFileLength)
         {
             metrics.DeletedSizeBytes =
@@ -945,9 +986,12 @@ public sealed class CleanupActionExecutor :
             return;
         }
 
-        metrics.DeletedSizeBytes +=
-            unsignedFileLength;
+        metrics.DeletedSizeBytes += unsignedFileLength;
     }
+
+    // =============================================
+    // BESTEHENDE ZIELPFADAUFLÖSUNG
+    // =============================================
 
     private static string ResolveUserTemporaryDirectory()
     {
@@ -1012,31 +1056,25 @@ public sealed class CleanupActionExecutor :
         var localApplicationData =
             GetLocalApplicationDataDirectory();
 
-        var targetPath =
-            localApplicationData;
+        var targetPath = localApplicationData;
 
-        foreach (var pathSegment
-                 in pathSegments)
+        foreach (var pathSegment in pathSegments)
         {
-            if (string.IsNullOrWhiteSpace(
-                    pathSegment)
-                || Path.IsPathRooted(
-                    pathSegment))
+            if (string.IsNullOrWhiteSpace(pathSegment)
+                || Path.IsPathRooted(pathSegment))
             {
                 throw new InvalidOperationException(
                     "Der freigegebene Zielpfad enthält ein "
                     + "ungültiges Pfadsegment.");
             }
 
-            targetPath =
-                Path.Combine(
-                    targetPath,
-                    pathSegment);
+            targetPath = Path.Combine(
+                targetPath,
+                pathSegment);
         }
 
         var normalizedTargetPath =
-            NormalizeDirectoryPath(
-                targetPath);
+            NormalizeDirectoryPath(targetPath);
 
         ValidateLocalTargetPath(
             localApplicationData,
@@ -1052,8 +1090,7 @@ public sealed class CleanupActionExecutor :
             Environment.GetFolderPath(
                 Environment.SpecialFolder.LocalApplicationData);
 
-        if (string.IsNullOrWhiteSpace(
-                localApplicationData))
+        if (string.IsNullOrWhiteSpace(localApplicationData))
         {
             throw new InvalidOperationException(
                 "Der lokale Anwendungsdatenordner des "
@@ -1061,11 +1098,9 @@ public sealed class CleanupActionExecutor :
         }
 
         var normalizedPath =
-            NormalizeDirectoryPath(
-                localApplicationData);
+            NormalizeDirectoryPath(localApplicationData);
 
-        if (IsNetworkPath(
-                normalizedPath))
+        if (IsNetworkPath(normalizedPath))
         {
             throw new InvalidOperationException(
                 "Ein Bereinigungsziel auf einem Netzwerkpfad "
@@ -1081,15 +1116,12 @@ public sealed class CleanupActionExecutor :
         string targetTitle)
     {
         var normalizedRoot =
-            NormalizeDirectoryPath(
-                localApplicationData);
+            NormalizeDirectoryPath(localApplicationData);
 
         var normalizedTarget =
-            NormalizeDirectoryPath(
-                targetPath);
+            NormalizeDirectoryPath(targetPath);
 
-        if (IsNetworkPath(
-                normalizedTarget))
+        if (IsNetworkPath(normalizedTarget))
         {
             throw new InvalidOperationException(
                 "Ein Bereinigungsziel auf einem Netzwerkpfad "
@@ -1110,20 +1142,17 @@ public sealed class CleanupActionExecutor :
         }
 
         var volumeRoot =
-            Path.GetPathRoot(
-                normalizedTarget);
+            Path.GetPathRoot(normalizedTarget);
 
-        if (string.IsNullOrWhiteSpace(
-                volumeRoot)
+        if (string.IsNullOrWhiteSpace(volumeRoot)
             || string.Equals(
-                NormalizeDirectoryPath(
-                    volumeRoot),
+                NormalizeDirectoryPath(volumeRoot),
                 normalizedTarget,
                 StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
                 $"Der Zielpfad für {targetTitle} konnte nicht "
-                + "sicher von einem Volumestamm unterschieden werden.");
+                + "sicher von einem Volumenstamm unterschieden werden.");
         }
     }
 
@@ -1131,22 +1160,16 @@ public sealed class CleanupActionExecutor :
         string targetPath,
         string targetTitle)
     {
-        var attributes =
-            File.GetAttributes(
-                targetPath);
+        var attributes = File.GetAttributes(targetPath);
 
-        if ((attributes
-             & FileAttributes.Directory)
-            == 0)
+        if ((attributes & FileAttributes.Directory) == 0)
         {
             throw new InvalidOperationException(
                 $"Das freigegebene Bereinigungsziel "
                 + $"„{targetTitle}“ ist kein Verzeichnis.");
         }
 
-        if ((attributes
-             & FileAttributes.ReparsePoint)
-            != 0)
+        if ((attributes & FileAttributes.ReparsePoint) != 0)
         {
             throw new InvalidOperationException(
                 $"Das Bereinigungsziel „{targetTitle}“ ist ein "
@@ -1160,12 +1183,10 @@ public sealed class CleanupActionExecutor :
         string rootPath)
     {
         var normalizedEntryPath =
-            NormalizeDirectoryPath(
-                entryPath);
+            NormalizeDirectoryPath(entryPath);
 
         var normalizedRootPath =
-            NormalizeDirectoryPath(
-                rootPath);
+            NormalizeDirectoryPath(rootPath);
 
         var requiredPrefix =
             normalizedRootPath
@@ -1184,23 +1205,18 @@ public sealed class CleanupActionExecutor :
     private static string NormalizeDirectoryPath(
         string path)
     {
-        if (string.IsNullOrWhiteSpace(
-                path))
+        if (string.IsNullOrWhiteSpace(path))
         {
             throw new InvalidOperationException(
                 "Ein Bereinigungspfad ist leer.");
         }
 
-        var fullPath =
-            Path.GetFullPath(
-                path);
+        var fullPath = Path.GetFullPath(path);
 
-        return Path.TrimEndingDirectorySeparator(
-            fullPath);
+        return Path.TrimEndingDirectorySeparator(fullPath);
     }
 
-    private static bool IsNetworkPath(
-        string path)
+    private static bool IsNetworkPath(string path)
     {
         return path.StartsWith(
                    @"\\",
@@ -1214,15 +1230,13 @@ public sealed class CleanupActionExecutor :
     {
         if (!_executionCoordinator.IsExecutionRunning)
         {
-            return
-                "Die Systemaktion konnte nicht gesperrt werden.";
+            return "Die Systemaktion konnte nicht gesperrt werden.";
         }
 
         if (string.IsNullOrWhiteSpace(
                 _executionCoordinator.ActiveActionTitle))
         {
-            return
-                "Eine andere Systemaktion wird bereits ausgeführt.";
+            return "Eine andere Systemaktion wird bereits ausgeführt.";
         }
 
         return
@@ -1230,6 +1244,11 @@ public sealed class CleanupActionExecutor :
             + "weil bereits folgende Aktion läuft: "
             + _executionCoordinator.ActiveActionTitle;
     }
+
+    // =============================================
+    // SCHRITT 55.13.5
+    // ERGEBNIS UND URSACHENZÄHLER
+    // =============================================
 
     private static CleanupActionCategoryExecutionResult
         CreateCategoryResult(
@@ -1255,38 +1274,47 @@ public sealed class CleanupActionExecutor :
 
         return new CleanupActionCategoryExecutionResult
         {
-            Category =
-                category.Category.Value,
+            Category = category.Category.Value,
 
-            CategoryTitle =
-                category.Title,
+            CategoryTitle = category.Title,
 
-            TargetPath =
-                targetPath,
+            TargetPath = targetPath,
 
-            WasStarted =
-                metrics.WasStarted,
+            WasStarted = metrics.WasStarted,
 
-            WasCancelled =
-                wasCancelled,
+            WasCancelled = wasCancelled,
 
-            DeletedFileCount =
-                metrics.DeletedFileCount,
+            DeletedFileCount = metrics.DeletedFileCount,
 
             DeletedDirectoryCount =
                 metrics.DeletedDirectoryCount,
 
-            DeletedSizeBytes =
-                metrics.DeletedSizeBytes,
+            DeletedSizeBytes = metrics.DeletedSizeBytes,
 
-            FailedEntryCount =
-                metrics.FailedEntryCount,
+            FailedEntryCount = metrics.FailedEntryCount,
 
-            SkippedEntryCount =
-                metrics.SkippedEntryCount,
+            SkippedEntryCount = metrics.SkippedEntryCount,
 
-            ErrorMessage =
-                normalizedErrorMessage
+            /*
+             * Gründe werden ausschließlich
+             * aus tatsächlich protokollierten
+             * Überspringvorgängen erzeugt.
+             *
+             * Keine nachträglichen Annahmen
+             * über einzelne Dateien.
+             */
+            SkippedEntryReasons =
+                metrics.SkippedEntryReasons
+                    .OrderBy(pair => pair.Key)
+                    .Select(pair =>
+                        new CleanupSkippedEntryReasonCount
+                        {
+                            Reason = pair.Key,
+                            Count = pair.Value
+                        })
+                    .ToList(),
+
+            ErrorMessage = normalizedErrorMessage
         };
     }
 
@@ -1295,13 +1323,11 @@ public sealed class CleanupActionExecutor :
         DeletionMetrics metrics)
     {
         var summary =
-            !string.IsNullOrWhiteSpace(
-                errorMessage)
+            !string.IsNullOrWhiteSpace(errorMessage)
                 ? errorMessage.Trim()
                 : metrics.FailedEntryCount switch
                 {
-                    0 =>
-                        string.Empty,
+                    0 => string.Empty,
 
                     1 =>
                         "Ein Eintrag konnte nicht gelöscht werden. "
@@ -1318,14 +1344,11 @@ public sealed class CleanupActionExecutor :
             return summary;
         }
 
-        var diagnosticParts =
-            new List<string>();
+        var diagnosticParts = new List<string>();
 
-        if (!string.IsNullOrWhiteSpace(
-                summary))
+        if (!string.IsNullOrWhiteSpace(summary))
         {
-            diagnosticParts.Add(
-                summary);
+            diagnosticParts.Add(summary);
         }
 
         diagnosticParts.Add(
@@ -1333,8 +1356,7 @@ public sealed class CleanupActionExecutor :
             + Environment.NewLine
             + Environment.NewLine
             + string.Join(
-                Environment.NewLine
-                + Environment.NewLine,
+                Environment.NewLine + Environment.NewLine,
                 metrics.FailureDiagnostics));
 
         var unlistedFailureCount =
@@ -1355,8 +1377,7 @@ public sealed class CleanupActionExecutor :
         }
 
         return string.Join(
-            Environment.NewLine
-            + Environment.NewLine,
+            Environment.NewLine + Environment.NewLine,
             diagnosticParts);
     }
 
@@ -1372,10 +1393,31 @@ public sealed class CleanupActionExecutor :
 
         public long FailedEntryCount { get; set; }
 
-        public long SkippedEntryCount { get; set; }
+        public long SkippedEntryCount { get; private set; }
 
-        public List<string> FailureDiagnostics { get; } =
-            new();
+        public Dictionary<CleanupSkippedEntryReason, long>
+            SkippedEntryReasons
+        { get; } = new();
+
+        public List<string> FailureDiagnostics { get; } = new();
+
+        public void RecordSkipped(
+            CleanupSkippedEntryReason reason)
+        {
+            SkippedEntryCount++;
+
+            if (SkippedEntryReasons.TryGetValue(
+                    reason,
+                    out var previousCount))
+            {
+                SkippedEntryReasons[reason] =
+                    previousCount + 1;
+            }
+            else
+            {
+                SkippedEntryReasons[reason] = 1;
+            }
+        }
     }
 
     private sealed record DeletionWorkItem(
