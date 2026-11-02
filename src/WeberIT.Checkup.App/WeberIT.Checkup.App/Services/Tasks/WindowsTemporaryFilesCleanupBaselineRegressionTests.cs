@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.13.28a
+/// Sprint 55.13.53
 ///
 /// Struktur- und Vertragstests für den
 /// erhöhten Windows-Temp-Executor.
@@ -18,13 +18,15 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 /// PowerShell-Skripttext im Arbeitsspeicher
 /// und prüfen die JSON-Auswertung.
 ///
-/// Es wird kein PowerShell-Prozess gestartet,
-/// keine Administratorfreigabe angefordert
-/// und keine Datei geöffnet oder gelöscht.
+/// Der verifizierte Launcher muss genau
+/// den zuvor geprüften Skriptinhalt
+/// ausführen, ohne die Datei nach der
+/// Hashprüfung erneut zu öffnen.
 ///
-/// WICHTIG:
-/// Strukturtests ersetzen keine spätere
-/// Prüfung des tatsächlichen Skriptverhaltens.
+/// Kein PowerShell-Prozess.
+/// Keine Administratorfreigabe.
+/// Keine Dateisystemänderungen.
+/// Keine Löschoperationen.
 /// </summary>
 public static class
     WindowsTemporaryFilesCleanupBaselineRegressionTests
@@ -72,7 +74,7 @@ public static class
             results);
 
         Execute(
-            "Startskript enthält Integritätsprüfung",
+            "Geprüfter Skriptinhalt wird direkt ausgeführt",
             TestVerifiedLauncher,
             results);
 
@@ -105,6 +107,10 @@ public static class
                 Environment.NewLine,
                 results);
     }
+
+    // =============================================
+    // ZIELBEREICH UND DATEISYSTEMSCHUTZ
+    // =============================================
 
     private static void TestTargetRestrictions()
     {
@@ -272,16 +278,32 @@ public static class
             "Der Ergebnisplatzhalter wurde nicht ersetzt.");
     }
 
+    // =============================================
+    // NEUER VERIFIZIERTER LAUNCHER
+    // =============================================
+
     private static void TestVerifiedLauncher()
     {
+        /*
+         * Sprint 55.13.53
+         *
+         * Der vorherige Test übergab einen
+         * verkürzten SHA-256-Hash.
+         *
+         * Die neue Launcherklasse verlangt
+         * richtigerweise 64 Hex-Zeichen.
+         */
+        var validSha256 =
+            new string('A', 64);
+
         var method = GetMethod(
             "BuildVerifiedLauncherScript");
 
         var result = method.Invoke(
             null,
             [
-                @"C:\Test\cleanup.ps1",
-                "ABCDEF123456"
+                @"C:\Test\O'Brien\cleanup.ps1",
+                validSha256
             ]);
 
         Require(
@@ -290,10 +312,19 @@ public static class
 
         var script = (string)result!;
 
+        // -------------------------------------
+        // HASHPRÜFUNG
+        // -------------------------------------
+
         RequireContains(
             script,
             "$expectedHash",
             "Der erwartete Hashwert fehlt.");
+
+        RequireContains(
+            script,
+            validSha256,
+            "Der vollständige SHA-256-Hash fehlt.");
 
         RequireContains(
             script,
@@ -307,9 +338,92 @@ public static class
 
         RequireContains(
             script,
-            "& $scriptPath",
-            "Der geprüfte Skriptstart fehlt.");
+            "[System.StringComparison]::OrdinalIgnoreCase",
+            "Der kontrollierte Hashvergleich fehlt.");
+
+        // -------------------------------------
+        // PFADMASKIERUNG
+        // -------------------------------------
+
+        RequireContains(
+            script,
+            "O''Brien",
+            "Der Skriptpfad wird nicht "
+            + "korrekt für PowerShell maskiert.");
+
+        // -------------------------------------
+        // SKRIPTINHALT EINMAL EINLESEN
+        // -------------------------------------
+
+        RequireContains(
+            script,
+            "[System.IO.File]::ReadAllText(",
+            "Der Skriptinhalt wird nicht eingelesen.");
+
+        RequireContains(
+            script,
+            "$scriptContent",
+            "Die Variable für den geprüften "
+            + "Skriptinhalt fehlt.");
+
+        Require(
+            Regex.Matches(
+                script,
+                @"\[System\.IO\.File\]::ReadAllText\s*\(",
+                RegexOptions.CultureInvariant).Count == 1,
+            "Der Launcher enthält mehr als einen "
+            + "Leseaufruf für die Skriptdatei.");
+
+        // -------------------------------------
+        // GEPRÜFTEN INHALT DIREKT AUSFÜHREN
+        // -------------------------------------
+
+        RequireContains(
+            script,
+            "[System.Management.Automation.ScriptBlock]::Create(",
+            "Die Erzeugung des geprüften "
+            + "ScriptBlocks fehlt.");
+
+        RequireContains(
+            script,
+            "$scriptContent)",
+            "Der ScriptBlock wird nicht aus dem "
+            + "geprüften Speicherinhalt erstellt.");
+
+        RequireContains(
+            script,
+            "& $verifiedScriptBlock",
+            "Der geprüfte ScriptBlock "
+            + "wird nicht ausgeführt.");
+
+        /*
+         * Entscheidende Negativprüfung:
+         *
+         * Die alte Ausführung direkt über
+         * den Dateipfad darf nicht mehr
+         * Bestandteil des Launchers sein.
+         */
+        Require(
+            !script.Contains(
+                "& $scriptPath",
+                StringComparison.Ordinal),
+            "Der Launcher führt weiterhin "
+            + "die Skriptdatei über ihren Pfad aus.");
+
+        // -------------------------------------
+        // ABSICHERUNG BEI HASHABWEICHUNG
+        // -------------------------------------
+
+        RequireContains(
+            script,
+            "throw 'Die Integritätsprüfung",
+            "Die Ablehnung einer fehlgeschlagenen "
+            + "Hashprüfung fehlt.");
     }
+
+    // =============================================
+    // JSON-DATENVERTRAG
+    // =============================================
 
     private static void TestJsonResultContract()
     {
@@ -331,21 +445,8 @@ public static class
             "Die Ergebnisdatei wird nicht geschrieben.");
 
         /*
-         * Schritt 55.13.28a
-         *
-         * Die alte Prüfung erwartete exakt:
-         *
-         * [System.Console]::Out.WriteLine($json)
-         *
-         * Das neue Skript schreibt denselben
-         * Aufruf über mehrere Zeilen.
-         *
-         * Wir erlauben deshalb ausschließlich
-         * zusätzlichen Leerraum an den
-         * syntaktischen Trennstellen.
-         *
-         * Der konkrete Methodenaufruf und
-         * das Argument $json bleiben Pflicht.
+         * Der Console-Aufruf darf wie bisher
+         * über mehrere Zeilen verteilt sein.
          */
         Require(
             Regex.IsMatch(
@@ -441,6 +542,10 @@ public static class
             success is false,
             "Ungültiges JSON wurde akzeptiert.");
     }
+
+    // =============================================
+    // TESTHILFSMETHODEN
+    // =============================================
 
     private static string BuildScript(
         string cancellationPath =
@@ -546,7 +651,9 @@ public static class
         try
         {
             test();
-            results.Add("OK: " + title);
+
+            results.Add(
+                "OK: " + title);
         }
         catch (Exception exception)
         {
