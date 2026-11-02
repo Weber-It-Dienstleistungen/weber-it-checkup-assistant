@@ -9,7 +9,7 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 /// Eigenständiger Teststarter für kontrollierte
 /// Sicherheitstests des Checkup-Assistenten.
 ///
-/// Sprint 55.13.44
+/// Sprint 55.13.48
 ///
 /// Keine Administratorrechte.
 /// Keine Änderung am produktiven Manifest.
@@ -22,6 +22,7 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 /// 1. Kontrollierter Abbruch
 /// 2. Isolierter Löschablauf
 /// 3. Dateisperren und Systemschutz
+/// 4. Junctions und Verzeichnisgrenzen
 /// </summary>
 internal static class Program
 {
@@ -108,9 +109,7 @@ internal static class Program
                 WindowsTemporaryFilesCleanupSandboxCancellationRegressionTests
                     .RunAll();
 
-            Console.WriteLine(
-                cancellationResult);
-
+            Console.WriteLine(cancellationResult);
             Console.WriteLine();
 
             Console.WriteLine(
@@ -143,9 +142,7 @@ internal static class Program
                 WindowsTemporaryFilesCleanupSandboxDeletionRegressionTests
                     .RunAll();
 
-            Console.WriteLine(
-                deletionResult);
-
+            Console.WriteLine(deletionResult);
             Console.WriteLine();
 
             Console.WriteLine(
@@ -178,13 +175,51 @@ internal static class Program
                 WindowsTemporaryFilesCleanupSandboxProtectionRegressionTests
                     .RunAll();
 
-            Console.WriteLine(
-                protectionResult);
-
+            Console.WriteLine(protectionResult);
             Console.WriteLine();
 
             Console.WriteLine(
                 "Schutztests: BESTANDEN");
+
+            Console.WriteLine();
+
+            // =================================
+            // TESTBLOCK 4: DATEISYSTEMGRENZEN
+            // =================================
+
+            Console.WriteLine(
+                "----------------------------------------");
+
+            Console.WriteLine(
+                " TESTBLOCK 4 - JUNCTIONS UND VERZEICHNISGRENZEN");
+
+            Console.WriteLine(
+                "----------------------------------------");
+
+            Console.WriteLine();
+
+            Console.WriteLine(
+                "Prüfe Windows-Junctions, "
+                + "geschützte Unterordner und "
+                + "nicht leere Verzeichnisse.");
+
+            Console.WriteLine();
+
+            Console.WriteLine(
+                "Alle Testziele liegen innerhalb "
+                + "der isolierten Sandbox.");
+
+            Console.WriteLine();
+
+            var boundaryResult =
+                WindowsTemporaryFilesCleanupSandboxBoundaryRegressionTests
+                    .RunAll();
+
+            Console.WriteLine(boundaryResult);
+            Console.WriteLine();
+
+            Console.WriteLine(
+                "Grenzfalltests: BESTANDEN");
 
             Console.WriteLine();
 
@@ -196,7 +231,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 19 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 27 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");
