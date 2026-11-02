@@ -9,7 +9,7 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 /// Eigenständiger Teststarter für kontrollierte
 /// Sicherheitstests des Checkup-Assistenten.
 ///
-/// Sprint 55.13.40
+/// Sprint 55.13.44
 ///
 /// Keine Administratorrechte.
 /// Keine Änderung am produktiven Manifest.
@@ -21,6 +21,7 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 /// Testreihenfolge:
 /// 1. Kontrollierter Abbruch
 /// 2. Isolierter Löschablauf
+/// 3. Dateisperren und Systemschutz
 /// </summary>
 internal static class Program
 {
@@ -153,6 +154,41 @@ internal static class Program
             Console.WriteLine();
 
             // =================================
+            // TESTBLOCK 3: SCHUTZMECHANISMEN
+            // =================================
+
+            Console.WriteLine(
+                "----------------------------------------");
+
+            Console.WriteLine(
+                " TESTBLOCK 3 - DATEISPERREN UND SYSTEMSCHUTZ");
+
+            Console.WriteLine(
+                "----------------------------------------");
+
+            Console.WriteLine();
+
+            Console.WriteLine(
+                "Prüfe echte Dateisperren und "
+                + "Windows-Systemattribute.");
+
+            Console.WriteLine();
+
+            var protectionResult =
+                WindowsTemporaryFilesCleanupSandboxProtectionRegressionTests
+                    .RunAll();
+
+            Console.WriteLine(
+                protectionResult);
+
+            Console.WriteLine();
+
+            Console.WriteLine(
+                "Schutztests: BESTANDEN");
+
+            Console.WriteLine();
+
+            // =================================
             // GESAMTERGEBNIS
             // =================================
 
@@ -160,7 +196,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 11 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 19 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");
