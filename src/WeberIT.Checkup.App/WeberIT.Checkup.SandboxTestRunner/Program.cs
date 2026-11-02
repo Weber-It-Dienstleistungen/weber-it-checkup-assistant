@@ -11,19 +11,18 @@ using WeberIT.Checkup.App.Services.Tasks;
 namespace WeberIT.Checkup.SandboxTestRunner;
 
 /// <summary>
-/// Sprint 55.14.3
+/// Sprint 55.14.8
 ///
 /// Eigenständiger Teststarter für die
 /// Windows-Temp-Bereinigung.
 ///
-/// Bestehende Sandbox- und Basistests,
-/// zwei Launcher-Funktionstests und sechs
-/// neue Handle-Zugriffstests.
+/// Bisherige 47 Regressionstests
+/// plus sechs neue Handle-Löschtests.
 ///
-/// Alle Tests laufen ohne Administratorrechte.
+/// Alle Tests ohne Administratorrechte.
+/// Nur eigens erzeugte Sandbox-Testdaten.
 ///
-/// Produktive Windows-Dateien werden
-/// nicht verändert.
+/// Keine produktive Windows-Temp-Löschung.
 /// </summary>
 internal static class Program
 {
@@ -162,6 +161,32 @@ internal static class Program
             Console.WriteLine();
 
             // =================================
+            // TESTBLOCK 8: HANDLE-LÖSCHUNG
+            // =================================
+
+            PrintHeading(
+                "TESTBLOCK 8 - HANDLE-BASIERTE DATEILÖSCHUNG");
+
+            Console.WriteLine(
+                "Prüfe echte Dateilöschung, "
+                + "Schreibschutz, Systemschutz, "
+                + "Dateisperren und Identitätswechsel.");
+
+            Console.WriteLine();
+
+            Console.WriteLine(
+                "Die Löschung betrifft ausschließlich "
+                + "selbst erzeugte Sandbox-Testdateien.");
+
+            Console.WriteLine();
+
+            Console.WriteLine(
+                WindowsTemporaryFilesHandleDeletionRegressionTests
+                    .RunAll());
+
+            Console.WriteLine();
+
+            // =================================
             // GESAMTERGEBNIS
             // =================================
 
@@ -169,7 +194,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 47 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 53 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");
@@ -221,9 +246,6 @@ internal static class Program
          * Der Launcher wird über den
          * bestehenden privaten Einstiegspunkt
          * des Executors aufgerufen.
-         *
-         * Damit prüfen wir auch die
-         * tatsächliche Integration.
          */
 
         var sandboxRoot =
@@ -340,9 +362,8 @@ internal static class Program
              * Berechnung des ursprünglichen
              * Hashwerts verändert.
              *
-             * Die nachträglich veränderte
-             * Datei darf nicht ausgeführt
-             * werden.
+             * Die veränderte Datei darf
+             * nicht ausgeführt werden.
              */
             File.WriteAllText(
                 changedScriptPath,
