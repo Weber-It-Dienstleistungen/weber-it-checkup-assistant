@@ -11,23 +11,19 @@ using WeberIT.Checkup.App.Services.Tasks;
 namespace WeberIT.Checkup.SandboxTestRunner;
 
 /// <summary>
-/// Sprint 55.13.54
+/// Sprint 55.14.3
 ///
 /// Eigenständiger Teststarter für die
 /// Windows-Temp-Bereinigung.
 ///
-/// Vier bestehende Sandbox-Testblöcke,
-/// zwölf Basistests und zwei neue
-/// Launcher-Ausführungstests.
+/// Bestehende Sandbox- und Basistests,
+/// zwei Launcher-Funktionstests und sechs
+/// neue Handle-Zugriffstests.
 ///
-/// Alle echten PowerShell-Ausführungen
-/// erfolgen ohne Administratorrechte.
+/// Alle Tests laufen ohne Administratorrechte.
 ///
-/// Die neuen Launcher-Tests schreiben
-/// ausschließlich harmlose Markierungsdateien
-/// in eine eigens erzeugte GUID-Sandbox.
-///
-/// Keine produktive Bereinigung.
+/// Produktive Windows-Dateien werden
+/// nicht verändert.
 /// </summary>
 internal static class Program
 {
@@ -75,16 +71,27 @@ internal static class Program
         Console.WriteLine(
             "Berechtigungsprüfung: OK");
 
+        Console.WriteLine(
+            "Ausführung ohne Administratorrechte.");
+
         Console.WriteLine();
 
         try
         {
+            // =================================
+            // TESTBLOCK 1: ABBRUCH
+            // =================================
+
             PrintHeading(
                 "TESTBLOCK 1 - ABBRUCH");
 
             Console.WriteLine(
                 WindowsTemporaryFilesCleanupSandboxCancellationRegressionTests
                     .RunAll());
+
+            // =================================
+            // TESTBLOCK 2: KONTROLLIERTE LÖSCHUNG
+            // =================================
 
             PrintHeading(
                 "TESTBLOCK 2 - KONTROLLIERTE LÖSCHUNG");
@@ -93,12 +100,20 @@ internal static class Program
                 WindowsTemporaryFilesCleanupSandboxDeletionRegressionTests
                     .RunAll());
 
+            // =================================
+            // TESTBLOCK 3: SCHUTZMECHANISMEN
+            // =================================
+
             PrintHeading(
                 "TESTBLOCK 3 - SCHUTZMECHANISMEN");
 
             Console.WriteLine(
                 WindowsTemporaryFilesCleanupSandboxProtectionRegressionTests
                     .RunAll());
+
+            // =================================
+            // TESTBLOCK 4: VERZEICHNISGRENZEN
+            // =================================
 
             PrintHeading(
                 "TESTBLOCK 4 - VERZEICHNISGRENZEN");
@@ -107,6 +122,10 @@ internal static class Program
                 WindowsTemporaryFilesCleanupSandboxBoundaryRegressionTests
                     .RunAll());
 
+            // =================================
+            // TESTBLOCK 5: BASISVERTRÄGE
+            // =================================
+
             PrintHeading(
                 "TESTBLOCK 5 - BASISVERTRÄGE");
 
@@ -114,18 +133,43 @@ internal static class Program
                 WindowsTemporaryFilesCleanupBaselineRegressionTests
                     .RunAll());
 
+            // =================================
+            // TESTBLOCK 6: VERIFIZIERTER LAUNCHER
+            // =================================
+
             PrintHeading(
                 "TESTBLOCK 6 - VERIFIZIERTER LAUNCHER");
 
             RunVerifiedLauncherTests();
 
+            // =================================
+            // TESTBLOCK 7: HANDLE-ZUGRIFF
+            // =================================
+
+            PrintHeading(
+                "TESTBLOCK 7 - HANDLE-BASIERTER DATEIZUGRIFF");
+
+            Console.WriteLine(
+                "Prüfe native Windows-Dateihandles, "
+                + "Dateiidentitäten und Junction-Schutz.");
+
             Console.WriteLine();
+
+            Console.WriteLine(
+                WindowsTemporaryFilesHandleAccessRegressionTests
+                    .RunAll());
+
+            Console.WriteLine();
+
+            // =================================
+            // GESAMTERGEBNIS
+            // =================================
 
             Console.WriteLine(
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 41 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 47 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");
@@ -164,21 +208,21 @@ internal static class Program
 #if DEBUG
 
     // =============================================
-    // LAUNCHER-FUNKTIONSTEST
+    // LAUNCHER-FUNKTIONSTESTS
     // =============================================
 
     private static void RunVerifiedLauncherTests()
     {
         /*
-         * Die beiden Tests verwenden
-         * denselben echten Launcher wie
-         * unser produktiver Executor.
+         * Diese beiden Tests verwenden
+         * denselben Launcher wie der
+         * produktive Executor.
          *
          * Der Launcher wird über den
-         * bisherigen privaten Einstiegspunkt
+         * bestehenden privaten Einstiegspunkt
          * des Executors aufgerufen.
          *
-         * Damit testen wir auch die
+         * Damit prüfen wir auch die
          * tatsächliche Integration.
          */
 
@@ -215,10 +259,6 @@ internal static class Program
                 sandboxRoot,
                 "forged-result.txt");
 
-        /*
-         * Nur neue, eindeutig benannte
-         * Testdaten verwenden.
-         */
         EnsureSandboxDirectory(sandboxRoot);
 
         var validScript =
@@ -283,7 +323,7 @@ internal static class Program
                 + "die Skriptausführung.");
 
             // =================================
-            // TEST 2: DATEI NACH HASH ÄNDERN
+            // TEST 2: SKRIPTDATEI VERÄNDERT
             // =================================
 
             File.WriteAllText(
@@ -291,21 +331,18 @@ internal static class Program
                 originalChangedScript,
                 Encoding.Unicode);
 
-            /*
-             * Zuerst den Hash des
-             * ursprünglichen Inhalts ermitteln.
-             */
             var originalHash =
                 CalculateScriptHash(
                     originalChangedScript);
 
             /*
-             * Danach die Datei verändern.
+             * Die Skriptdatei wird nach
+             * Berechnung des ursprünglichen
+             * Hashwerts verändert.
              *
-             * Der Launcher darf weder das
-             * ursprüngliche noch das
-             * veränderte Skript ausführen,
-             * weil der Hash nicht mehr passt.
+             * Die nachträglich veränderte
+             * Datei darf nicht ausgeführt
+             * werden.
              */
             File.WriteAllText(
                 changedScriptPath,
@@ -362,8 +399,8 @@ internal static class Program
         finally
         {
             /*
-             * Ausschließlich explizit bekannte
-             * Testdateien entfernen.
+             * Ausschließlich bekannte
+             * Sandbox-Testdateien entfernen.
              *
              * Keine rekursive Löschung.
              * Keine fremden Dateiinhalte löschen.
