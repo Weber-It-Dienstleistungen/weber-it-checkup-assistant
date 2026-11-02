@@ -11,18 +11,21 @@ using WeberIT.Checkup.App.Services.Tasks;
 namespace WeberIT.Checkup.SandboxTestRunner;
 
 /// <summary>
-/// Sprint 55.14.8
+/// Sprint 55.14.13
 ///
 /// Eigenständiger Teststarter für die
 /// Windows-Temp-Bereinigung.
 ///
-/// Bisherige 47 Regressionstests
-/// plus sechs neue Handle-Löschtests.
+/// 53 bestehende Tests und sechs neue
+/// Handle-Verzeichnis-Löschtests.
 ///
-/// Alle Tests ohne Administratorrechte.
-/// Nur eigens erzeugte Sandbox-Testdaten.
+/// Sämtliche Tests laufen ohne
+/// Administratorrechte.
 ///
-/// Keine produktive Windows-Temp-Löschung.
+/// Echte Löschoperationen betreffen
+/// ausschließlich künstliche Sandbox-Daten.
+///
+/// Keine produktive Windows-Temp-Bereinigung.
 /// </summary>
 internal static class Program
 {
@@ -62,7 +65,8 @@ internal static class Program
         {
             Console.Error.WriteLine(
                 "SICHERHEITSSTOPP: "
-                + "TestRunner darf nicht erhöht laufen.");
+                + "Der TestRunner darf nicht "
+                + "mit Administratorrechten laufen.");
 
             return 2;
         }
@@ -81,56 +85,46 @@ internal static class Program
             // TESTBLOCK 1: ABBRUCH
             // =================================
 
-            PrintHeading(
-                "TESTBLOCK 1 - ABBRUCH");
-
-            Console.WriteLine(
+            RunTestBlock(
+                "TESTBLOCK 1 - ABBRUCH",
                 WindowsTemporaryFilesCleanupSandboxCancellationRegressionTests
-                    .RunAll());
+                    .RunAll);
 
             // =================================
             // TESTBLOCK 2: KONTROLLIERTE LÖSCHUNG
             // =================================
 
-            PrintHeading(
-                "TESTBLOCK 2 - KONTROLLIERTE LÖSCHUNG");
-
-            Console.WriteLine(
+            RunTestBlock(
+                "TESTBLOCK 2 - KONTROLLIERTE LÖSCHUNG",
                 WindowsTemporaryFilesCleanupSandboxDeletionRegressionTests
-                    .RunAll());
+                    .RunAll);
 
             // =================================
             // TESTBLOCK 3: SCHUTZMECHANISMEN
             // =================================
 
-            PrintHeading(
-                "TESTBLOCK 3 - SCHUTZMECHANISMEN");
-
-            Console.WriteLine(
+            RunTestBlock(
+                "TESTBLOCK 3 - SCHUTZMECHANISMEN",
                 WindowsTemporaryFilesCleanupSandboxProtectionRegressionTests
-                    .RunAll());
+                    .RunAll);
 
             // =================================
             // TESTBLOCK 4: VERZEICHNISGRENZEN
             // =================================
 
-            PrintHeading(
-                "TESTBLOCK 4 - VERZEICHNISGRENZEN");
-
-            Console.WriteLine(
+            RunTestBlock(
+                "TESTBLOCK 4 - VERZEICHNISGRENZEN",
                 WindowsTemporaryFilesCleanupSandboxBoundaryRegressionTests
-                    .RunAll());
+                    .RunAll);
 
             // =================================
             // TESTBLOCK 5: BASISVERTRÄGE
             // =================================
 
-            PrintHeading(
-                "TESTBLOCK 5 - BASISVERTRÄGE");
-
-            Console.WriteLine(
+            RunTestBlock(
+                "TESTBLOCK 5 - BASISVERTRÄGE",
                 WindowsTemporaryFilesCleanupBaselineRegressionTests
-                    .RunAll());
+                    .RunAll);
 
             // =================================
             // TESTBLOCK 6: VERIFIZIERTER LAUNCHER
@@ -145,23 +139,13 @@ internal static class Program
             // TESTBLOCK 7: HANDLE-ZUGRIFF
             // =================================
 
-            PrintHeading(
-                "TESTBLOCK 7 - HANDLE-BASIERTER DATEIZUGRIFF");
-
-            Console.WriteLine(
-                "Prüfe native Windows-Dateihandles, "
-                + "Dateiidentitäten und Junction-Schutz.");
-
-            Console.WriteLine();
-
-            Console.WriteLine(
+            RunTestBlock(
+                "TESTBLOCK 7 - HANDLE-BASIERTER DATEIZUGRIFF",
                 WindowsTemporaryFilesHandleAccessRegressionTests
-                    .RunAll());
-
-            Console.WriteLine();
+                    .RunAll);
 
             // =================================
-            // TESTBLOCK 8: HANDLE-LÖSCHUNG
+            // TESTBLOCK 8: HANDLE-DATEILÖSCHUNG
             // =================================
 
             PrintHeading(
@@ -175,13 +159,27 @@ internal static class Program
             Console.WriteLine();
 
             Console.WriteLine(
-                "Die Löschung betrifft ausschließlich "
-                + "selbst erzeugte Sandbox-Testdateien.");
+                WindowsTemporaryFilesHandleDeletionRegressionTests
+                    .RunAll());
+
+            Console.WriteLine();
+
+            // =================================
+            // TESTBLOCK 9: VERZEICHNISLÖSCHUNG
+            // =================================
+
+            PrintHeading(
+                "TESTBLOCK 9 - HANDLE-BASIERTE VERZEICHNISLÖSCHUNG");
+
+            Console.WriteLine(
+                "Prüfe leere und nicht leere Ordner, "
+                + "Schreibschutz, Systemschutz, "
+                + "Identitätswechsel und Objekttypen.");
 
             Console.WriteLine();
 
             Console.WriteLine(
-                WindowsTemporaryFilesHandleDeletionRegressionTests
+                WindowsTemporaryFilesHandleDirectoryDeletionRegressionTests
                     .RunAll());
 
             Console.WriteLine();
@@ -194,7 +192,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 53 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 59 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");
@@ -223,14 +221,30 @@ internal static class Program
         }
 #else
         Console.Error.WriteLine(
-            "Der TestRunner ist nur im "
-            + "Debug-Modus verfügbar.");
+            "Dieser TestRunner ist ausschließlich "
+            + "im Debug-Modus verfügbar.");
 
         return 2;
 #endif
     }
 
 #if DEBUG
+
+    // =============================================
+    // TESTBLOCK AUSFÜHREN
+    // =============================================
+
+    private static void RunTestBlock(
+        string title,
+        Func<string> runTests)
+    {
+        PrintHeading(title);
+
+        Console.WriteLine(
+            runTests());
+
+        Console.WriteLine();
+    }
 
     // =============================================
     // LAUNCHER-FUNKTIONSTESTS
@@ -243,9 +257,9 @@ internal static class Program
          * denselben Launcher wie der
          * produktive Executor.
          *
-         * Der Launcher wird über den
-         * bestehenden privaten Einstiegspunkt
-         * des Executors aufgerufen.
+         * Es werden ausschließlich
+         * harmlose Markierungsdateien
+         * in einer GUID-Sandbox erzeugt.
          */
 
         var sandboxRoot =
@@ -301,7 +315,7 @@ internal static class Program
         try
         {
             // =================================
-            // TEST 1: KORREKTER HASH
+            // TEST 1: KORREKTER SHA-256-HASH
             // =================================
 
             File.WriteAllText(
@@ -331,7 +345,7 @@ internal static class Program
 
             Require(
                 File.Exists(validMarkerPath),
-                "Das korrekt verifizierte Skript "
+                "Das verifizierte Skript "
                 + "wurde nicht ausgeführt.");
 
             Require(
@@ -345,7 +359,7 @@ internal static class Program
                 + "die Skriptausführung.");
 
             // =================================
-            // TEST 2: SKRIPTDATEI VERÄNDERT
+            // TEST 2: MANIPULIERTE SKRIPTDATEI
             // =================================
 
             File.WriteAllText(
@@ -358,12 +372,12 @@ internal static class Program
                     originalChangedScript);
 
             /*
-             * Die Skriptdatei wird nach
-             * Berechnung des ursprünglichen
+             * Die Datei wird erst nach
+             * Berechnung des erwarteten
              * Hashwerts verändert.
              *
-             * Die veränderte Datei darf
-             * nicht ausgeführt werden.
+             * Der Launcher darf diese
+             * Datei nicht ausführen.
              */
             File.WriteAllText(
                 changedScriptPath,
@@ -401,9 +415,9 @@ internal static class Program
                 && rejectedExecution.StandardError.Contains(
                     "fehlgeschlagen",
                     StringComparison.OrdinalIgnoreCase),
-                "Die Ausführung wurde abgelehnt, "
-                + "aber nicht nachweislich aufgrund "
-                + "der Integritätsprüfung."
+                "Die Ablehnung ist nicht eindeutig "
+                + "auf die Integritätsprüfung "
+                + "zurückzuführen."
                 + Environment.NewLine
                 + rejectedExecution.StandardError);
 
@@ -420,11 +434,10 @@ internal static class Program
         finally
         {
             /*
-             * Ausschließlich bekannte
-             * Sandbox-Testdateien entfernen.
+             * Ausschließlich eigene,
+             * bekannte Testdateien entfernen.
              *
              * Keine rekursive Löschung.
-             * Keine fremden Dateiinhalte löschen.
              */
 
             TryDeleteKnownFile(
@@ -474,7 +487,7 @@ internal static class Program
     }
 
     // =============================================
-    // ECHTEN LAUNCHER ERZEUGEN
+    // PRODUKTIVEN LAUNCHER AUFRUFEN
     // =============================================
 
     private static string BuildVerifiedLauncher(
@@ -730,7 +743,7 @@ internal static class Program
     }
 
     // =============================================
-    // HILFSMETHODEN
+    // KONSOLENAUSGABE
     // =============================================
 
     private static void PrintHeading(
