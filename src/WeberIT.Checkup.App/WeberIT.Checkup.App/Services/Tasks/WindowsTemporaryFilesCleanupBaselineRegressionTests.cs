@@ -3,104 +3,141 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
+using System.Runtime.ExceptionServices;
+using System.Security.Principal;
+using WeberIT.Checkup.App.Models;
+
+using EngineResult =
+    WeberIT.Checkup.App.Services.Tasks
+        .WindowsTemporaryFilesHandleCleanupEngine.ExecutionResult;
 
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.13.53
+/// Sprint 55.14.28a
 ///
-/// Struktur- und Vertragstests für den
-/// erhöhten Windows-Temp-Executor.
+/// Zwölf Basistests für die neue direkte
+/// C#-Ergebnisübertragung.
 ///
-/// Die Tests erzeugen lediglich den
-/// PowerShell-Skripttext im Arbeitsspeicher
-/// und prüfen die JSON-Auswertung.
+/// Ersetzt die zwölf veralteten Tests
+/// der PowerShell-Ausführungsarchitektur.
 ///
-/// Der verifizierte Launcher muss genau
-/// den zuvor geprüften Skriptinhalt
-/// ausführen, ohne die Datei nach der
-/// Hashprüfung erneut zu öffnen.
+/// Sicherheitsregeln:
+/// - Keine Administratorrechte.
+/// - Keine produktive Bereinigung.
+/// - Keine Löschoperationen.
+/// - Keine externen Prozesse.
+/// - Kein Dateisystemzugriff.
+/// - Ausschließlich künstliche Ergebnisse.
 ///
-/// Kein PowerShell-Prozess.
-/// Keine Administratorfreigabe.
-/// Keine Dateisystemänderungen.
-/// Keine Löschoperationen.
+/// Aufgerufen wird ausschließlich die
+/// private, reine Konvertierungsfunktion
+/// des Handle-Adapters.
+///
+/// Die produktive Execute-Methode des
+/// Adapters wird niemals aufgerufen.
 /// </summary>
 public static class
     WindowsTemporaryFilesCleanupBaselineRegressionTests
 {
-    private static readonly Type ExecutorType =
-        typeof(WindowsTemporaryFilesCleanupExecutor);
+    private const string TestCategoryTitle =
+        "Windows-Temp";
+
+    /*
+     * Absichtlich kein echter Dateipfad.
+     *
+     * Dieser Wert wird nur innerhalb
+     * künstlicher Ergebnisobjekte verwendet.
+     */
+    private const string TestTarget =
+        "TEST_ONLY_WINDOWS_TEMP_TARGET";
+
+    private static readonly MethodInfo
+        ResultConversionMethod =
+            typeof(WindowsTemporaryFilesHandleCleanupAdapter)
+                .GetMethod(
+                    "CreateCategoryResult",
+                    BindingFlags.NonPublic
+                    | BindingFlags.Static)
+            ?? throw new InvalidOperationException(
+                "Die Ergebnisübertragung des "
+                + "Handle-Adapters wurde nicht gefunden.");
+
+    // =============================================
+    // TESTS AUSFÜHREN
+    // =============================================
 
     public static string RunAll()
     {
+        EnsureNonElevated();
+
         var results = new List<string>();
 
-        Execute(
-            "Windows-Temp-Ziel wird ausdrücklich begrenzt",
-            TestTargetRestrictions,
+        Run(
+            "Erfolg und Ergebniszähler vollständig übertragen",
+            TestSuccessfulResult,
             results);
 
-        Execute(
-            "Stammordner und Reparse Points werden geschützt",
-            TestRootSafety,
+        Run(
+            "Überspringgründe unverändert und getrennt übertragen",
+            TestSkippedReasons,
             results);
 
-        Execute(
-            "Einträge bleiben auf Zielordner begrenzt",
-            TestDescendantRestriction,
+        Run(
+            "Teilweise aufgeschlüsselte Ausschlüsse bleiben gültig",
+            TestPartialSkipBreakdown,
             results);
 
-        Execute(
-            "Ordner werden nicht rekursiv erzwungen",
-            TestNonRecursiveDeletion,
+        Run(
+            "Teilweise erfolgreiche Bereinigung korrekt bewertet",
+            TestPartialTechnicalFailure,
             results);
 
-        Execute(
-            "Abbruchmarker bleibt Bestandteil des Ablaufs",
-            TestCancellationContract,
+        Run(
+            "Abbruch nach Ausführungsbeginn bleibt dokumentiert",
+            TestCancellationResult,
             results);
 
-        Execute(
-            "Erfolgs- und Fehlerzähler bleiben vorhanden",
-            TestResultCounters,
+        Run(
+            "Nicht gestarteter Lauf erhält eindeutigen Fehler",
+            TestMissingStartStatus,
             results);
 
-        Execute(
-            "PowerShell-Pfade werden sicher maskiert",
-            TestPowerShellLiteralEscaping,
+        Run(
+            "Löschungen ohne Ausführungsbeginn zurückgewiesen",
+            TestChangesWithoutStart,
             results);
 
-        Execute(
-            "Geprüfter Skriptinhalt wird direkt ausgeführt",
-            TestVerifiedLauncher,
+        Run(
+            "Negative Ergebniszähler zurückgewiesen",
+            TestNegativeCounters,
             results);
 
-        Execute(
-            "Ergebnis wird als JSON übertragen",
-            TestJsonResultContract,
+        Run(
+            "Unbekannte Überspringgründe zurückgewiesen",
+            TestUnknownSkipReason,
             results);
 
-        Execute(
-            "Bisheriges Ergebnis-JSON bleibt lesbar",
-            TestLegacyJson,
+        Run(
+            "Ungültige Ursachenzähler zurückgewiesen",
+            TestInvalidReasonCounts,
             results);
 
-        Execute(
-            "JSON aus Standardausgabe bleibt lesbar",
-            TestStandardOutputFallback,
+        Run(
+            "Doppelte Überspringgründe zurückgewiesen",
+            TestDuplicateReasons,
             results);
 
-        Execute(
-            "Ungültiges JSON wird zurückgewiesen",
-            TestInvalidJson,
+        Run(
+            "Widersprüchliche Ursachensummen zurückgewiesen",
+            TestInvalidReasonTotals,
             results);
 
         return
-            $"Alle {results.Count} Windows-Temp-Basistests "
-            + "erfolgreich."
+            $"Alle {results.Count} C#-"
+            + "Ergebnisbasistests erfolgreich."
             + Environment.NewLine
             + Environment.NewLine
             + string.Join(
@@ -109,561 +146,565 @@ public static class
     }
 
     // =============================================
-    // ZIELBEREICH UND DATEISYSTEMSCHUTZ
+    // TESTUMGEBUNG
     // =============================================
 
-    private static void TestTargetRestrictions()
+    private static void EnsureNonElevated()
     {
-        var script = BuildScript();
+        if (!OperatingSystem.IsWindows())
+        {
+            throw new PlatformNotSupportedException(
+                "Die Windows-Temp-Basistests "
+                + "benötigen Windows.");
+        }
 
-        RequireContains(
-            script,
-            "[System.Environment+SpecialFolder]::Windows",
-            "Ermittlung des Windows-Verzeichnisses fehlt.");
+        using var identity =
+            WindowsIdentity.GetCurrent();
 
-        RequireContains(
-            script,
-            "'Temp'",
-            "Der ausdrücklich erlaubte Temp-Ordner fehlt.");
+        var principal =
+            new WindowsPrincipal(identity);
 
-        RequireContains(
-            script,
-            "$normalizedTargetParent",
-            "Prüfung des direkten Elternordners fehlt.");
-
-        RequireContains(
-            script,
-            "$normalizedWindowsDirectory",
-            "Vergleich mit dem Windows-Verzeichnis fehlt.");
-    }
-
-    private static void TestRootSafety()
-    {
-        var script = BuildScript();
-
-        RequireContains(
-            script,
-            "[System.IO.Path]::GetPathRoot(",
-            "Prüfung des Laufwerksstamms fehlt.");
-
-        RequireContains(
-            script,
-            "[System.IO.File]::GetAttributes(",
-            "Attributprüfung fehlt.");
-
-        RequireContains(
-            script,
-            "[System.IO.FileAttributes]::ReparsePoint",
-            "Schutz vor Reparse Points fehlt.");
-    }
-
-    private static void TestDescendantRestriction()
-    {
-        var script = BuildScript();
-
-        RequireContains(
-            script,
-            "$rootPrefix",
-            "Das erforderliche Zielpfadpräfix fehlt.");
-
-        RequireContains(
-            script,
-            "$candidatePath.StartsWith(",
-            "Die Nachkommenprüfung fehlt.");
-
-        RequireContains(
-            script,
-            "[System.StringComparison]::OrdinalIgnoreCase",
-            "Der vorgesehene Pfadvergleich fehlt.");
-    }
-
-    private static void TestNonRecursiveDeletion()
-    {
-        var script = BuildScript();
-
-        RequireContains(
-            script,
-            "[System.IO.Directory]::Delete(",
-            "Das kontrollierte Entfernen leerer Ordner fehlt.");
-
-        RequireContains(
-            script,
-            "$false)",
-            "Die nichtrekursive Löschung fehlt.");
-
-        RequireContains(
-            script,
-            "DeleteAfterChildren",
-            "Die Verarbeitung nach den Kindeinträgen fehlt.");
-
-        Require(
-            !script.Contains(
-                "Remove-Item -Recurse",
-                StringComparison.OrdinalIgnoreCase),
-            "Es wurde ein rekursiver PowerShell-"
-            + "Löschbefehl gefunden.");
-    }
-
-    private static void TestCancellationContract()
-    {
-        var script = BuildScript();
-
-        RequireContains(
-            script,
-            "function Test-CancellationRequested",
-            "Die Abbruchprüfung fehlt.");
-
-        RequireContains(
-            script,
-            "$result.WasCancelled",
-            "Der dokumentierte Abbruchstatus fehlt.");
-
-        RequireContains(
-            script,
-            "if (Test-CancellationRequested)",
-            "Die Prüfung des Abbruchmarkers fehlt.");
-    }
-
-    private static void TestResultCounters()
-    {
-        var script = BuildScript();
-
-        RequireContains(
-            script,
-            "DeletedFileCount = [int64]0",
-            "Dateizähler fehlt.");
-
-        RequireContains(
-            script,
-            "DeletedDirectoryCount = [int64]0",
-            "Ordnerzähler fehlt.");
-
-        RequireContains(
-            script,
-            "DeletedSizeBytes = [uint64]0",
-            "Größenzähler fehlt.");
-
-        RequireContains(
-            script,
-            "FailedEntryCount = [int64]0",
-            "Technischer Fehlerzähler fehlt.");
-
-        RequireContains(
-            script,
-            "SkippedEntryCount = [int64]0",
-            "Zähler übersprungener Einträge fehlt.");
-    }
-
-    private static void TestPowerShellLiteralEscaping()
-    {
-        var script = BuildScript(
-            @"C:\Test\O'Brien\cancel.requested",
-            @"C:\Test\O'Brien\result.json");
-
-        RequireContains(
-            script,
-            "O''Brien",
-            "Apostrophe im Pfad wurden nicht maskiert.");
-
-        Require(
-            !script.Contains(
-                "__WEBERIT_CANCELLATION_MARKER__",
-                StringComparison.Ordinal),
-            "Der Abbruchplatzhalter wurde nicht ersetzt.");
-
-        Require(
-            !script.Contains(
-                "__WEBERIT_RESULT_FILE__",
-                StringComparison.Ordinal),
-            "Der Ergebnisplatzhalter wurde nicht ersetzt.");
+        if (principal.IsInRole(
+                WindowsBuiltInRole.Administrator))
+        {
+            throw new InvalidOperationException(
+                "SICHERHEITSSTOPP: Diese Tests "
+                + "dürfen nicht mit "
+                + "Administratorrechten laufen.");
+        }
     }
 
     // =============================================
-    // NEUER VERIFIZIERTER LAUNCHER
+    // TEST 1: ERFOLGREICHES ERGEBNIS
     // =============================================
 
-    private static void TestVerifiedLauncher()
+    private static void TestSuccessfulResult()
     {
-        /*
-         * Sprint 55.13.53
-         *
-         * Der vorherige Test übergab einen
-         * verkürzten SHA-256-Hash.
-         *
-         * Die neue Launcherklasse verlangt
-         * richtigerweise 64 Hex-Zeichen.
-         */
-        var validSha256 =
-            new string('A', 64);
-
-        var method = GetMethod(
-            "BuildVerifiedLauncherScript");
-
-        var result = method.Invoke(
-            null,
-            [
-                @"C:\Test\O'Brien\cleanup.ps1",
-                validSha256
-            ]);
+        var result = ConvertResult(
+            CreateEngineResult(
+                files: 3,
+                directories: 1,
+                bytes: 4096));
 
         Require(
-            result is string,
-            "Das Startskript konnte nicht erzeugt werden.");
-
-        var script = (string)result!;
-
-        // -------------------------------------
-        // HASHPRÜFUNG
-        // -------------------------------------
-
-        RequireContains(
-            script,
-            "$expectedHash",
-            "Der erwartete Hashwert fehlt.");
-
-        RequireContains(
-            script,
-            validSha256,
-            "Der vollständige SHA-256-Hash fehlt.");
-
-        RequireContains(
-            script,
-            "ComputeHash(",
-            "Die Hashberechnung fehlt.");
-
-        RequireContains(
-            script,
-            "$actualHash",
-            "Der tatsächliche Hashwert fehlt.");
-
-        RequireContains(
-            script,
-            "[System.StringComparison]::OrdinalIgnoreCase",
-            "Der kontrollierte Hashvergleich fehlt.");
-
-        // -------------------------------------
-        // PFADMASKIERUNG
-        // -------------------------------------
-
-        RequireContains(
-            script,
-            "O''Brien",
-            "Der Skriptpfad wird nicht "
-            + "korrekt für PowerShell maskiert.");
-
-        // -------------------------------------
-        // SKRIPTINHALT EINMAL EINLESEN
-        // -------------------------------------
-
-        RequireContains(
-            script,
-            "[System.IO.File]::ReadAllText(",
-            "Der Skriptinhalt wird nicht eingelesen.");
-
-        RequireContains(
-            script,
-            "$scriptContent",
-            "Die Variable für den geprüften "
-            + "Skriptinhalt fehlt.");
+            result.Category ==
+                CleanupCategoryType.WindowsTemporaryFiles,
+            "Die Bereinigungskategorie ist falsch.");
 
         Require(
-            Regex.Matches(
-                script,
-                @"\[System\.IO\.File\]::ReadAllText\s*\(",
-                RegexOptions.CultureInvariant).Count == 1,
-            "Der Launcher enthält mehr als einen "
-            + "Leseaufruf für die Skriptdatei.");
+            result.CategoryTitle == TestCategoryTitle
+            && result.TargetPath == TestTarget,
+            "Die Ergebnisidentität wurde verändert.");
 
-        // -------------------------------------
-        // GEPRÜFTEN INHALT DIREKT AUSFÜHREN
-        // -------------------------------------
-
-        RequireContains(
-            script,
-            "[System.Management.Automation.ScriptBlock]::Create(",
-            "Die Erzeugung des geprüften "
-            + "ScriptBlocks fehlt.");
-
-        RequireContains(
-            script,
-            "$scriptContent)",
-            "Der ScriptBlock wird nicht aus dem "
-            + "geprüften Speicherinhalt erstellt.");
-
-        RequireContains(
-            script,
-            "& $verifiedScriptBlock",
-            "Der geprüfte ScriptBlock "
-            + "wird nicht ausgeführt.");
-
-        /*
-         * Entscheidende Negativprüfung:
-         *
-         * Die alte Ausführung direkt über
-         * den Dateipfad darf nicht mehr
-         * Bestandteil des Launchers sein.
-         */
         Require(
-            !script.Contains(
-                "& $scriptPath",
-                StringComparison.Ordinal),
-            "Der Launcher führt weiterhin "
-            + "die Skriptdatei über ihren Pfad aus.");
+            result.WasStarted
+            && !result.WasCancelled
+            && result.IsSuccessful,
+            "Der erfolgreiche Lauf wurde "
+            + "falsch bewertet.");
 
-        // -------------------------------------
-        // ABSICHERUNG BEI HASHABWEICHUNG
-        // -------------------------------------
+        Require(
+            result.DeletedFileCount == 3
+            && result.DeletedDirectoryCount == 1
+            && result.DeletedSizeBytes == 4096,
+            "Die Löschzähler wurden verändert.");
 
-        RequireContains(
-            script,
-            "throw 'Die Integritätsprüfung",
-            "Die Ablehnung einer fehlgeschlagenen "
-            + "Hashprüfung fehlt.");
+        Require(
+            result.FailedEntryCount == 0
+            && result.SkippedEntryCount == 0
+            && result.SkippedEntryReasons.Count == 0,
+            "Der erfolgreiche Lauf enthält "
+            + "unerwartete Fehler oder Ausschlüsse.");
     }
 
     // =============================================
-    // JSON-DATENVERTRAG
+    // TEST 2: AUSSCHLUSSGRÜNDE
     // =============================================
 
-    private static void TestJsonResultContract()
+    private static void TestSkippedReasons()
     {
-        var script = BuildScript();
-
-        RequireContains(
-            script,
-            "function Write-WorkerResult",
-            "Die Ergebnisausgabe fehlt.");
-
-        RequireContains(
-            script,
-            "ConvertTo-Json -Compress -Depth 4",
-            "Die JSON-Serialisierung fehlt.");
-
-        RequireContains(
-            script,
-            "[System.IO.File]::WriteAllText(",
-            "Die Ergebnisdatei wird nicht geschrieben.");
-
-        /*
-         * Der Console-Aufruf darf wie bisher
-         * über mehrere Zeilen verteilt sein.
-         */
-        Require(
-            Regex.IsMatch(
-                script,
-                @"\[System\.Console\]::Out\.WriteLine\s*\(\s*\$json\s*\)",
-                RegexOptions.CultureInvariant),
-            "Die zusätzliche Standardausgabe fehlt.");
-    }
-
-    private static void TestLegacyJson()
-    {
-        const string json =
-            """
+        var sourceReasons =
+            new List<CleanupSkippedEntryReasonCount>
             {
-              "WasStarted": true,
-              "WasCancelled": false,
-              "TargetPath": "C:\\Windows\\Temp",
-              "DeletedFileCount": 2,
-              "DeletedDirectoryCount": 1,
-              "DeletedSizeBytes": 2048,
-              "FailedEntryCount": 0,
-              "SkippedEntryCount": 3,
-              "ErrorMessage": ""
-            }
-            """;
+                Reason(
+                    CleanupSkippedEntryReason.ReadOnly,
+                    2),
 
-        var worker = DeserializeWorker(json);
+                Reason(
+                    CleanupSkippedEntryReason.LockedByProcess,
+                    1)
+            };
 
-        Require(
-            ReadLong(worker, "DeletedFileCount") == 2,
-            "Der Dateizähler wurde nicht übernommen.");
+        var result = ConvertResult(
+            CreateEngineResult(
+                skipped: 3,
+                reasons: sourceReasons));
 
         Require(
-            ReadLong(worker, "SkippedEntryCount") == 3,
-            "Der Überspringzähler ging verloren.");
-    }
-
-    private static void TestStandardOutputFallback()
-    {
-        const string json =
-            """
-            {"WasStarted":true,"SkippedEntryCount":4}
-            """;
-
-        var method = GetMethod(
-            "TryParseWorkerResultFromOutput");
-
-        object?[] arguments =
-        [
-            "PowerShell-Startmeldung"
-            + Environment.NewLine
-            + json,
-            null
-        ];
-
-        var success = method.Invoke(
-            null,
-            arguments);
+            result.SkippedEntryCount == 3
+            && result.SkippedEntryReasons.Count == 2,
+            "Die Ausschlusszähler "
+            + "wurden nicht vollständig übertragen.");
 
         Require(
-            success is true,
-            "Die JSON-Standardausgabe "
-            + "wurde nicht erkannt.");
+            result.SkippedEntryReasons.Any(
+                entry =>
+                    entry.Reason ==
+                        CleanupSkippedEntryReason.ReadOnly
+                    && entry.Count == 2),
+            "Schreibschutz wurde nicht "
+            + "korrekt übertragen.");
 
         Require(
-            arguments[1] is not null,
-            "Das gelesene Ergebnis fehlt.");
+            result.SkippedEntryReasons.Any(
+                entry =>
+                    entry.Reason ==
+                        CleanupSkippedEntryReason.LockedByProcess
+                    && entry.Count == 1),
+            "Prozesssperren wurden nicht "
+            + "korrekt übertragen.");
 
         Require(
-            ReadLong(
-                arguments[1]!,
-                "SkippedEntryCount") == 4,
-            "Der Überspringzähler ging beim "
-            + "Fallback verloren.");
-    }
-
-    private static void TestInvalidJson()
-    {
-        var method = GetMethod(
-            "TryDeserializeWorkerResult");
-
-        object?[] arguments =
-        [
-            "Das ist kein JSON-Ergebnis",
-            null
-        ];
-
-        var success = method.Invoke(
-            null,
-            arguments);
+            !ReferenceEquals(
+                sourceReasons,
+                result.SkippedEntryReasons),
+            "Die Ergebnisliste wurde nicht "
+            + "eigenständig erzeugt.");
 
         Require(
-            success is false,
-            "Ungültiges JSON wurde akzeptiert.");
+            result.IsSuccessful,
+            "Kontrollierte Ausschlüsse wurden "
+            + "fälschlich als Fehler bewertet.");
     }
 
     // =============================================
-    // TESTHILFSMETHODEN
+    // TEST 3: TEILWEISE AUFSCHLÜSSELUNG
     // =============================================
 
-    private static string BuildScript(
-        string cancellationPath =
-            @"C:\Test\cancel.requested",
-        string resultPath =
-            @"C:\Test\worker-result.json")
+    private static void TestPartialSkipBreakdown()
     {
-        var method = GetMethod(
-            "BuildCleanupScript");
-
-        var result = method.Invoke(
-            null,
-            [
-                cancellationPath,
-                resultPath
-            ]);
-
-        return result as string
-            ?? throw new InvalidOperationException(
-                "Das Bereinigungsskript wurde "
-                + "nicht als Text zurückgegeben.");
-    }
-
-    private static object DeserializeWorker(
-        string json)
-    {
-        var method = GetMethod(
-            "TryDeserializeWorkerResult");
-
-        object?[] arguments =
-        [
-            json,
-            null
-        ];
-
-        var success = method.Invoke(
-            null,
-            arguments);
+        var result = ConvertResult(
+            CreateEngineResult(
+                skipped: 5,
+                reasons:
+                [
+                    Reason(
+                        CleanupSkippedEntryReason.ReadOnly,
+                        2)
+                ]));
 
         Require(
-            success is true,
-            "Das Ergebnis-JSON konnte "
-            + "nicht gelesen werden.");
-
-        return arguments[1]
-            ?? throw new InvalidOperationException(
-                "Das deserialisierte Ergebnis fehlt.");
-    }
-
-    private static MethodInfo GetMethod(
-        string methodName)
-    {
-        return ExecutorType.GetMethod(
-                   methodName,
-                   BindingFlags.NonPublic
-                   | BindingFlags.Static)
-               ?? throw new InvalidOperationException(
-                   "Die interne Methode wurde "
-                   + "nicht gefunden: "
-                   + methodName);
-    }
-
-    private static long ReadLong(
-        object instance,
-        string propertyName)
-    {
-        var property = instance
-            .GetType()
-            .GetProperty(propertyName);
+            result.SkippedEntryCount == 5,
+            "Die Gesamtzahl wurde verändert.");
 
         Require(
-            property is not null,
-            "Die Ergebniseigenschaft fehlt: "
-            + propertyName);
-
-        var value = property!.GetValue(instance);
+            result.SkippedEntryReasons.Count == 1
+            && result.SkippedEntryReasons[0].Count == 2,
+            "Die vorhandene Aufschlüsselung "
+            + "ging verloren.");
 
         Require(
-            value is long,
-            "Der Ergebniszähler hat "
-            + "einen unerwarteten Typ.");
-
-        return (long)value!;
+            result.IsSuccessful,
+            "Eine unvollständige "
+            + "Ursachenaufschlüsselung wurde "
+            + "als technischer Fehler bewertet.");
     }
 
-    private static void RequireContains(
-        string source,
-        string expected,
-        string message)
+    // =============================================
+    // TEST 4: TECHNISCHER TEILERFOLG
+    // =============================================
+
+    private static void TestPartialTechnicalFailure()
     {
+        const string expectedError =
+            "Ein Eintrag konnte technisch "
+            + "nicht verarbeitet werden.";
+
+        var result = ConvertResult(
+            CreateEngineResult(
+                files: 1,
+                failures: 1,
+                error: expectedError));
+
         Require(
-            source.Contains(
-                expected,
-                StringComparison.Ordinal),
-            message);
+            result.WasStarted
+            && result.DeletedFileCount == 1
+            && result.FailedEntryCount == 1,
+            "Die Teilverarbeitung wurde "
+            + "nicht vollständig dokumentiert.");
+
+        Require(
+            result.ErrorMessage == expectedError,
+            "Die technische Fehlermeldung "
+            + "wurde verändert.");
+
+        Require(
+            !result.IsSuccessful
+            && result.IsPartiallySuccessful,
+            "Der technische Teilerfolg "
+            + "wurde falsch bewertet.");
     }
 
-    private static void Execute(
-        string title,
-        Action test,
-        ICollection<string> results)
+    // =============================================
+    // TEST 5: ABBRUCH NACH BEGINN
+    // =============================================
+
+    private static void TestCancellationResult()
+    {
+        var result = ConvertResult(
+            CreateEngineResult(
+                cancelled: true,
+                files: 1,
+                bytes: 128));
+
+        Require(
+            result.WasStarted
+            && result.WasCancelled,
+            "Der Abbruchstatus ging verloren.");
+
+        Require(
+            result.DeletedFileCount == 1
+            && result.DeletedSizeBytes == 128,
+            "Bereits erfolgte Änderungen "
+            + "wurden beim Abbruch verworfen.");
+
+        Require(
+            !result.IsSuccessful,
+            "Ein abgebrochener Lauf "
+            + "wurde als Erfolg bewertet.");
+    }
+
+    // =============================================
+    // TEST 6: NICHT GESTARTETER LAUF
+    // =============================================
+
+    private static void TestMissingStartStatus()
+    {
+        var result = ConvertResult(
+            CreateEngineResult(
+                started: false));
+
+        Require(
+            !result.WasStarted
+            && !result.WasCancelled,
+            "Der Ausführungsstatus wurde verändert.");
+
+        Require(
+            !string.IsNullOrWhiteSpace(
+                result.ErrorMessage),
+            "Ein nicht gestarteter Lauf "
+            + "besitzt keine Fehlermeldung.");
+
+        Require(
+            !result.IsSuccessful,
+            "Ein nicht gestarteter Lauf "
+            + "wurde als Erfolg bewertet.");
+    }
+
+    // =============================================
+    // TEST 7: ÄNDERUNGEN OHNE START
+    // =============================================
+
+    private static void TestChangesWithoutStart()
+    {
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    started: false,
+                    files: 1)));
+
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    started: false,
+                    directories: 1)));
+
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    started: false,
+                    bytes: 1)));
+    }
+
+    // =============================================
+    // TEST 8: NEGATIVE ZÄHLER
+    // =============================================
+
+    private static void TestNegativeCounters()
+    {
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    files: -1)));
+
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    directories: -1)));
+
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    failures: -1)));
+
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    skipped: -1)));
+    }
+
+    // =============================================
+    // TEST 9: UNBEKANNTER URSACHENCODE
+    // =============================================
+
+    private static void TestUnknownSkipReason()
+    {
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    skipped: 1,
+                    reasons:
+                    [
+                        Reason(
+                            (CleanupSkippedEntryReason)999,
+                            1)
+                    ])));
+    }
+
+    // =============================================
+    // TEST 10: UNGÜLTIGE URSACHENZÄHLER
+    // =============================================
+
+    private static void TestInvalidReasonCounts()
+    {
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    skipped: 1,
+                    reasons:
+                    [
+                        Reason(
+                            CleanupSkippedEntryReason.ReadOnly,
+                            0)
+                    ])));
+
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    skipped: 1,
+                    reasons:
+                    [
+                        Reason(
+                            CleanupSkippedEntryReason.ReadOnly,
+                            -1)
+                    ])));
+    }
+
+    // =============================================
+    // TEST 11: DOPPELTE URSACHEN
+    // =============================================
+
+    private static void TestDuplicateReasons()
+    {
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    skipped: 2,
+                    reasons:
+                    [
+                        Reason(
+                            CleanupSkippedEntryReason.ReadOnly,
+                            1),
+
+                        Reason(
+                            CleanupSkippedEntryReason.ReadOnly,
+                            1)
+                    ])));
+    }
+
+    // =============================================
+    // TEST 12: UNGÜLTIGE GESAMTSUMMEN
+    // =============================================
+
+    private static void TestInvalidReasonTotals()
+    {
+        /*
+         * Die Summe dokumentierter Ursachen
+         * darf den Gesamtzähler nicht
+         * überschreiten.
+         */
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    skipped: 1,
+                    reasons:
+                    [
+                        Reason(
+                            CleanupSkippedEntryReason.ReadOnly,
+                            1),
+
+                        Reason(
+                            CleanupSkippedEntryReason.LockedByProcess,
+                            1)
+                    ])));
+
+        /*
+         * Auch ein Überlauf bei extremen
+         * Ergebniswerten muss kontrolliert
+         * zurückgewiesen werden.
+         */
+        ExpectException<OverflowException>(
+            () => ConvertResult(
+                CreateEngineResult(
+                    skipped: long.MaxValue,
+                    reasons:
+                    [
+                        Reason(
+                            CleanupSkippedEntryReason.ReadOnly,
+                            long.MaxValue),
+
+                        Reason(
+                            CleanupSkippedEntryReason.LockedByProcess,
+                            1)
+                    ])));
+    }
+
+    // =============================================
+    // KÜNSTLICHES ENGINE-ERGEBNIS
+    // =============================================
+
+    private static EngineResult CreateEngineResult(
+        bool started = true,
+        bool cancelled = false,
+        long files = 0,
+        long directories = 0,
+        ulong bytes = 0,
+        long failures = 0,
+        long skipped = 0,
+        IReadOnlyList<CleanupSkippedEntryReasonCount>?
+            reasons = null,
+        string error = "")
+    {
+        return new EngineResult
+        {
+            WasStarted = started,
+            WasCancelled = cancelled,
+
+            DeletedFileCount = files,
+            DeletedDirectoryCount = directories,
+            DeletedSizeBytes = bytes,
+
+            FailedEntryCount = failures,
+            SkippedEntryCount = skipped,
+
+            SkippedEntryReasons =
+                reasons
+                ?? Array.Empty<
+                    CleanupSkippedEntryReasonCount>(),
+
+            ErrorMessage = error
+        };
+    }
+
+    private static CleanupSkippedEntryReasonCount Reason(
+        CleanupSkippedEntryReason reason,
+        long count)
+    {
+        return new CleanupSkippedEntryReasonCount
+        {
+            Reason = reason,
+            Count = count
+        };
+    }
+
+    // =============================================
+    // NUR ERGEBNISKONVERTIERUNG AUFRUFEN
+    // =============================================
+
+    private static CleanupActionCategoryExecutionResult
+        ConvertResult(
+            EngineResult engineResult)
+    {
+        /*
+         * Ausschließlich die private
+         * Konvertierungsfunktion aufrufen.
+         *
+         * Niemals:
+         * WindowsTemporaryFilesHandleCleanupAdapter
+         *     .Execute(...)
+         *
+         * Keine echte Engine-Ausführung.
+         */
+        try
+        {
+            var converted =
+                ResultConversionMethod.Invoke(
+                    null,
+                    [
+                        TestCategoryTitle,
+                        TestTarget,
+                        engineResult
+                    ]);
+
+            return converted
+                as CleanupActionCategoryExecutionResult
+                ?? throw new InvalidOperationException(
+                    "Die Ergebniskonvertierung "
+                    + "lieferte kein gültiges "
+                    + "Kategorieergebnis.");
+        }
+        catch (TargetInvocationException exception)
+            when (exception.InnerException is not null)
+        {
+            /*
+             * Reflection verpackt Exceptions.
+             *
+             * Für die Tests wird die echte
+             * fachliche Exception benötigt.
+             */
+            ExceptionDispatchInfo.Capture(
+                exception.InnerException!).Throw();
+
+            throw;
+        }
+    }
+
+    // =============================================
+    // ERWARTETE AUSNAHME PRÜFEN
+    // =============================================
+
+    private static void ExpectException<TException>(
+        Action action)
+        where TException : Exception
     {
         try
         {
-            test();
-
-            results.Add(
-                "OK: " + title);
+            action();
         }
-        catch (Exception exception)
+        catch (TException)
         {
-            throw new InvalidOperationException(
-                "Windows-Temp-Basistest fehlgeschlagen: "
-                + title
-                + Environment.NewLine
-                + exception.Message,
-                exception);
+            return;
         }
+
+        throw new InvalidOperationException(
+            "Eine erwartete Ausnahme vom Typ "
+            + typeof(TException).Name
+            + " wurde nicht ausgelöst.");
+    }
+
+    // =============================================
+    // TEST-HILFSMETHODEN
+    // =============================================
+
+    private static void Run(
+        string description,
+        Action action,
+        List<string> results)
+    {
+        action();
+
+        results.Add(
+            "[OK] " + description);
     }
 
     private static void Require(
@@ -672,7 +713,8 @@ public static class
     {
         if (!condition)
         {
-            throw new InvalidOperationException(message);
+            throw new InvalidOperationException(
+                message);
         }
     }
 }

@@ -1,39 +1,45 @@
 ﻿
-using System.IO;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
 
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.14.26g
+/// Sprint 55.14.28d
 ///
-/// Kontrollierte Windows-Temp-Bereinigung.
+/// Kontrollierte Windows-Temp-Bereinigung
+/// mit direkter C#-Handle-Integration.
 ///
-/// Neuer Ausführungspfad:
-/// - Aktionsplan validieren
-/// - Exklusive Ausführung sicherstellen
-/// - Produktive Freigabe kontrollieren
-/// - Handle-Adapter asynchron ausführen
-/// - Vorhandenes Ergebnismodell verwenden
+/// Ausführung:
+/// - Aktionsplan vollständig validieren.
+/// - Exklusive Systemaktionssperre erhalten.
+/// - Produktive Freigabe kontrollieren.
+/// - Handle-Adapter außerhalb des UI-Threads
+///   ausführen.
+/// - Ergebnisse vollständig übernehmen.
+/// - Fehler und Abbrüche dokumentieren.
 ///
-/// Die bisherige PowerShell-Ausführung
-/// wird nicht mehr produktiv aufgerufen.
-///
-/// Ihre privaten Hilfsmethoden bleiben
-/// vorübergehend für bestehende
-/// Regressionstests erhalten.
+/// Keine PowerShell-Ausführung.
+/// Kein separater Worker.
+/// Keine temporären Skripte.
+/// Keine frei übergebenen Zielpfade.
+/// Kein automatischer Wiederanlauf.
 ///
 /// WICHTIG:
-/// Die neue Bereinigung ist bis zur
-/// ausdrücklichen Sicherheitsfreigabe
-/// deaktiviert.
+/// Die produktive Windows-Temp-Bereinigung
+/// bleibt ausdrücklich deaktiviert.
 /// </summary>
 public sealed class WindowsTemporaryFilesCleanupExecutor
 {
+    // =============================================
+    // ZULÄSSIGE AKTIONSKENNUNGEN
+    // =============================================
+
     private const string RestoreCapacityTaskCode =
         "task.storage.restore-system-volume-capacity";
 
@@ -43,58 +49,68 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
     private const string SupportedActionCode =
         "action.cleanup.selected-safe-categories";
 
-    private const int MaximumDiagnosticLength = 3000;
+    // =============================================
+    // PRODUKTIVE FREIGABESPERRE
+    // =============================================
 
     /*
-     * SPRINT 55.14.26g
-     *
-     * Explizite produktive Freigabesperre.
+     * Diese Sperre ist absichtlich statisch
+     * und bleibt bis zur ausdrücklichen
+     * Sicherheitsfreigabe geschlossen.
      *
      * false:
-     * Keine Windows-Temp-Bereinigung.
-     * Weder über PowerShell noch über
-     * die neue Handle-Engine.
+     * - Keine produktive Bereinigung.
+     * - Keine Handle-Engine-Ausführung.
+     * - Kein alternativer Ausführungspfad.
      *
-     * Die Freigabe erfolgt ausschließlich
-     * durch eine spätere, geprüfte
-     * Quellcodeänderung.
+     * Eine spätere Freigabe benötigt eine
+     * bewusst geprüfte Quellcodeänderung.
+     *
+     * Feldname und Typ bleiben für unsere
+     * Sicherheits-Regressionstests stabil.
      */
     private static readonly bool HandleCleanupReleaseApproved =
         false;
 
-    /*
-     * Vorübergehend für die bisherige
-     * Constructor-Signatur erhalten.
-     *
-     * Der neue Ausführungspfad benötigt
-     * keinen externen Prozessrunner.
-     */
-    private readonly IMaintenanceProcessRunner
-        _processRunner;
+    // =============================================
+    // AUSFÜHRUNGSKOORDINATION
+    // =============================================
 
     private readonly ICheckupTaskActionExecutionCoordinator
         _executionCoordinator;
 
-    private static readonly JsonSerializerOptions JsonOptions =
-        new()
-        {
-            PropertyNameCaseInsensitive = true
-        };
+    // =============================================
+    // KONSTRUKTOR
+    // =============================================
 
     public WindowsTemporaryFilesCleanupExecutor(
         IMaintenanceProcessRunner processRunner,
         ICheckupTaskActionExecutionCoordinator
             executionCoordinator)
     {
-        ArgumentNullException.ThrowIfNull(processRunner);
-        ArgumentNullException.ThrowIfNull(executionCoordinator);
+        ArgumentNullException.ThrowIfNull(
+            processRunner);
 
-        _processRunner = processRunner;
-        _executionCoordinator = executionCoordinator;
+        ArgumentNullException.ThrowIfNull(
+            executionCoordinator);
+
+        /*
+         * Der Prozessrunner bleibt vorerst
+         * Bestandteil der öffentlichen
+         * Konstruktorsignatur.
+         *
+         * Er wird nicht mehr ausgeführt.
+         *
+         * Dadurch bleiben bestehende
+         * DI-Registrierungen und Tests
+         * unverändert kompatibel.
+         */
+        _executionCoordinator =
+            executionCoordinator;
     }
 
     // =============================================
-    // NEUER PRODUKTIVER EINSTIEG
+    // KONTROLLIERTE AUSFÜHRUNG
     // =============================================
 
     public async Task<CleanupActionExecutionResult>
@@ -105,17 +121,25 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         ArgumentNullException.ThrowIfNull(plan);
 
         /*
-         * Die vollständige fachliche
-         * Validierung bleibt erhalten.
+         * Vor jeder weiteren Verarbeitung
+         * den fachlichen Plan überprüfen.
          *
-         * Kein freier Befehlsaufruf.
-         * Nur eine Windows-Temp-Kategorie.
-         * Administratorrechte verpflichtend.
-         * Kein automatischer Neustart.
+         * Insbesondere:
+         * - Zulässiger TaskCode.
+         * - Zulässiger ActionCode.
+         * - Genau eine Windows-Temp-Kategorie.
+         * - Keine externen Befehle.
+         * - Administratorrechte angefordert.
+         * - Kein automatischer Neustart.
          */
         ValidatePlan(plan);
 
-        var startedAt = DateTimeOffset.Now;
+        var startedAt =
+            DateTimeOffset.Now;
+
+        // =========================================
+        // ABBRUCH VOR BEGINN
+        // =========================================
 
         if (cancellationToken.IsCancellationRequested)
         {
@@ -124,13 +148,18 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
                 startedAt);
         }
 
+        // =========================================
+        // EXKLUSIVE AUSFÜHRUNG
+        // =========================================
+
         /*
-         * Die bestehende Ausführungssperre
-         * wird unverändert übernommen.
+         * Die bestehende Systemaktionssperre
+         * wird auch für den neuen direkten
+         * C#-Ausführungspfad verwendet.
          *
-         * Auch der direkte C#-Ablauf darf
-         * nicht parallel zu einer anderen
-         * kontrollierten Systemaktion laufen.
+         * Der Lease bleibt während der
+         * gesamten Verarbeitung erhalten
+         * und wird automatisch freigegeben.
          */
         using var executionLease =
             _executionCoordinator.TryBeginExecution(
@@ -146,22 +175,20 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         }
 
         // =========================================
-        // AUSDRÜCKLICHE FREIGABESPERRE
+        // PRODUKTIVE FREIGABE PRÜFEN
         // =========================================
 
         /*
-         * Die neue Engine ist bereits
-         * implementiert und getestet.
+         * Die handle-basierte Engine ist
+         * implementiert und wurde bereits
+         * in Sandboxen getestet.
          *
-         * Eine Freigabe für produktive
-         * Windows-Temp-Verzeichnisse wurde
-         * jedoch noch nicht erteilt.
+         * Die Freigabe für das echte
+         * Windows-Temp-Verzeichnis steht
+         * jedoch weiterhin aus.
          *
-         * Deshalb erfolgt hier ein
-         * kontrollierter Sicherheitsstopp.
-         *
-         * Es gibt keinen Rückfall auf
-         * den bisherigen PowerShell-Ablauf.
+         * Deshalb bleibt dieser Pfad
+         * ausdrücklich gesperrt.
          */
         if (!HandleCleanupReleaseApproved)
         {
@@ -176,7 +203,7 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         }
 
         // =========================================
-        // HANDLE-ADAPTER AUSFÜHREN
+        // DIREKTE HANDLE-BEREINIGUNG
         // =========================================
 
         try
@@ -186,18 +213,19 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
 
             /*
              * Die Dateisystemverarbeitung
-             * erfolgt außerhalb des
-             * WPF-UI-Threads.
+             * darf den WPF-UI-Thread nicht
+             * blockieren.
              *
-             * Der CancellationToken wird
-             * unmittelbar weitergereicht.
+             * Der Abbruchtoken wird an den
+             * Handle-Adapter weitergereicht.
              *
-             * Task.Run erhält absichtlich
+             * Task.Run bekommt absichtlich
              * keinen eigenen Abbruchtoken,
-             * damit auch ein inzwischen
+             * damit auch ein kurzfristig
              * abgebrochener Start durch
-             * den Adapter eindeutig als
-             * Abbruchergebnis zurückkehrt.
+             * den Adapter als fachliches
+             * Abbruchergebnis dokumentiert
+             * werden kann.
              */
             var categoryResult =
                 await Task.Run(
@@ -207,22 +235,25 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
                                 plannedCategory,
                                 cancellationToken));
 
+            // =====================================
+            // ERGEBNIS ÜBERNEHMEN
+            // =====================================
+
             /*
-             * Der Adapter liefert bereits
-             * das persistierte Kategorieformat.
+             * Das Kategorieergebnis wird
+             * vollständig übernommen.
              *
-             * Insbesondere bleiben erhalten:
+             * Dadurch bleiben insbesondere
+             * erhalten:
              *
-             * - WasStarted
-             * - WasCancelled
-             * - TargetPath
-             * - DeletedFileCount
-             * - DeletedDirectoryCount
-             * - DeletedSizeBytes
-             * - FailedEntryCount
-             * - SkippedEntryCount
-             * - SkippedEntryReasons
-             * - ErrorMessage
+             * - Ausführungsstatus
+             * - Abbruchstatus
+             * - Zielbereich
+             * - Gelöschte Dateien und Ordner
+             * - Freigegebene Dateigröße
+             * - Technische Fehler
+             * - Übersprungene Einträge
+             * - Einzelne Überspringgründe
              */
             return new CleanupActionExecutionResult
             {
@@ -249,16 +280,18 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         catch (Exception exception)
         {
             /*
-             * Unerwartete Fehler werden
-             * ausdrücklich dokumentiert.
+             * Ein unerwarteter Fehler wird
+             * dokumentiert.
              *
-             * Kein automatischer Wiederanlauf.
-             * Kein Rückfall auf PowerShell.
+             * Keine automatische Wiederholung.
+             * Keine PowerShell-Ausweichlösung.
+             * Keine Änderung des Zielbereichs.
              */
             return CreateTechnicalFailureResult(
                 plan.Id,
                 startedAt,
-                string.IsNullOrWhiteSpace(exception.Message)
+                string.IsNullOrWhiteSpace(
+                    exception.Message)
                     ? "Die handle-basierte "
                       + "Windows-Temp-Bereinigung "
                       + "wurde unerwartet abgebrochen."
@@ -296,36 +329,40 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         {
             throw new InvalidOperationException(
                 "Der Aktionscode ist für die erhöhte "
-                + "Windows-Temp-Bereinigung nicht freigegeben.");
+                + "Windows-Temp-Bereinigung "
+                + "nicht freigegeben.");
         }
 
         if (plan.HasCommands)
         {
             throw new InvalidOperationException(
-                "Der Windows-Temp-Bereinigungsplan darf "
-                + "keine frei definierten externen Befehle "
-                + "enthalten.");
+                "Der Windows-Temp-Bereinigungsplan "
+                + "darf keine frei definierten "
+                + "externen Befehle enthalten.");
         }
 
         if (plan.CleanupCategories.Count != 1)
         {
             throw new InvalidOperationException(
-                "Für die erhöhte Windows-Temp-Bereinigung "
-                + "muss genau eine Kategorie ausgewählt sein.");
+                "Für die Windows-Temp-Bereinigung "
+                + "muss genau eine Kategorie "
+                + "ausgewählt sein.");
         }
 
         if (!plan.RequiresAdministrator)
         {
             throw new InvalidOperationException(
-                "Der Windows-Temp-Bereinigungsplan muss "
-                + "ausdrücklich Administratorrechte anfordern.");
+                "Der Windows-Temp-Bereinigungsplan "
+                + "muss ausdrücklich "
+                + "Administratorrechte anfordern.");
         }
 
         if (plan.MayRequireRestart)
         {
             throw new InvalidOperationException(
-                "Die Windows-Temp-Bereinigung darf keinen "
-                + "automatischen Neustart vorsehen.");
+                "Die Windows-Temp-Bereinigung "
+                + "darf keinen automatischen "
+                + "Neustart vorsehen.");
         }
 
         var category =
@@ -337,650 +374,13 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
             != CleanupCategoryType.WindowsTemporaryFiles)
         {
             throw new InvalidOperationException(
-                "Der übergebene Bereinigungsplan enthält "
+                "Der Bereinigungsplan enthält "
                 + "keine Windows-Temp-Kategorie.");
         }
     }
 
     // =============================================
-    // BISHERIGE POWERSHELL-HILFSMETHODEN
-    // =============================================
-
-    /*
-     * Die folgenden privaten Methoden
-     * bleiben zunächst erhalten.
-     *
-     * Bestehende Regressionstests greifen
-     * teilweise über Reflection auf diese
-     * Methoden und Ergebnisverträge zu.
-     *
-     * Sie gehören nicht mehr zum aktiven
-     * ExecuteAsync-Ausführungspfad.
-     *
-     * Eine Entfernung erfolgt erst
-     * gemeinsam mit der Überarbeitung
-     * der betroffenen Regressionstests.
-     */
-
-    // =============================================
-    // TEMPORÄREN ARBEITSBEREICH ERSTELLEN
-    // =============================================
-
-    private static string CreateTemporaryDirectory()
-    {
-        var temporaryRoot =
-            Path.GetFullPath(
-                Path.GetTempPath());
-
-        if (IsNetworkPath(temporaryRoot))
-        {
-            throw new InvalidOperationException(
-                "Die erhöhte Bereinigung darf keine "
-                + "temporären Netzwerkpfade verwenden.");
-        }
-
-        var temporaryDirectory =
-            Path.Combine(
-                temporaryRoot,
-                "WeberIT.Checkup",
-                "WindowsTempCleanup",
-                Guid.NewGuid().ToString("N"));
-
-        Directory.CreateDirectory(temporaryDirectory);
-
-        return temporaryDirectory;
-    }
-
-    // =============================================
-    // SKRIPT SCHREIBEN UND HASH ERMITTELN
-    // =============================================
-
-    private static string WriteCleanupScript(
-        string cleanupScriptPath,
-        string cleanupScript)
-    {
-        if (string.IsNullOrWhiteSpace(cleanupScriptPath))
-        {
-            throw new ArgumentException(
-                "Für das erhöhte Bereinigungsskript "
-                + "wurde kein Zielpfad angegeben.",
-                nameof(cleanupScriptPath));
-        }
-
-        if (string.IsNullOrWhiteSpace(cleanupScript))
-        {
-            throw new ArgumentException(
-                "Das erhöhte Bereinigungsskript ist leer.",
-                nameof(cleanupScript));
-        }
-
-        var normalizedScriptPath =
-            Path.GetFullPath(cleanupScriptPath);
-
-        if (IsNetworkPath(normalizedScriptPath))
-        {
-            throw new InvalidOperationException(
-                "Das erhöhte Bereinigungsskript darf nicht "
-                + "auf einem Netzwerkpfad gespeichert werden.");
-        }
-
-        var parentDirectory =
-            Path.GetDirectoryName(normalizedScriptPath);
-
-        if (string.IsNullOrWhiteSpace(parentDirectory)
-            || !Directory.Exists(parentDirectory))
-        {
-            throw new DirectoryNotFoundException(
-                "Der temporäre Ordner für das erhöhte "
-                + "Bereinigungsskript ist nicht vorhanden.");
-        }
-
-        File.WriteAllText(
-            normalizedScriptPath,
-            cleanupScript,
-            Encoding.Unicode);
-
-        if (!File.Exists(normalizedScriptPath))
-        {
-            throw new IOException(
-                "Das erhöhte Bereinigungsskript konnte nicht "
-                + "zuverlässig gespeichert werden.");
-        }
-
-        var writtenContent =
-            File.ReadAllText(
-                normalizedScriptPath,
-                Encoding.Unicode);
-
-        var scriptHashBytes =
-            SHA256.HashData(
-                Encoding.Unicode.GetBytes(writtenContent));
-
-        return Convert.ToHexString(scriptHashBytes);
-    }
-
-    // =============================================
-    // WINDOWS-POWERSHELL ERMITTELN
-    // =============================================
-
-    private static string ResolvePowerShellPath()
-    {
-        if (!OperatingSystem.IsWindows())
-        {
-            throw new PlatformNotSupportedException(
-                "Die erhöhte Windows-Temp-Bereinigung "
-                + "kann nur unter Windows ausgeführt werden.");
-        }
-
-        var windowsDirectory =
-            Environment.GetFolderPath(
-                Environment.SpecialFolder.Windows);
-
-        if (string.IsNullOrWhiteSpace(windowsDirectory))
-        {
-            throw new InvalidOperationException(
-                "Das Windows-Verzeichnis konnte nicht "
-                + "eindeutig bestimmt werden.");
-        }
-
-        var powershellPath =
-            Path.GetFullPath(
-                Path.Combine(
-                    windowsDirectory,
-                    "System32",
-                    "WindowsPowerShell",
-                    "v1.0",
-                    "powershell.exe"));
-
-        if (IsNetworkPath(powershellPath)
-            || !File.Exists(powershellPath))
-        {
-            throw new FileNotFoundException(
-                "Die lokale Windows-PowerShell wurde nicht "
-                + "am erwarteten Systempfad gefunden.",
-                powershellPath);
-        }
-
-        return powershellPath;
-    }
-
-    // =============================================
-    // INTEGRITÄTSGEPRÜFTEN STARTER ERZEUGEN
-    // =============================================
-
-    private static string BuildVerifiedLauncherScript(
-        string cleanupScriptPath,
-        string expectedScriptHash)
-    {
-        return
-            WindowsTemporaryFilesVerifiedLauncherScript
-                .Build(
-                    cleanupScriptPath,
-                    expectedScriptHash);
-    }
-
-    // =============================================
-    // BEREINIGUNGSSKRIPT ERZEUGEN
-    // =============================================
-
-    private static string BuildCleanupScript(
-        string cancellationMarkerPath,
-        string resultFilePath)
-    {
-        return
-            WindowsTemporaryFilesCleanupPowerShellScript
-                .Build(
-                    cancellationMarkerPath,
-                    resultFilePath);
-    }
-
-    // =============================================
-    // WORKER-ERGEBNIS EINLESEN
-    // =============================================
-
-    private static WindowsTemporaryFilesWorkerResult
-        ParseWorkerResult(
-            string resultFilePath,
-            ProcessExecutionResult processResult)
-    {
-        var resultFileReadError = string.Empty;
-
-        if (File.Exists(resultFilePath))
-        {
-            try
-            {
-                var resultFileContent =
-                    File.ReadAllText(resultFilePath);
-
-                if (TryDeserializeWorkerResult(
-                        resultFileContent,
-                        out var fileResult))
-                {
-                    return fileResult;
-                }
-
-                resultFileReadError =
-                    "Die Ergebnisdatei war vorhanden, enthielt "
-                    + "aber kein gültiges JSON-Ergebnis.";
-            }
-            catch (Exception exception)
-            {
-                resultFileReadError =
-                    "Die Ergebnisdatei konnte nicht gelesen "
-                    + "werden: "
-                    + exception.Message;
-            }
-        }
-        else
-        {
-            resultFileReadError =
-                "Die erhöhte Ausführung hat keine "
-                + "Ergebnisdatei angelegt.";
-        }
-
-        if (TryParseWorkerResultFromOutput(
-                processResult.StandardOutput,
-                out var outputResult))
-        {
-            return outputResult;
-        }
-
-        var diagnosticParts =
-            new List<string>
-            {
-                "Der erhöhte Bereinigungsprozess lieferte "
-                + "kein auswertbares technisches Ergebnis.",
-
-                resultFileReadError
-            };
-
-        if (!string.IsNullOrWhiteSpace(
-                processResult.StandardError))
-        {
-            diagnosticParts.Add(
-                "PowerShell-Fehlerausgabe:"
-                + Environment.NewLine
-                + LimitDiagnosticText(
-                    processResult.StandardError));
-        }
-
-        if (!string.IsNullOrWhiteSpace(
-                processResult.StandardOutput))
-        {
-            diagnosticParts.Add(
-                "PowerShell-Standardausgabe:"
-                + Environment.NewLine
-                + LimitDiagnosticText(
-                    processResult.StandardOutput));
-        }
-
-        if (!string.IsNullOrWhiteSpace(
-                processResult.ErrorMessage))
-        {
-            diagnosticParts.Add(
-                "Prozessfehler:"
-                + Environment.NewLine
-                + LimitDiagnosticText(
-                    processResult.ErrorMessage));
-        }
-
-        diagnosticParts.Add(
-            "Exitcode: "
-            + (processResult.ExitCode?.ToString()
-               ?? "nicht verfügbar"));
-
-        throw new InvalidOperationException(
-            string.Join(
-                Environment.NewLine
-                + Environment.NewLine,
-                diagnosticParts.Where(
-                    part => !string.IsNullOrWhiteSpace(part))));
-    }
-
-    private static bool TryDeserializeWorkerResult(
-        string json,
-        out WindowsTemporaryFilesWorkerResult result)
-    {
-        result =
-            new WindowsTemporaryFilesWorkerResult();
-
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return false;
-        }
-
-        try
-        {
-            var deserializedResult =
-                JsonSerializer.Deserialize<
-                    WindowsTemporaryFilesWorkerResult>(
-                    json.Trim(),
-                    JsonOptions);
-
-            if (deserializedResult is null)
-            {
-                return false;
-            }
-
-            result = deserializedResult;
-
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
-
-    private static bool TryParseWorkerResultFromOutput(
-        string standardOutput,
-        out WindowsTemporaryFilesWorkerResult result)
-    {
-        result =
-            new WindowsTemporaryFilesWorkerResult();
-
-        if (string.IsNullOrWhiteSpace(standardOutput))
-        {
-            return false;
-        }
-
-        var outputLines =
-            standardOutput
-                .Split(
-                    new[]
-                    {
-                        "\r\n",
-                        "\n",
-                        "\r"
-                    },
-                    StringSplitOptions.RemoveEmptyEntries)
-                .Select(line => line.Trim())
-                .Where(
-                    line =>
-                        line.StartsWith(
-                            "{",
-                            StringComparison.Ordinal)
-                        && line.EndsWith(
-                            "}",
-                            StringComparison.Ordinal))
-                .Reverse();
-
-        foreach (var outputLine in outputLines)
-        {
-            if (TryDeserializeWorkerResult(
-                    outputLine,
-                    out result))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static string LimitDiagnosticText(
-        string text)
-    {
-        var normalizedText = text.Trim();
-
-        if (normalizedText.Length <= MaximumDiagnosticLength)
-        {
-            return normalizedText;
-        }
-
-        return normalizedText[..MaximumDiagnosticLength]
-               + Environment.NewLine
-               + "… technische Ausgabe gekürzt.";
-    }
-
-    // =============================================
-    // ERGEBNIS VALIDIEREN
-    // =============================================
-
-    private static void ValidateWorkerResult(
-        WindowsTemporaryFilesWorkerResult result)
-    {
-        ArgumentNullException.ThrowIfNull(result);
-
-        if (result.DeletedFileCount < 0
-            || result.DeletedDirectoryCount < 0
-            || result.FailedEntryCount < 0
-            || result.SkippedEntryCount < 0)
-        {
-            throw new InvalidOperationException(
-                "Das erhöhte Bereinigungsergebnis enthält "
-                + "ungültige Zählerwerte.");
-        }
-
-        if (!result.WasStarted
-            && (result.DeletedFileCount > 0
-                || result.DeletedDirectoryCount > 0
-                || result.DeletedSizeBytes > 0))
-        {
-            throw new InvalidOperationException(
-                "Das erhöhte Bereinigungsergebnis meldet "
-                + "Dateiänderungen ohne gestartete Ausführung.");
-        }
-
-        if (result.WasStarted)
-        {
-            if (string.IsNullOrWhiteSpace(result.TargetPath))
-            {
-                throw new InvalidOperationException(
-                    "Der erhöhte Bereinigungsprozess meldete "
-                    + "keinen eindeutigen Zielpfad.");
-            }
-
-            var expectedTargetPath =
-                ResolveWindowsTemporaryDirectory();
-
-            var reportedTargetPath =
-                NormalizeDirectoryPath(result.TargetPath);
-
-            if (!string.Equals(
-                    expectedTargetPath,
-                    reportedTargetPath,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException(
-                    "Der erhöhte Bereinigungsprozess meldete "
-                    + "einen nicht freigegebenen Zielbereich.");
-            }
-        }
-
-        if (!result.WasStarted
-            && !result.WasCancelled
-            && string.IsNullOrWhiteSpace(result.ErrorMessage))
-        {
-            throw new InvalidOperationException(
-                "Der erhöhte Bereinigungsprozess wurde "
-                + "nicht eindeutig gestartet oder abgebrochen.");
-        }
-    }
-
-    private static string ResolveWindowsTemporaryDirectory()
-    {
-        var windowsDirectory =
-            Environment.GetFolderPath(
-                Environment.SpecialFolder.Windows);
-
-        if (string.IsNullOrWhiteSpace(windowsDirectory))
-        {
-            throw new InvalidOperationException(
-                "Das Windows-Verzeichnis konnte nicht "
-                + "eindeutig bestimmt werden.");
-        }
-
-        return NormalizeDirectoryPath(
-            Path.Combine(
-                windowsDirectory,
-                "Temp"));
-    }
-
-    private static string NormalizeDirectoryPath(
-        string path)
-    {
-        var fullPath = Path.GetFullPath(path);
-        var rootPath = Path.GetPathRoot(fullPath);
-
-        if (string.IsNullOrWhiteSpace(rootPath))
-        {
-            throw new InvalidOperationException(
-                "Der Pfad besitzt kein eindeutiges "
-                + "lokales Stammverzeichnis.");
-        }
-
-        if (string.Equals(
-                fullPath,
-                rootPath,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return fullPath;
-        }
-
-        return fullPath.TrimEnd(
-            Path.DirectorySeparatorChar,
-            Path.AltDirectorySeparatorChar);
-    }
-
-    // =============================================
-    // KATEGORIEERGEBNIS ERSTELLEN
-    // =============================================
-
-    private static CleanupActionCategoryExecutionResult
-        CreateCategoryResult(
-            CleanupActionCategory category,
-            WindowsTemporaryFilesWorkerResult workerResult)
-    {
-        var skippedEntryReasons =
-            WindowsTemporaryFilesSkipReasonContract
-                .Normalize(
-                    workerResult.SkippedEntryReasons,
-                    workerResult.SkippedEntryCount);
-
-        return new CleanupActionCategoryExecutionResult
-        {
-            Category =
-                CleanupCategoryType.WindowsTemporaryFiles,
-
-            CategoryTitle =
-                string.IsNullOrWhiteSpace(category.Title)
-                    ? "Windows-Temp"
-                    : category.Title,
-
-            TargetPath =
-                workerResult.TargetPath,
-
-            WasStarted =
-                workerResult.WasStarted,
-
-            WasCancelled =
-                workerResult.WasCancelled,
-
-            DeletedFileCount =
-                workerResult.DeletedFileCount,
-
-            DeletedDirectoryCount =
-                workerResult.DeletedDirectoryCount,
-
-            DeletedSizeBytes =
-                workerResult.DeletedSizeBytes,
-
-            FailedEntryCount =
-                workerResult.FailedEntryCount,
-
-            SkippedEntryCount =
-                workerResult.SkippedEntryCount,
-
-            SkippedEntryReasons =
-                skippedEntryReasons,
-
-            ErrorMessage =
-                workerResult.ErrorMessage
-        };
-    }
-
-    // =============================================
-    // GESAMTSTATUS BESTIMMEN
-    // =============================================
-
-    private static string DetermineOverallErrorMessage(
-        CleanupActionCategoryExecutionResult categoryResult,
-        ProcessExecutionResult processResult,
-        WindowsTemporaryFilesWorkerResult workerResult)
-    {
-        if (workerResult.WasCancelled)
-        {
-            return string.Empty;
-        }
-
-        if (!string.IsNullOrWhiteSpace(
-                workerResult.ErrorMessage))
-        {
-            return workerResult.ErrorMessage;
-        }
-
-        if (processResult.ExitCode.HasValue
-            && processResult.ExitCode.Value != 0)
-        {
-            if (!string.IsNullOrWhiteSpace(
-                    processResult.StandardError))
-            {
-                return
-                    "Die erhöhte PowerShell-Ausführung wurde "
-                    + "mit einem Fehler beendet: "
-                    + processResult.StandardError.Trim();
-            }
-
-            return
-                "Die erhöhte Windows-Temp-Bereinigung "
-                + "wurde mit Exitcode "
-                + processResult.ExitCode.Value
-                + " beendet.";
-        }
-
-        if (categoryResult.IsSuccessful
-            || categoryResult.IsPartiallySuccessful)
-        {
-            return string.Empty;
-        }
-
-        if (!string.IsNullOrWhiteSpace(
-                processResult.ErrorMessage))
-        {
-            return processResult.ErrorMessage;
-        }
-
-        return
-            "Die Windows-Temp-Bereinigung konnte nicht "
-            + "ausreichend technisch abgeschlossen werden.";
-    }
-
-    private static string BuildProcessFailureMessage(
-        ProcessExecutionResult processResult)
-    {
-        if (!string.IsNullOrWhiteSpace(
-                processResult.ErrorMessage))
-        {
-            return processResult.ErrorMessage;
-        }
-
-        if (!string.IsNullOrWhiteSpace(
-                processResult.StandardError))
-        {
-            return
-                "Die erhöhte Windows-Temp-Bereinigung "
-                + "konnte nicht gestartet werden: "
-                + processResult.StandardError.Trim();
-        }
-
-        return
-            "Die erhöhte Windows-Temp-Bereinigung "
-            + "konnte nicht technisch gestartet werden.";
-    }
-
-    // =============================================
-    // AUSFÜHRUNGSKOORDINATION
+    // LAUFENDE SYSTEMAKTION BESCHREIBEN
     // =============================================
 
     private string BuildExecutionBlockedMessage()
@@ -988,24 +388,30 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         if (!_executionCoordinator.IsExecutionRunning)
         {
             return
-                "Die Windows-Temp-Bereinigung konnte "
-                + "nicht exklusiv gesperrt werden.";
+                "Die Windows-Temp-Bereinigung "
+                + "konnte nicht exklusiv "
+                + "gesperrt werden.";
         }
 
         if (string.IsNullOrWhiteSpace(
                 _executionCoordinator.ActiveActionTitle))
         {
             return
-                "Eine andere technische Systemaktion "
-                + "wird bereits ausgeführt.";
+                "Eine andere technische "
+                + "Systemaktion wird bereits "
+                + "ausgeführt.";
         }
 
         return
-            "Die Windows-Temp-Bereinigung kann noch nicht "
-            + "gestartet werden, weil bereits folgende "
-            + "Aktion läuft: "
+            "Die Windows-Temp-Bereinigung "
+            + "kann noch nicht gestartet werden, "
+            + "weil bereits folgende Aktion läuft: "
             + _executionCoordinator.ActiveActionTitle;
     }
+
+    // =============================================
+    // BLOCKIERTES ERGEBNIS
+    // =============================================
 
     private static CleanupActionExecutionResult
         CreateBlockedResult(
@@ -1023,6 +429,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         };
     }
 
+    // =============================================
+    // ABBRUCH VOR START
+    // =============================================
+
     private static CleanupActionExecutionResult
         CreateCancelledBeforeStartResult(
             Guid planId,
@@ -1037,6 +447,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         };
     }
 
+    // =============================================
+    // TECHNISCHER FEHLER
+    // =============================================
+
     private static CleanupActionExecutionResult
         CreateTechnicalFailureResult(
             Guid planId,
@@ -1050,104 +464,5 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
             StartedAt = startedAt,
             FinishedAt = DateTimeOffset.Now
         };
-    }
-
-    // =============================================
-    // ABBRUCHMARKER UND AUFRÄUMEN
-    // =============================================
-
-    private static void TryCreateCancellationMarker(
-        string cancellationMarkerPath)
-    {
-        try
-        {
-            var parentDirectory =
-                Path.GetDirectoryName(
-                    cancellationMarkerPath);
-
-            if (string.IsNullOrWhiteSpace(parentDirectory)
-                || !Directory.Exists(parentDirectory))
-            {
-                return;
-            }
-
-            File.WriteAllText(
-                cancellationMarkerPath,
-                "cancel");
-        }
-        catch
-        {
-            // Fehler beim Abbruchmarker dürfen
-            // das eigentliche Ergebnis nicht
-            // verändern.
-        }
-    }
-
-    private static void TryDeleteTemporaryDirectory(
-        string temporaryDirectory)
-    {
-        if (string.IsNullOrWhiteSpace(temporaryDirectory))
-        {
-            return;
-        }
-
-        try
-        {
-            if (Directory.Exists(temporaryDirectory))
-            {
-                Directory.Delete(
-                    temporaryDirectory,
-                    recursive: true);
-            }
-        }
-        catch
-        {
-            // Historischer Testhelfer.
-        }
-    }
-
-    private static bool IsNetworkPath(
-        string path)
-    {
-        return path.StartsWith(
-                   @"\\",
-                   StringComparison.Ordinal)
-               || path.StartsWith(
-                   "//",
-                   StringComparison.Ordinal);
-    }
-
-    // =============================================
-    // JSON-DATENVERTRAG DES BISHERIGEN WORKERS
-    // =============================================
-
-    private sealed class WindowsTemporaryFilesWorkerResult
-    {
-        public bool WasStarted { get; set; }
-
-        public bool WasCancelled { get; set; }
-
-        public string TargetPath { get; set; } =
-            string.Empty;
-
-        public long DeletedFileCount { get; set; }
-
-        public long DeletedDirectoryCount { get; set; }
-
-        public ulong DeletedSizeBytes { get; set; }
-
-        public long FailedEntryCount { get; set; }
-
-        public long SkippedEntryCount { get; set; }
-
-        public List<WindowsTemporaryFilesSkipReasonRecord?>?
-            SkippedEntryReasons
-        {
-            get;
-            set;
-        }
-
-        public string ErrorMessage { get; set; } =
-            string.Empty;
     }
 }
