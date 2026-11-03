@@ -1,7 +1,21 @@
-﻿using WeberIT.Checkup.App.Models;
+﻿
+using WeberIT.Checkup.App.Models;
 
 namespace WeberIT.Checkup.App.Services.Tasks;
 
+/// <summary>
+/// Sprint 55.14.30a
+///
+/// Erstellt geprüfte Kopien kontrollierter
+/// Bereinigungspläne.
+///
+/// Die Windows-Temp-Bereinigung bleibt
+/// bis zur ausdrücklichen Produktivfreigabe
+/// ausschließlich als Vorschau verfügbar.
+///
+/// Keine Änderung an der Bereinigungs-Engine.
+/// Keine produktiven Löschoperationen.
+/// </summary>
 internal static class CleanupActionPlanSnapshot
 {
     private const string RestoreCapacityTaskCode =
@@ -12,6 +26,10 @@ internal static class CleanupActionPlanSnapshot
 
     private const string SupportedActionCode =
         "action.cleanup.selected-safe-categories";
+
+    // =============================================
+    // VORSCHAU ERSTELLEN
+    // =============================================
 
     public static CheckupTaskActionPlan CreatePreviewCopy(
         CheckupTaskActionPlan plan)
@@ -78,6 +96,10 @@ internal static class CleanupActionPlanSnapshot
         return copy;
     }
 
+    // =============================================
+    // AUSFÜHRBARE KOPIE ERSTELLEN
+    // =============================================
+
     public static CheckupTaskActionPlan CreateExecutableCopy(
         CheckupTaskActionPlan plan)
     {
@@ -90,6 +112,10 @@ internal static class CleanupActionPlanSnapshot
 
         return copy;
     }
+
+    // =============================================
+    // AUSFÜHRBARKEIT PRÜFEN
+    // =============================================
 
     public static bool CanExecute(
         CheckupTaskActionPlan plan)
@@ -105,6 +131,17 @@ internal static class CleanupActionPlanSnapshot
         var category =
             plan.CleanupCategories[0];
 
+        /*
+         * Windows-Temp wird derzeit bewusst
+         * nicht als ausführbar eingestuft.
+         *
+         * Die neue Handle-Engine existiert,
+         * die produktive Sicherheitsfreigabe
+         * ist aber noch nicht erteilt.
+         *
+         * Deshalb darf die Planvorschau
+         * keinen ausführbaren Start anbieten.
+         */
         return IsExecutableCategory(
                    category)
                && HasMatchingAdministratorRequirement(
@@ -112,6 +149,10 @@ internal static class CleanupActionPlanSnapshot
                    category)
                && !plan.MayRequireRestart;
     }
+
+    // =============================================
+    // AUSFÜHRBARKEIT BESCHREIBEN
+    // =============================================
 
     public static string GetExecutionAvailabilityText(
         CheckupTaskActionPlan plan)
@@ -130,6 +171,40 @@ internal static class CleanupActionPlanSnapshot
 
         var category =
             plan.CleanupCategories[0];
+
+        // =========================================
+        // WINDOWS-TEMP: SICHERHEITSSPERRE
+        // =========================================
+
+        /*
+         * Die Vorschau bleibt erlaubt.
+         *
+         * Die produktive Ausführung wird
+         * dagegen erst nach Abschluss der
+         * Sicherheitsprüfung freigegeben.
+         *
+         * Eine zusätzliche UAC-Bestätigung
+         * beim Aktionsstart wird ausdrücklich
+         * nicht behauptet:
+         *
+         * Das aktuelle App-Manifest fordert
+         * Administratorrechte bereits beim
+         * Programmstart an.
+         */
+        if (category.Category
+            == CleanupCategoryType.WindowsTemporaryFiles)
+        {
+            return
+                "Die Windows-Temp-Bereinigung befindet "
+                + "sich noch in der Sicherheitsprüfung. "
+                + "Der Bereinigungsplan kann eingesehen "
+                + "werden, die technische Ausführung "
+                + "ist derzeit jedoch gesperrt. "
+                + "Es werden keine Dateien gelöscht. "
+                + "Die Anwendung fordert gemäß ihrem "
+                + "aktuellen Manifest Administratorrechte "
+                + "bereits beim Programmstart an.";
+        }
 
         if (!IsExecutableCategory(
                 category))
@@ -172,23 +247,16 @@ internal static class CleanupActionPlanSnapshot
                 + "sein. Das Tool beendet keine Prozesse selbst.";
         }
 
-        if (category.Category
-            == CleanupCategoryType.WindowsTemporaryFiles)
-        {
-            return
-                "Windows-Temp kann nach vollständiger Prüfung "
-                + "und ausdrücklicher Bestätigung erhöht "
-                + "bereinigt werden. Windows fordert hierfür "
-                + "eine separate Administratorbestätigung an. "
-                + "Der Temp-Stammordner bleibt bestehen.";
-        }
-
         return
             "Dieser Plan enthält genau eine sicher freigegebene "
             + "Bereinigungskategorie und kann nach vollständiger "
             + "Prüfung und ausdrücklicher Bestätigung "
             + "kontrolliert ausgeführt werden.";
     }
+
+    // =============================================
+    // BEREINIGUNGSPLAN VALIDIEREN
+    // =============================================
 
     private static void ValidateCleanupPlan(
         CheckupTaskActionPlan plan)
@@ -240,6 +308,10 @@ internal static class CleanupActionPlanSnapshot
         }
     }
 
+    // =============================================
+    // AUSFÜHRBAREN PLAN VALIDIEREN
+    // =============================================
+
     private static void ValidateExecutablePlan(
         CheckupTaskActionPlan plan)
     {
@@ -279,16 +351,35 @@ internal static class CleanupActionPlanSnapshot
         }
     }
 
+    // =============================================
+    // TECHNISCH AUSFÜHRBARE KATEGORIEN
+    // =============================================
+
     private static bool IsExecutableCategory(
         CleanupActionCategory category)
     {
+        /*
+         * WindowsTemporaryFiles ist hier
+         * bewusst nicht enthalten.
+         *
+         * Die Kategorie bleibt analysierbar
+         * und in der Planvorschau sichtbar.
+         *
+         * Erst mit der späteren ausdrücklichen
+         * Freigabe darf diese Sperre zusammen
+         * mit der Executor-Freigabesperre
+         * überprüft und geändert werden.
+         */
         return category.Category
             is CleanupCategoryType.UserTemporaryFiles
-            or CleanupCategoryType.WindowsTemporaryFiles
             or CleanupCategoryType.DirectXShaderCache
             or CleanupCategoryType.ThumbnailCache
             or CleanupCategoryType.BrowserCache;
     }
+
+    // =============================================
+    // RECHTEANFORDERUNG VERGLEICHEN
+    // =============================================
 
     private static bool HasMatchingAdministratorRequirement(
         CheckupTaskActionPlan plan,
@@ -301,6 +392,10 @@ internal static class CleanupActionPlanSnapshot
         return plan.RequiresAdministrator
                == expectedAdministratorRequirement;
     }
+
+    // =============================================
+    // KATEGORIE SICHER KOPIEREN
+    // =============================================
 
     private static CleanupActionCategory CloneCategory(
         CleanupActionCategory category)
