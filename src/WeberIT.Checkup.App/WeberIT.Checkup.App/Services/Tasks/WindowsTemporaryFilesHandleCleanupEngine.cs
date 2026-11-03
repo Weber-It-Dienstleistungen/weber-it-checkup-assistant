@@ -11,38 +11,56 @@ using WeberIT.Checkup.App.Models;
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.14.31a
+/// Sprint 55.14.32a
 ///
-/// Koordiniert einen vollständigen,
-/// handle-basierten Bereinigungslauf.
+/// Handle-basierte Windows-Temp-Bereinigungs-Engine.
 ///
-/// Verwendet ausschließlich die bereits
-/// entwickelten Klassen für:
+/// Sicherheitsregeln:
+/// - Ausschließlich bereits geöffneten Stammhandle verwenden.
+/// - Stammordner niemals löschen.
+/// - Verknüpfungen und geschützte Einträge überspringen.
+/// - Identitätsprüfungen durch die Handle-Klassen.
+/// - Keine Berechtigungen verändern.
+/// - Keine erzwungene rekursive Löschung.
+/// - Keine automatische Wiederholung.
+/// - Bereits erfolgte Änderungen dokumentieren.
 ///
-/// - Verzeichnisaufzählung
-/// - Prüfung von Dateiobjekten
-/// - Dateilöschung über Handles
-/// - Nichtrekursive Verzeichnislöschung
+/// Schwerwiegende Fehler müssen auch aus
+/// verschachtelten Verzeichnissen bis zur
+/// zentralen Fehlerbehandlung gelangen.
 ///
-/// Der Stammordner wird nicht gelöscht.
+/// Die produktive Freigabe bleibt im Executor
+/// ausdrücklich deaktiviert.
 ///
-/// Die produktive Freigabe bleibt im
-/// WindowsTemporaryFilesCleanupExecutor
-/// ausdrücklich gesperrt.
-///
-/// Neuer Debug-Testzugang:
-/// Ein Regressionstest kann nach der ersten
-/// erfolgreich dokumentierten Dateilöschung
-/// kontrolliert einen Abbruch anfordern.
-///
-/// Keine zeitgesteuerten Testabbrüche.
-/// Keine Änderung der produktiven Löschlogik.
+/// Testfunktionen sind nur im Debug-Build
+/// verfügbar.
 /// </summary>
 internal static class WindowsTemporaryFilesHandleCleanupEngine
 {
     private const int MaximumDirectoryDepth = 64;
 
     private const long MaximumProcessedEntries = 100000;
+
+    // =============================================
+    // SCHWERWIEGENDER ENGINE-FEHLER
+    // =============================================
+
+    /// <summary>
+    /// Kennzeichnet einen Fehler, nach dem
+    /// der gesamte Bereinigungslauf beendet
+    /// werden muss.
+    ///
+    /// Solche Fehler dürfen nicht als
+    /// gewöhnlicher Dateifehler behandelt
+    /// und anschließend ignoriert werden.
+    /// </summary>
+    private sealed class FatalCleanupException : Exception
+    {
+        public FatalCleanupException(string message)
+            : base(message)
+        {
+        }
+    }
 
     // =============================================
     // ERGEBNISMODELL
@@ -94,24 +112,15 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 #if DEBUG
 
     // =============================================
-    // AUSSCHLIESSLICH DEBUG-REGRESSIONSTEST
+    // DEBUG: KONTROLLIERTER ABBRUCH
     // =============================================
 
     /// <summary>
-    /// Ermöglicht einen deterministischen
-    /// Abbruchtest ausschließlich im Debug-Build.
+    /// Fordert nach der ersten erfolgreich
+    /// dokumentierten Dateilöschung über
+    /// einen Callback einen Abbruch an.
     ///
-    /// Der Test übergibt ein zuvor geprüftes
-    /// Stammhandle seiner eigenen GUID-Sandbox.
-    ///
-    /// Nach der ersten erfolgreich dokumentierten
-    /// Dateilöschung wird der Callback aufgerufen.
-    ///
-    /// Dieser kann den übergebenen
-    /// CancellationToken abbrechen.
-    ///
-    /// Die Funktion autorisiert ausdrücklich
-    /// keine produktiven Zielpfade.
+    /// Ausschließlich für Regressionstests.
     /// </summary>
     internal static ExecutionResult
         ExecuteForCancellationRegressionTest(
@@ -126,6 +135,37 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
             approvedRootDirectory,
             cancellationToken,
             cancelAfterFirstDeletedFile);
+    }
+
+    // =============================================
+    // DEBUG: SCHWERWIEGENDER FEHLER
+    // =============================================
+
+    /// <summary>
+    /// Simuliert nach der ersten erfolgreich
+    /// dokumentierten Dateilöschung einen
+    /// schwerwiegenden Engine-Fehler.
+    ///
+    /// Ausschließlich für Regressionstests
+    /// mit einer eigenen GUID-Sandbox.
+    ///
+    /// Der Fehler muss den gesamten Lauf
+    /// beenden und bereits dokumentierte
+    /// Änderungen im Ergebnis erhalten.
+    ///
+    /// Die Methode autorisiert keine
+    /// produktiven Windows-Temp-Zielpfade.
+    /// </summary>
+    internal static ExecutionResult
+        ExecuteForUnexpectedFailureRegressionTest(
+            SafeFileHandle approvedRootDirectory)
+    {
+        return ExecuteCore(
+            approvedRootDirectory,
+            CancellationToken.None,
+            () => throw new FatalCleanupException(
+                "Simulierter schwerwiegender Fehler "
+                + "nach der ersten Dateilöschung."));
     }
 
 #endif
@@ -157,13 +197,16 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
                 + "ist ungültig.");
         }
 
+        // =========================================
+        // STAMMHANDLE PRÜFEN
+        // =========================================
+
         /*
-         * Den Stamm vor Beginn überprüfen.
+         * Die produktive Autorisierung des
+         * Zielbereichs ist Aufgabe des Aufrufers.
          *
-         * Der spätere produktive Aufrufer
-         * muss zusätzlich die Zielidentität
-         * und den erlaubten Zielbereich
-         * ausdrücklich kontrollieren.
+         * Die Engine prüft zusätzlich die
+         * Eigenschaften des geöffneten Stamms.
          */
         var rootSnapshot =
             WindowsTemporaryFilesHandleAccess
@@ -199,6 +242,10 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
         state.WasStarted = true;
 
+        // =========================================
+        // BEREINIGUNG AUSFÜHREN
+        // =========================================
+
         try
         {
             ProcessDirectory(
@@ -208,15 +255,9 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
                 cancellationToken);
 
             /*
-             * Auch nach dem letzten Eintrag
-             * einen inzwischen angeforderten
-             * Abbruch berücksichtigen.
-             *
-             * Dadurch wird ein unmittelbar
-             * nach der letzten Änderung
-             * eingetroffener Abbruch nicht
-             * versehentlich als normal
-             * abgeschlossener Lauf gemeldet.
+             * Auch einen unmittelbar nach
+             * der letzten Dateiverarbeitung
+             * angeforderten Abbruch erfassen.
              */
             cancellationToken.ThrowIfCancellationRequested();
         }
@@ -228,15 +269,13 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
         catch (Exception exception)
         {
             /*
-             * Ein unerwarteter Fehler beendet
-             * den gesamten Durchlauf.
+             * Schwerwiegender Fehler:
              *
-             * Bereits erfolgreich entfernte
-             * Einträge bleiben im Ergebnis
-             * dokumentiert.
+             * Keine weitere Verarbeitung.
+             * Kein automatischer Wiederanlauf.
              *
-             * Es erfolgt kein automatischer
-             * Wiederholungsversuch.
+             * Bereits dokumentierte Löschungen
+             * bleiben vollständig erhalten.
              */
             state.RecordFatalError(
                 exception);
@@ -249,18 +288,6 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
     // VERZEICHNIS VERARBEITEN
     // =============================================
 
-    /// <summary>
-    /// Durchsucht den geöffneten Ordner
-    /// und bearbeitet dessen direkte Einträge.
-    ///
-    /// Rückgabe false:
-    /// Die Verarbeitung war unvollständig.
-    /// Der Aufrufer darf den Ordner anschließend
-    /// nicht als vollständig bereinigt behandeln.
-    ///
-    /// Der geöffnete Stammordner selbst
-    /// wird niemals gelöscht.
-    /// </summary>
     private static bool ProcessDirectory(
         SafeFileHandle directoryHandle,
         int depth,
@@ -271,7 +298,7 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
         if (depth > MaximumDirectoryDepth)
         {
-            throw new InvalidOperationException(
+            throw new FatalCleanupException(
                 "Die maximale Sicherheitstiefe "
                 + "der Verzeichnisdurchsuchung "
                 + "wurde überschritten.");
@@ -280,6 +307,10 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
         IReadOnlyList<
             WindowsTemporaryFilesHandleDirectoryEnumeration.DirectoryEntry>
             entries;
+
+        // =========================================
+        // DIREKTE EINTRÄGE AUFZÄHLEN
+        // =========================================
 
         try
         {
@@ -294,6 +325,10 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
         {
             throw;
         }
+        catch (FatalCleanupException)
+        {
+            throw;
+        }
         catch (Exception exception)
         {
             state.RecordEntryException(
@@ -302,6 +337,10 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
             return false;
         }
+
+        // =========================================
+        // EINTRÄGE EINZELN VERARBEITEN
+        // =========================================
 
         foreach (var entry in entries)
         {
@@ -312,7 +351,16 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
             if (state.ProcessedEntryCount
                 > MaximumProcessedEntries)
             {
-                throw new InvalidOperationException(
+                /*
+                 * Die Sicherheitsgrenze ist
+                 * global für den gesamten
+                 * Bereinigungslauf gültig.
+                 *
+                 * Der Fehler muss daher auch
+                 * aus Unterordnern bis nach
+                 * ExecuteCore gelangen.
+                 */
+                throw new FatalCleanupException(
                     "Die Sicherheitsgrenze für "
                     + "die Gesamtzahl verarbeiteter "
                     + "Einträge wurde überschritten.");
@@ -347,10 +395,6 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
          * Bereits bei der Aufzählung
          * erkannte Verknüpfungen niemals
          * betreten.
-         *
-         * Eine spätere echte Löschung
-         * verlässt sich trotzdem nicht
-         * auf dieses Aufzählungsattribut.
          */
         if (entry.IsListedReparsePoint)
         {
@@ -363,14 +407,10 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
         WindowsTemporaryFilesHandleAccess.EntrySnapshot
             inspectedSnapshot;
 
-        /*
-         * Den Eintrag relativ zum geöffneten
-         * Elternhandle untersuchen.
-         *
-         * Der Untersuchungshandle wird
-         * anschließend geschlossen, bevor
-         * ein exklusiver Löschversuch erfolgt.
-         */
+        // =========================================
+        // EINTRAG ÜBER HANDLE UNTERSUCHEN
+        // =========================================
+
         try
         {
             using var inspectionHandle =
@@ -392,6 +432,10 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
             return;
         }
+
+        // =========================================
+        // SCHUTZATTRIBUTE BERÜCKSICHTIGEN
+        // =========================================
 
         if (inspectedSnapshot.IsReparsePoint)
         {
@@ -416,6 +460,10 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
             return;
         }
+
+        // =========================================
+        // DATEI ODER UNTERORDNER
+        // =========================================
 
         if (inspectedSnapshot.IsDirectory)
         {
@@ -452,14 +500,18 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        // =========================================
+        // KONTROLLIERTE DATEILÖSCHUNG
+        // =========================================
+
         try
         {
             /*
              * Die Löschklasse öffnet die Datei
              * erneut relativ zum Elternhandle,
-             * prüft ihre tatsächliche Identität
-             * und löscht ausschließlich
-             * über den geprüften Handle.
+             * kontrolliert ihre Identität
+             * und löscht ausschließlich über
+             * den geprüften Handle.
              */
             var deleted =
                 WindowsTemporaryFilesHandleDeletion
@@ -468,15 +520,48 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
                         entryName,
                         inspectedSnapshot);
 
+            /*
+             * Das bestätigte Ergebnis wird
+             * unmittelbar dokumentiert.
+             */
             state.RecordDeletedFile(
                 deleted.SizeBytes);
         }
         catch (Exception exception)
         {
+            /*
+             * Gewöhnliche Dateifehler
+             * betreffen nur diesen Eintrag.
+             */
             state.RecordEntryException(
                 exception,
                 allowDirectoryNotEmpty: false);
+
+            return;
         }
+
+        // =========================================
+        // DEBUG-TESTBENACHRICHTIGUNG
+        // =========================================
+
+        /*
+         * Der Debug-Callback wird erst
+         * NACH dem erfolgreichen Abschluss
+         * und der Ergebnisdokumentation
+         * aufgerufen.
+         *
+         * Er liegt bewusst außerhalb des
+         * gewöhnlichen Dateifehlerhandlers.
+         *
+         * Dadurch kann ein injizierter
+         * schwerwiegender Fehler korrekt
+         * bis zur zentralen Behandlung
+         * propagiert werden.
+         *
+         * Im normalen Aufruf ist kein
+         * Callback hinterlegt.
+         */
+        state.NotifyFirstDeletedFile();
     }
 
     // =============================================
@@ -494,11 +579,10 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        /*
-         * Zu tiefe Verzeichnisstrukturen
-         * werden sicherheitsbedingt
-         * nicht weiter betreten.
-         */
+        // =========================================
+        // TIEFENBEGRENZUNG
+        // =========================================
+
         if (parentDepth >= MaximumDirectoryDepth)
         {
             state.RecordSkip(
@@ -509,21 +593,23 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
         var completed = false;
 
+        // =========================================
+        // UNTERORDNER DURCHSUCHEN
+        // =========================================
+
         try
         {
             /*
              * Unterordner relativ zum
              * geöffneten Elternhandle öffnen.
              *
-             * Die Identität muss mit der
-             * vorherigen Untersuchung
+             * Die Identität muss mit dem
+             * vorherigen Snapshot
              * übereinstimmen.
              *
-             * Wichtig:
-             * Der Unterordnerhandle muss
-             * vollständig geschlossen sein,
-             * bevor wir diesen Ordner
-             * zum Löschen öffnen.
+             * Vor der späteren Löschung
+             * wird der Unterordnerhandle
+             * vollständig geschlossen.
              */
             using (var childDirectory =
                 WindowsTemporaryFilesHandleDirectoryEnumeration
@@ -545,6 +631,22 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
         {
             throw;
         }
+        catch (FatalCleanupException)
+        {
+            /*
+             * NEU:
+             *
+             * Globale Sicherheitsstopps
+             * dürfen nicht als gewöhnliche
+             * Unterordnerfehler behandelt
+             * werden.
+             *
+             * Der Fehler muss über alle
+             * Rekursionsebenen bis zur
+             * zentralen Behandlung gelangen.
+             */
+            throw;
+        }
         catch (Exception exception)
         {
             state.RecordEntryException(
@@ -554,14 +656,17 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
             return;
         }
 
-        /*
-         * Wenn ein Unterordner nicht
-         * vollständig durchsucht werden
-         * konnte, unternehmen wir keinen
-         * Löschversuch an ihm.
-         */
+        // =========================================
+        // UNVOLLSTÄNDIGE DURCHSUCHUNG
+        // =========================================
+
         if (!completed)
         {
+            /*
+             * Der Unterordner darf nicht
+             * als vollständig bereinigt
+             * behandelt werden.
+             */
             state.RecordSkip(
                 CleanupSkippedEntryReason.OtherSafetySkip);
 
@@ -570,15 +675,19 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
         cancellationToken.ThrowIfCancellationRequested();
 
+        // =========================================
+        // LEEREN UNTERORDNER ENTFERNEN
+        // =========================================
+
         try
         {
             /*
-             * Windows entfernt nur
+             * Windows entfernt ausschließlich
              * tatsächlich leere Ordner.
              *
              * Identität und Schutzattribute
-             * werden nochmals am geöffneten
-             * Löschhandle kontrolliert.
+             * werden am Löschhandle erneut
+             * kontrolliert.
              */
             WindowsTemporaryFilesHandleDirectoryDeletion
                 .DeleteInspectedEmptyDirectory(
@@ -597,7 +706,7 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
     }
 
     // =============================================
-    // LAUFZUSTAND UND ZÄHLER
+    // LAUFZUSTAND UND ERGEBNISZÄHLER
     // =============================================
 
     private sealed class ExecutionState
@@ -607,15 +716,11 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
             long> _skipReasons = new();
 
         /*
-         * Im normalen produktiven Aufruf
-         * ist dieser Callback immer null.
+         * Im normalen Aufruf ist dieser
+         * Callback immer null.
          *
-         * Ausschließlich der Debug-Testzugang
-         * kann ihn setzen.
-         *
-         * Er wird genau einmal nach der ersten
-         * erfolgreich dokumentierten
-         * Dateilöschung aufgerufen.
+         * Nur Debug-Testmethoden können
+         * einen Callback übergeben.
          */
         private readonly Action? _onFirstDeletedFile;
 
@@ -645,39 +750,45 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
         public string ErrorMessage { get; private set; } =
             string.Empty;
 
-        // -------------------------------------
-        // ERFOLGREICHE DATEILÖSCHUNG
-        // -------------------------------------
+        // =========================================
+        // DATEILÖSCHUNG DOKUMENTIEREN
+        // =========================================
 
         public void RecordDeletedFile(ulong sizeBytes)
         {
             DeletedFileCount++;
 
             /*
-             * Keine Überläufe bei der
-             * Gesamtgröße zulassen.
+             * Einen Überlauf der
+             * aufsummierten Dateigröße
+             * sicher verhindern.
              */
             if (sizeBytes >
                 ulong.MaxValue - DeletedSizeBytes)
             {
-                DeletedSizeBytes = ulong.MaxValue;
+                DeletedSizeBytes =
+                    ulong.MaxValue;
             }
             else
             {
-                DeletedSizeBytes += sizeBytes;
+                DeletedSizeBytes +=
+                    sizeBytes;
             }
+        }
 
+        // =========================================
+        // DEBUG-CALLBACK BENACHRICHTIGEN
+        // =========================================
+
+        public void NotifyFirstDeletedFile()
+        {
             /*
-             * Der Callback wird erst nach
-             * vollständig erfolgter
-             * Ergebnisdokumentation ausgeführt.
+             * Ausschließlich nach der
+             * ersten erfolgreich
+             * dokumentierten Dateilöschung.
              *
-             * Dadurch kann ein Regressionstest
-             * exakt an dieser Stelle einen
-             * Abbruch anfordern.
-             *
-             * Der normale Aufruf besitzt
-             * keinen Callback.
+             * Bei allen regulären Aufrufen
+             * geschieht hier nichts.
              */
             if (DeletedFileCount == 1)
             {
@@ -685,9 +796,9 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
             }
         }
 
-        // -------------------------------------
-        // ERWARTETEN AUSSCHLUSS DOKUMENTIEREN
-        // -------------------------------------
+        // =========================================
+        // ERWARTETEN AUSSCHLUSS ERFASSEN
+        // =========================================
 
         public void RecordSkip(
             CleanupSkippedEntryReason reason)
@@ -698,17 +809,19 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
                     reason,
                     out var count))
             {
-                _skipReasons[reason] = count + 1;
+                _skipReasons[reason] =
+                    count + 1;
             }
             else
             {
-                _skipReasons[reason] = 1;
+                _skipReasons[reason] =
+                    1;
             }
         }
 
-        // -------------------------------------
+        // =========================================
         // DATEISYSTEMFEHLER KLASSIFIZIEREN
-        // -------------------------------------
+        // =========================================
 
         public void RecordEntryException(
             Exception exception,
@@ -718,10 +831,10 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
              * Ein erwarteter Sicherheitsstopp
              * ist kein technischer Löschfehler.
              *
-             * Dazu gehören insbesondere
-             * Identitätswechsel und von
-             * den nativen Zugriffsklassen
-             * abgelehnte Verknüpfungen.
+             * Insbesondere Identitätswechsel
+             * und abgelehnte Verknüpfungen
+             * werden als kontrollierter
+             * Ausschluss erfasst.
              */
             if (exception is InvalidOperationException
                 || exception is ArgumentException)
@@ -736,15 +849,18 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
             if (exception is Win32Exception win32Exception)
             {
-                errorCode = win32Exception.NativeErrorCode;
+                errorCode =
+                    win32Exception.NativeErrorCode;
             }
             else if (exception is IOException ioException)
             {
-                errorCode = ioException.HResult & 0xFFFF;
+                errorCode =
+                    ioException.HResult & 0xFFFF;
             }
             else
             {
                 FailedEntryCount++;
+
                 return;
             }
 
@@ -778,24 +894,25 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
             }
         }
 
-        // -------------------------------------
-        // SCHWERWIEGENDEN ABBRUCH ERFASSEN
-        // -------------------------------------
+        // =========================================
+        // SCHWERWIEGENDEN FEHLER ERFASSEN
+        // =========================================
 
         public void RecordFatalError(Exception exception)
         {
             FailedEntryCount++;
 
             ErrorMessage =
-                string.IsNullOrWhiteSpace(exception.Message)
+                string.IsNullOrWhiteSpace(
+                    exception.Message)
                     ? "Der Bereinigungslauf wurde "
                       + "unerwartet abgebrochen."
                     : exception.Message;
         }
 
-        // -------------------------------------
+        // =========================================
         // ERGEBNIS ERSTELLEN
-        // -------------------------------------
+        // =========================================
 
         public ExecutionResult CreateResult()
         {
@@ -812,8 +929,11 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
             return new ExecutionResult
             {
-                WasStarted = WasStarted,
-                WasCancelled = WasCancelled,
+                WasStarted =
+                    WasStarted,
+
+                WasCancelled =
+                    WasCancelled,
 
                 DeletedFileCount =
                     DeletedFileCount,

@@ -12,7 +12,7 @@ using WeberIT.Checkup.App.Models;
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.14.31d
+/// Sprint 55.14.32b
 ///
 /// Integrationstests für die vollständige
 /// handle-basierte Bereinigungs-Engine.
@@ -24,6 +24,7 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 /// - Unveränderte Außenbereiche.
 /// - Abbruch vor Ausführungsbeginn.
 /// - Abbruch nach der ersten Dateilöschung.
+/// - Schwerwiegender Fehler nach erster Löschung.
 /// - Erhalt bestätigter Teilergebnisse.
 ///
 /// Sicherheitsregeln:
@@ -35,9 +36,8 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 /// - Keine automatische Wiederholung.
 /// - Keine zeitgesteuerten Testabbrüche.
 ///
-/// Im Abbruchszenario bleibt locked.txt
-/// während der Engine-Ausführung ausdrücklich
-/// exklusiv geöffnet.
+/// locked.txt bleibt in den laufenden
+/// Testszenarien exklusiv geöffnet.
 ///
 /// Der produktive Freigabeschalter bleibt
 /// unverändert geschlossen.
@@ -268,21 +268,24 @@ public static class
         }
 
         // =====================================
-        // PRÜFUNG 10: ABBRUCH VOR UND
-        // WÄHREND DER BEREINIGUNG
+        // PRÜFUNG 10: ABBRUCH UND
+        // SCHWERWIEGENDER FEHLER
         // =====================================
 
         /*
-         * Diese Prüfung besteht aus zwei
-         * unabhängigen Szenarien:
+         * Diese Prüfung enthält drei
+         * unabhängige Szenarien:
          *
          * A: Abbruch vor Ausführungsbeginn.
          *
          * B: Abbruch unmittelbar nach der
          *    ersten bestätigten Dateilöschung.
          *
-         * Beide Szenarien verwenden eigene
-         * GUID-Sandboxen.
+         * C: Schwerwiegender Fehler nach
+         *    der ersten bestätigten Löschung.
+         *
+         * Jedes Szenario verwendet eine
+         * eigene GUID-Sandbox.
          *
          * Damit bleiben zehn fachliche
          * Engine-Integrationstests erhalten.
@@ -384,17 +387,7 @@ public static class
             // =================================
 
             /*
-             * WICHTIGE KORREKTUR:
-             *
-             * Im vorigen Testentwurf wurde
-             * locked.txt nicht exklusiv
-             * geöffnet.
-             *
-             * Dadurch war die Datei regulär
-             * löschbar und konnte bereits
-             * die erste gelöschte Datei sein.
-             *
-             * Jetzt bleibt sie wie im
+             * locked.txt bleibt wie im
              * regulären Integrationstest
              * während der gesamten
              * Engine-Ausführung gesperrt.
@@ -422,9 +415,6 @@ public static class
                  * Kein Thread.Sleep.
                  * Kein Timer.
                  * Kein zweiter Prozess.
-                 *
-                 * Der Callback fordert nur
-                 * den kontrollierten Abbruch an.
                  */
                 result =
                     WindowsTemporaryFilesHandleCleanupEngine
@@ -471,12 +461,6 @@ public static class
                           runningSandbox.NestedNormalFile)
                           == NestedNormalContent;
 
-            /*
-             * Wenn die normale Datei noch
-             * vorhanden ist, muss die Datei
-             * im Unterordner gelöscht worden
-             * sein – und umgekehrt.
-             */
             var expectedDeletedBytes =
                 normalFileStillExists
                     ? nestedFileBytes
@@ -503,14 +487,6 @@ public static class
             // SCHUTZ DER ÜBRIGEN DATEIEN
             // =================================
 
-            /*
-             * Fehlende Dateien sollen zu
-             * einer fehlgeschlagenen
-             * Testbedingung führen.
-             *
-             * Deshalb vor jedem Lesezugriff
-             * zunächst die Existenz prüfen.
-             */
             var protectedEntriesAreUnchanged =
                 Directory.Exists(
                     runningSandbox.NestedDirectory)
@@ -575,10 +551,19 @@ public static class
                 && outsideAreaIsUnchanged;
         }
 
+        // =====================================
+        // SZENARIO C: SCHWERWIEGENDER FEHLER
+        // NACH ERSTER DATEILÖSCHUNG
+        // =====================================
+
+        var unexpectedFailureIsSafe =
+            VerifyUnexpectedFailureAfterFirstDeletion();
+
         Verify(
-            "Abbruch vor Start und nach erster Löschung sicher dokumentiert",
+            "Abbruch und schwerwiegender Fehler nach erster Löschung sicher dokumentiert",
             cancellationBeforeStartIsSafe
-            && cancellationDuringExecutionIsSafe,
+            && cancellationDuringExecutionIsSafe
+            && unexpectedFailureIsSafe,
             results);
 
         return
@@ -589,6 +574,219 @@ public static class
             + string.Join(
                 Environment.NewLine,
                 results);
+    }
+
+    // =============================================
+    // SZENARIO C: FEHLER NACH ERSTER LÖSCHUNG
+    // =============================================
+
+    private static bool
+        VerifyUnexpectedFailureAfterFirstDeletion()
+    {
+        using var sandbox =
+            new TestSandbox();
+
+        /*
+         * Nur zwei normale Dateien sind
+         * innerhalb der Sandbox löschbar.
+         *
+         * Ihre Größen werden vor dem
+         * Testlauf festgestellt.
+         */
+        var normalFileBytes =
+            checked(
+                (ulong)new FileInfo(
+                    sandbox.NormalFile).Length);
+
+        var nestedFileBytes =
+            checked(
+                (ulong)new FileInfo(
+                    sandbox.NestedNormalFile).Length);
+
+        WindowsTemporaryFilesHandleCleanupEngine
+            .ExecutionResult result;
+
+        // =====================================
+        // GESPERRTE DATEI SCHÜTZEN
+        // =====================================
+
+        /*
+         * Wie im vorherigen Abbruchtest
+         * muss locked.txt während des
+         * Engine-Laufs exklusiv geöffnet sein.
+         *
+         * Andernfalls wäre sie eine weitere
+         * regulär löschbare Datei.
+         */
+        using (var fileLock = new FileStream(
+            sandbox.LockedFile,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.None))
+        {
+            using var root =
+                WindowsTemporaryFilesHandleAccess
+                    .OpenRootDirectory(
+                        sandbox.TargetDirectory);
+
+            /*
+             * Die Debug-Testmethode injiziert
+             * nach der ersten erfolgreich
+             * dokumentierten Löschung einen
+             * schwerwiegenden Fehler.
+             *
+             * Der Fehler muss auch aus
+             * einem verschachtelten Ordner
+             * bis zur zentralen Behandlung
+             * weitergereicht werden.
+             */
+            result =
+                WindowsTemporaryFilesHandleCleanupEngine
+                    .ExecuteForUnexpectedFailureRegressionTest(
+                        root);
+        }
+
+        // =====================================
+        // DATEIZUSTÄNDE PRÜFEN
+        // =====================================
+
+        var normalFileStillExists =
+            File.Exists(
+                sandbox.NormalFile);
+
+        var nestedFileStillExists =
+            File.Exists(
+                sandbox.NestedNormalFile);
+
+        /*
+         * Genau eine der beiden Dateien
+         * muss gelöscht worden sein.
+         *
+         * Wir treffen keine Annahme über
+         * die Reihenfolge der Aufzählung.
+         */
+        var exactlyOneFileRemains =
+            normalFileStillExists
+            != nestedFileStillExists;
+
+        var remainingFileIsUnchanged =
+            normalFileStillExists
+                ? File.ReadAllText(
+                    sandbox.NormalFile)
+                    == NormalContent
+                : nestedFileStillExists
+                  && File.ReadAllText(
+                      sandbox.NestedNormalFile)
+                      == NestedNormalContent;
+
+        var expectedDeletedBytes =
+            normalFileStillExists
+                ? nestedFileBytes
+                : normalFileBytes;
+
+        /*
+         * Ein leerer Unterordner könnte
+         * schon vor der ersten Dateilöschung
+         * entfernt worden sein.
+         *
+         * Deshalb vergleichen wir seinen
+         * tatsächlichen Zustand mit dem
+         * dokumentierten Zähler.
+         */
+        var emptyDirectoryStillExists =
+            Directory.Exists(
+                sandbox.EmptyDirectory);
+
+        var directoryCountIsConsistent =
+            result.DeletedDirectoryCount
+                == (emptyDirectoryStillExists ? 0 : 1);
+
+        // =====================================
+        // GESCHÜTZTE EINTRÄGE PRÜFEN
+        // =====================================
+
+        var protectedEntriesAreUnchanged =
+            Directory.Exists(
+                sandbox.NestedDirectory)
+            && File.Exists(
+                sandbox.ReadOnlyFile)
+            && File.ReadAllText(
+                sandbox.ReadOnlyFile)
+                == ReadOnlyContent
+            && File.Exists(
+                sandbox.NestedReadOnlyFile)
+            && File.ReadAllText(
+                sandbox.NestedReadOnlyFile)
+                == NestedReadOnlyContent
+            && File.Exists(
+                sandbox.SystemFile)
+            && File.ReadAllText(
+                sandbox.SystemFile)
+                == SystemContent
+            && File.Exists(
+                sandbox.LockedFile)
+            && File.ReadAllText(
+                sandbox.LockedFile)
+                == LockedContent
+            && HasAttribute(
+                sandbox.ReadOnlyFile,
+                FileAttributes.ReadOnly)
+            && HasAttribute(
+                sandbox.NestedReadOnlyFile,
+                FileAttributes.ReadOnly)
+            && HasAttribute(
+                sandbox.SystemFile,
+                FileAttributes.System);
+
+        var outsideAreaIsUnchanged =
+            Directory.Exists(
+                sandbox.TargetDirectory)
+            && File.Exists(
+                sandbox.OutsideFile)
+            && File.ReadAllText(
+                sandbox.OutsideFile)
+                == OutsideContent;
+
+        // =====================================
+        // FEHLERERGEBNIS PRÜFEN
+        // =====================================
+
+        /*
+         * Der Fehler muss als tatsächlicher
+         * technischer Fehler erscheinen.
+         *
+         * Er darf nicht als regulärer
+         * Benutzerabbruch klassifiziert
+         * oder stillschweigend übersprungen
+         * werden.
+         */
+        var failureIsDocumented =
+            result.WasStarted
+            && !result.WasCancelled
+            && result.FailedEntryCount == 1
+            && result.ErrorMessage.Contains(
+                "Simulierter schwerwiegender Fehler",
+                StringComparison.Ordinal);
+
+        /*
+         * Die erste erfolgreiche Löschung
+         * darf im Fehlerfall nicht aus dem
+         * Ergebnis verschwinden.
+         */
+        var partialChangesAreDocumented =
+            result.DeletedFileCount == 1
+            && result.DeletedSizeBytes
+                == expectedDeletedBytes
+            && result.ProcessedEntryCount >= 1
+            && directoryCountIsConsistent;
+
+        return
+            failureIsDocumented
+            && partialChangesAreDocumented
+            && exactlyOneFileRemains
+            && remainingFileIsUnchanged
+            && protectedEntriesAreUnchanged
+            && outsideAreaIsUnchanged;
     }
 
     // =============================================
