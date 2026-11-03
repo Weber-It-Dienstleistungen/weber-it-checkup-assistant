@@ -9,24 +9,26 @@ using Microsoft.Win32.SafeHandles;
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.14.1a
+/// Sprint 55.14.21
 ///
-/// Grundlage für eine handle-basierte
-/// Windows-Temp-Bereinigung.
+/// Handle-basierter Windows-Dateisystemzugriff.
 ///
-/// Sicherheitsprinzipien:
-///
-/// - Verzeichnisse als Handles öffnen.
-/// - Kindeinträge nur relativ zum
-///   geöffneten Elternverzeichnis öffnen.
-/// - Keine Verfolgung von Reparse Points.
-/// - Attribute am geöffneten Objekt lesen.
-/// - Keine Pfade für Kindzugriffe zusammensetzen.
-/// - Keine Dateien erstellen oder löschen.
+/// Sicherheitsregeln:
+/// - Stammverzeichnis kontrolliert öffnen.
+/// - Kindeinträge relativ zum Elternhandle öffnen.
+/// - Keine Reparse Points verfolgen.
+/// - Dateiidentität über Handles ermitteln.
+/// - Keine Dateien löschen.
 /// - Keine Berechtigungen verändern.
 ///
-/// Diese Klasse führt noch keine
-/// Bereinigung durch.
+/// Neu:
+/// Native NTSTATUS-Fehler werden in Win32-
+/// Fehlercodes und passende HRESULT-Werte
+/// übersetzt.
+///
+/// Damit kann die Bereinigungs-Engine
+/// Dateisperren, fehlende Dateien und
+/// technische Fehler unterscheiden.
 /// </summary>
 internal static class WindowsTemporaryFilesHandleAccess
 {
@@ -49,13 +51,10 @@ internal static class WindowsTemporaryFilesHandleAccess
     private const uint NtFileSynchronousIoNonAlert = 0x00000020;
     private const uint NtFileOpenReparsePoint = 0x00200000;
 
-    /// <summary>
-    /// Eigenschaften eines bereits geöffneten
-    /// Dateisystemobjekts.
-    ///
-    /// VolumeSerialNumber und FileIndex
-    /// dienen später zur Identitätsprüfung.
-    /// </summary>
+    // =============================================
+    // DATEISYSTEM-SNAPSHOT
+    // =============================================
+
     internal readonly record struct EntrySnapshot(
         FileAttributes Attributes,
         uint VolumeSerialNumber,
@@ -79,20 +78,6 @@ internal static class WindowsTemporaryFilesHandleAccess
     // STAMMVERZEICHNIS ÖFFNEN
     // =============================================
 
-    /// <summary>
-    /// Öffnet ein lokales Verzeichnis und
-    /// verifiziert das tatsächlich geöffnete
-    /// Dateisystemobjekt.
-    ///
-    /// Diese Methode ist noch nicht fest
-    /// an C:\Windows\Temp gebunden, damit
-    /// sie zuerst in einer Sandbox
-    /// getestet werden kann.
-    ///
-    /// Die produktive Zielbeschränkung muss
-    /// der spätere Worker zusätzlich
-    /// ausdrücklich durchsetzen.
-    /// </summary>
     internal static SafeFileHandle OpenRootDirectory(
         string directoryPath)
     {
@@ -129,17 +114,14 @@ internal static class WindowsTemporaryFilesHandleAccess
         }
 
         /*
-         * OPEN_REPARSE_POINT:
-         * Eine Verknüpfung am Ziel selbst
-         * wird nicht automatisch verfolgt.
+         * BACKUP_SEMANTICS erlaubt das Öffnen
+         * von Verzeichnissen.
          *
-         * BACKUP_SEMANTICS:
-         * Erlaubt das Öffnen von Verzeichnissen.
+         * OPEN_REPARSE_POINT verhindert das
+         * automatische Verfolgen des Zielobjekts.
          *
          * FILE_SHARE_DELETE wird bewusst
-         * nicht vergeben, um Umbenennungen
-         * während der Handle-Lebensdauer
-         * möglichst auszuschließen.
+         * nicht freigegeben.
          */
         var handle =
             CreateFileW(
@@ -187,13 +169,9 @@ internal static class WindowsTemporaryFilesHandleAccess
             }
 
             /*
-             * Der tatsächlich aufgelöste Pfad
-             * muss dem erwarteten lokalen
-             * Verzeichnis entsprechen.
-             *
-             * So erkennen wir insbesondere
-             * unerwünschte Umleitungen in
-             * übergeordneten Pfadbestandteilen.
+             * Auch übergeordnete Pfadumleitungen
+             * dürfen nicht unbemerkt zu einem
+             * anderen Ziel führen.
              */
             var actualPath =
                 NormalizeDirectoryPath(
@@ -220,21 +198,9 @@ internal static class WindowsTemporaryFilesHandleAccess
     }
 
     // =============================================
-    // EINEN DIREKTEN KINDEINTRAG ÖFFNEN
+    // KINDEINTRAG RELATIV ÖFFNEN
     // =============================================
 
-    /// <summary>
-    /// Öffnet einen direkten Kindeintrag
-    /// relativ zum bereits geöffneten
-    /// Elternverzeichnis.
-    ///
-    /// Es ist ausschließlich ein einzelner
-    /// Dateiname erlaubt, kein relativer
-    /// oder absoluter Pfad.
-    ///
-    /// Die Methode öffnet mit Leserechten
-    /// für Attribute. Sie kann nicht löschen.
-    /// </summary>
     internal static SafeFileHandle OpenChildForInspection(
         SafeFileHandle parentDirectory,
         string entryName)
@@ -265,31 +231,22 @@ internal static class WindowsTemporaryFilesHandleAccess
                 nameof(entryName));
         }
 
-        var nameBuffer =
-            IntPtr.Zero;
-
-        var nameStructurePointer =
-            IntPtr.Zero;
-
+        var nameBuffer = IntPtr.Zero;
+        var nameStructurePointer = IntPtr.Zero;
         var parentReferenceAdded = false;
 
         try
         {
             nameBuffer =
-                Marshal.StringToHGlobalUni(
-                    entryName);
+                Marshal.StringToHGlobalUni(entryName);
 
             var unicodeName =
                 new UnicodeString
                 {
-                    Length =
-                        (ushort)unicodeLength,
-
+                    Length = (ushort)unicodeLength,
                     MaximumLength =
                         (ushort)(unicodeLength + 2),
-
-                    Buffer =
-                        nameBuffer
+                    Buffer = nameBuffer
                 };
 
             nameStructurePointer =
@@ -302,9 +259,9 @@ internal static class WindowsTemporaryFilesHandleAccess
                 false);
 
             /*
-             * Elternhandle während NtCreateFile
-             * ausdrücklich gegen Dispose
-             * absichern.
+             * Das Elternhandle muss während
+             * der nativen Windows-Operation
+             * geöffnet bleiben.
              */
             parentDirectory.DangerousAddRef(
                 ref parentReferenceAdded);
@@ -333,17 +290,12 @@ internal static class WindowsTemporaryFilesHandleAccess
                 };
 
             /*
-             * NtCreateFile erhält nur den
-             * einzelnen Dateinamen.
+             * NtCreateFile erhält ausschließlich
+             * den Dateinamen und den zuvor
+             * geöffneten Elternhandle.
              *
-             * Das bereits geöffnete
-             * Elternverzeichnis definiert
-             * den Bezugspunkt.
-             *
-             * FILE_OPEN_REPARSE_POINT und
-             * OBJ_DONT_REPARSE verhindern,
-             * dass eine Verknüpfung einfach
-             * als Zielverzeichnis betreten wird.
+             * Keine neue Auflösung eines
+             * vollständigen Dateipfads.
              */
             var status =
                 NtCreateFile(
@@ -364,12 +316,31 @@ internal static class WindowsTemporaryFilesHandleAccess
             {
                 childHandle?.Dispose();
 
+                /*
+                 * Sprint 55.14.21:
+                 *
+                 * Der bisherige Code erzeugte
+                 * eine IOException ohne den
+                 * eigentlichen Win32-Fehlercode.
+                 *
+                 * Dadurch war die Ursache für
+                 * die Engine nicht auswertbar.
+                 *
+                 * Wir übersetzen den NTSTATUS
+                 * jetzt ausdrücklich.
+                 */
+                var win32Error =
+                    RtlNtStatusToDosError(status);
+
                 throw new IOException(
                     "Der Kindeintrag konnte nicht "
                     + "sicher relativ zum geöffneten "
                     + "Elternverzeichnis geöffnet werden. "
                     + "NTSTATUS: 0x"
-                    + unchecked((uint)status).ToString("X8"));
+                    + unchecked((uint)status).ToString("X8")
+                    + ", Win32-Fehler: "
+                    + win32Error,
+                    CreateWin32HResult(win32Error));
             }
 
             if (childHandle is null
@@ -387,12 +358,6 @@ internal static class WindowsTemporaryFilesHandleAccess
                 var snapshot =
                     ReadSnapshot(childHandle);
 
-                /*
-                 * Auch wenn Windows den
-                 * Reparse Point selbst
-                 * geöffnet hat, darf er
-                 * nicht weiterverarbeitet werden.
-                 */
                 if (snapshot.IsReparsePoint)
                 {
                     throw new InvalidOperationException(
@@ -424,14 +389,13 @@ internal static class WindowsTemporaryFilesHandleAccess
 
             if (nameBuffer != IntPtr.Zero)
             {
-                Marshal.FreeHGlobal(
-                    nameBuffer);
+                Marshal.FreeHGlobal(nameBuffer);
             }
         }
     }
 
     // =============================================
-    // OBJEKTINFORMATIONEN AUS HANDLE LESEN
+    // DATEIINFORMATIONEN ÜBER HANDLE LESEN
     // =============================================
 
     internal static EntrySnapshot ReadSnapshot(
@@ -475,7 +439,7 @@ internal static class WindowsTemporaryFilesHandleAccess
     }
 
     // =============================================
-    // TATSÄCHLICH GEÖFFNETEN PFAD LESEN
+    // TATSÄCHLICH GEÖFFNETEN PFAD ERMITTELN
     // =============================================
 
     private static string GetFinalPath(
@@ -524,10 +488,6 @@ internal static class WindowsTemporaryFilesHandleAccess
         var finalPath =
             buffer.ToString();
 
-        /*
-         * Windows verwendet normalerweise
-         * das erweiterte Präfix \\?\.
-         */
         if (finalPath.StartsWith(
                 @"\\?\",
                 StringComparison.Ordinal))
@@ -556,13 +516,6 @@ internal static class WindowsTemporaryFilesHandleAccess
         ArgumentException.ThrowIfNullOrWhiteSpace(
             entryName);
 
-        /*
-         * Sprint 55.14.1a:
-         *
-         * EndsWith(string, StringComparison)
-         * statt einer ungültigen Kombination
-         * aus char und StringComparison.
-         */
         if (entryName is "." or ".."
             || entryName.Contains('\\')
             || entryName.Contains('/')
@@ -614,6 +567,30 @@ internal static class WindowsTemporaryFilesHandleAccess
     }
 
     // =============================================
+    // WINDOWS-FEHLERCODES ÜBERSETZEN
+    // =============================================
+
+    /// <summary>
+    /// Erstellt ein HRESULT mit dem angegebenen
+    /// Windows-Fehlercode.
+    ///
+    /// Beispiele:
+    ///
+    /// ERROR_FILE_NOT_FOUND    -> 0x80070002
+    /// ERROR_SHARING_VIOLATION -> 0x80070020
+    ///
+    /// Die Engine kann den Win32-Code
+    /// anschließend über die unteren
+    /// 16 Bits des HRESULT auslesen.
+    /// </summary>
+    private static int CreateWin32HResult(
+        uint error)
+    {
+        return unchecked(
+            (int)(0x80070000u | (error & 0xFFFFu)));
+    }
+
+    // =============================================
     // NATIVE WINDOWS-DATENSTRUKTUREN
     // =============================================
 
@@ -643,14 +620,6 @@ internal static class WindowsTemporaryFilesHandleAccess
         public IntPtr Information;
     }
 
-    /*
-     * Alle FILETIME-Felder werden bewusst
-     * als jeweils zwei DWORDs dargestellt.
-     *
-     * Damit entspricht das Layout exakt
-     * BY_HANDLE_FILE_INFORMATION, ohne
-     * plattformabhängige long-Ausrichtung.
-     */
     [StructLayout(LayoutKind.Sequential)]
     private struct NativeFileInformation
     {
@@ -728,4 +697,10 @@ internal static class WindowsTemporaryFilesHandleAccess
         uint createOptions,
         IntPtr eaBuffer,
         uint eaLength);
+
+    [DllImport(
+        "ntdll.dll",
+        ExactSpelling = true)]
+    private static extern uint RtlNtStatusToDosError(
+        int status);
 }

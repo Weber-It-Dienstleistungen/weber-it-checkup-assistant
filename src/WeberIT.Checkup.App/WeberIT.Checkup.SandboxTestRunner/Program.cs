@@ -11,21 +11,16 @@ using WeberIT.Checkup.App.Services.Tasks;
 namespace WeberIT.Checkup.SandboxTestRunner;
 
 /// <summary>
-/// Sprint 55.14.17
+/// Sprint 55.14.23
 ///
-/// Eigenständiger Teststarter für die
-/// Windows-Temp-Bereinigung.
+/// Eigenständiger Sandbox-TestRunner.
 ///
-/// 59 bestehende Regressionstests
-/// plus sechs neue Tests zur
-/// handle-basierten Verzeichnisdurchsuchung.
+/// 65 bestehende Prüfungen und zehn
+/// zusätzliche Engine-Integrationstests.
 ///
-/// Sämtliche Tests ohne Administratorrechte.
-///
-/// Echte Löschoperationen betreffen
-/// ausschließlich künstliche Sandbox-Daten.
-///
+/// Keine Administratorrechte.
 /// Keine produktive Windows-Temp-Bereinigung.
+/// Reale Löschungen nur in GUID-Sandboxen.
 /// </summary>
 internal static class Program
 {
@@ -37,20 +32,16 @@ internal static class Program
 #if DEBUG
         Console.WriteLine(
             "========================================");
-
         Console.WriteLine(
             " WEBER IT - SANDBOX TESTRUNNER");
-
         Console.WriteLine(
             "========================================");
-
         Console.WriteLine();
 
         if (!OperatingSystem.IsWindows())
         {
             Console.Error.WriteLine(
                 "FEHLER: Windows wird benötigt.");
-
             return 2;
         }
 
@@ -64,19 +55,17 @@ internal static class Program
                 WindowsBuiltInRole.Administrator))
         {
             Console.Error.WriteLine(
-                "SICHERHEITSSTOPP: "
-                + "Der TestRunner darf nicht "
-                + "mit Administratorrechten laufen.");
+                "SICHERHEITSSTOPP: Der TestRunner "
+                + "darf nicht mit Administratorrechten "
+                + "ausgeführt werden.");
 
             return 2;
         }
 
         Console.WriteLine(
             "Berechtigungsprüfung: OK");
-
         Console.WriteLine(
             "Ausführung ohne Administratorrechte.");
-
         Console.WriteLine();
 
         try
@@ -152,16 +141,14 @@ internal static class Program
                 "TESTBLOCK 8 - HANDLE-BASIERTE DATEILÖSCHUNG");
 
             Console.WriteLine(
-                "Prüfe echte Dateilöschung, "
-                + "Schreibschutz, Systemschutz, "
-                + "Dateisperren und Identitätswechsel.");
-
+                "Prüfe Dateilöschung, Schreibschutz, "
+                + "Systemschutz, Dateisperren "
+                + "und Identitätswechsel.");
             Console.WriteLine();
 
             Console.WriteLine(
                 WindowsTemporaryFilesHandleDeletionRegressionTests
                     .RunAll());
-
             Console.WriteLine();
 
             // =================================
@@ -175,13 +162,11 @@ internal static class Program
                 "Prüfe leere und nicht leere Ordner, "
                 + "Schreibschutz, Systemschutz, "
                 + "Identitätswechsel und Objekttypen.");
-
             Console.WriteLine();
 
             Console.WriteLine(
                 WindowsTemporaryFilesHandleDirectoryDeletionRegressionTests
                     .RunAll());
-
             Console.WriteLine();
 
             // =================================
@@ -192,18 +177,36 @@ internal static class Program
                 "TESTBLOCK 10 - HANDLE-BASIERTE VERZEICHNISDURCHSUCHUNG");
 
             Console.WriteLine(
-                "Prüfe Verzeichnisaufzählung, "
-                + "verschachtelte Ordner, "
-                + "leere Verzeichnisse, "
-                + "Abbruch, Identitätswechsel "
+                "Prüfe Aufzählung, verschachtelte "
+                + "Ordner, Abbruch, Identitätswechsel "
                 + "und Junction-Schutz.");
-
             Console.WriteLine();
 
             Console.WriteLine(
                 WindowsTemporaryFilesHandleDirectoryEnumerationRegressionTests
                     .RunAll());
+            Console.WriteLine();
 
+            // =================================
+            // TESTBLOCK 11: ENGINE-INTEGRATION
+            // =================================
+
+            PrintHeading(
+                "TESTBLOCK 11 - VOLLSTÄNDIGER BEREINIGUNGSLAUF");
+
+            Console.WriteLine(
+                "Prüfe Zusammenspiel von Aufzählung, "
+                + "Dateilöschung, Verzeichnislöschung, "
+                + "Schutzmechanismen und Ergebniszählern.");
+
+            Console.WriteLine(
+                "Die Bereinigung betrifft ausschließlich "
+                + "selbst erzeugte Sandbox-Testdaten.");
+            Console.WriteLine();
+
+            Console.WriteLine(
+                WindowsTemporaryFilesHandleCleanupEngineRegressionTests
+                    .RunAll());
             Console.WriteLine();
 
             // =================================
@@ -212,10 +215,8 @@ internal static class Program
 
             Console.WriteLine(
                 "========================================");
-
             Console.WriteLine(
-                " ERGEBNIS: ALLE 65 TESTS BESTANDEN");
-
+                " ERGEBNIS: ALLE 75 TESTS BESTANDEN");
             Console.WriteLine(
                 "========================================");
 
@@ -224,18 +225,13 @@ internal static class Program
         catch (Exception exception)
         {
             Console.Error.WriteLine();
-
             Console.Error.WriteLine(
                 "========================================");
-
             Console.Error.WriteLine(
                 " ERGEBNIS: TEST FEHLGESCHLAGEN");
-
             Console.Error.WriteLine(
                 "========================================");
-
-            Console.WriteLine();
-
+            Console.Error.WriteLine();
             Console.Error.WriteLine(
                 exception.ToString());
 
@@ -253,7 +249,7 @@ internal static class Program
 #if DEBUG
 
     // =============================================
-    // TESTBLOCK AUSFÜHREN
+    // ALLGEMEINEN TESTBLOCK AUSFÜHREN
     // =============================================
 
     private static void RunTestBlock(
@@ -275,13 +271,14 @@ internal static class Program
     private static void RunVerifiedLauncherTests()
     {
         /*
-         * Diese beiden Tests verwenden
-         * denselben Launcher wie der
-         * produktive Executor.
+         * Die beiden Launcher-Tests bleiben
+         * unverändert:
          *
-         * Es werden ausschließlich
-         * harmlose Markierungsdateien
-         * in einer GUID-Sandbox erzeugt.
+         * 1. Gültiger Hash erlaubt Ausführung.
+         * 2. Manipulierte Datei wird abgelehnt.
+         *
+         * Es werden ausschließlich eigene
+         * Sandbox-Markierungsdateien erzeugt.
          */
 
         var sandboxRoot =
@@ -337,7 +334,7 @@ internal static class Program
         try
         {
             // =================================
-            // TEST 1: KORREKTER SHA-256-HASH
+            // TEST 1: GÜLTIGER SHA-256-HASH
             // =================================
 
             File.WriteAllText(
@@ -346,8 +343,7 @@ internal static class Program
                 Encoding.Unicode);
 
             var validHash =
-                CalculateScriptHash(
-                    validScript);
+                CalculateScriptHash(validScript);
 
             var validLauncher =
                 BuildVerifiedLauncher(
@@ -355,8 +351,7 @@ internal static class Program
                     validHash);
 
             var successfulExecution =
-                ExecutePowerShell(
-                    validLauncher);
+                ExecutePowerShell(validLauncher);
 
             Require(
                 successfulExecution.ExitCode == 0,
@@ -373,8 +368,8 @@ internal static class Program
             Require(
                 File.ReadAllText(validMarkerPath)
                     == "VERIFIED_OK",
-                "Das verifizierte Skript "
-                + "hat ein falsches Ergebnis erzeugt.");
+                "Das verifizierte Skript hat "
+                + "ein falsches Ergebnis erzeugt.");
 
             Console.WriteLine(
                 "OK: Korrekter Hash erlaubt "
@@ -394,12 +389,8 @@ internal static class Program
                     originalChangedScript);
 
             /*
-             * Die Datei wird erst nach
-             * Berechnung des erwarteten
-             * Hashwerts verändert.
-             *
-             * Der Launcher darf diese
-             * Datei nicht ausführen.
+             * Die Datei nach Ermittlung
+             * des erwarteten Hashs verändern.
              */
             File.WriteAllText(
                 changedScriptPath,
@@ -412,8 +403,7 @@ internal static class Program
                     originalHash);
 
             var rejectedExecution =
-                ExecutePowerShell(
-                    changedLauncher);
+                ExecutePowerShell(changedLauncher);
 
             Require(
                 rejectedExecution.ExitCode != 0,
@@ -422,12 +412,12 @@ internal static class Program
 
             Require(
                 !File.Exists(rejectedMarkerPath),
-                "Das ursprüngliche Testskript "
+                "Das ursprüngliche Skript "
                 + "wurde unerwartet ausgeführt.");
 
             Require(
                 !File.Exists(forgedMarkerPath),
-                "Das manipulierte Testskript "
+                "Das manipulierte Skript "
                 + "wurde ausgeführt.");
 
             Require(
@@ -448,7 +438,6 @@ internal static class Program
                 + "durch die Hashprüfung abgelehnt.");
 
             Console.WriteLine();
-
             Console.WriteLine(
                 "Alle 2 Launcher-Funktionstests "
                 + "erfolgreich.");
@@ -456,12 +445,11 @@ internal static class Program
         finally
         {
             /*
-             * Ausschließlich eigene,
-             * bekannte Testdateien entfernen.
+             * Nur ausdrücklich bekannte
+             * Testdateien entfernen.
              *
              * Keine rekursive Löschung.
              */
-
             TryDeleteKnownFile(
                 validScriptPath,
                 validScript,
@@ -499,7 +487,7 @@ internal static class Program
             }
             catch (IOException)
             {
-                // Unbekannte Inhalte bleiben erhalten.
+                // Unbekannte Inhalte erhalten.
             }
             catch (UnauthorizedAccessException)
             {
@@ -525,7 +513,7 @@ internal static class Program
 
         Require(
             method is not null,
-            "Der produktive Launcher-Einstiegspunkt "
+            "Der Launcher-Einstiegspunkt "
             + "wurde nicht gefunden.");
 
         var result =
@@ -561,14 +549,11 @@ internal static class Program
                 StringComparison.Ordinal);
 
         return
-            "[System.IO.File]::WriteAllText("
-            + "'"
+            "[System.IO.File]::WriteAllText('"
             + escapedPath
-            + "', "
-            + "'"
+            + "', '"
             + content
-            + "', "
-            + "[System.Text.Encoding]::UTF8)";
+            + "', [System.Text.Encoding]::UTF8)";
     }
 
     // =============================================
@@ -596,8 +581,8 @@ internal static class Program
 
         Require(
             File.Exists(powerShellPath),
-            "Windows-PowerShell wurde "
-            + "nicht gefunden.");
+            "Windows-PowerShell "
+            + "wurde nicht gefunden.");
 
         var encodedCommand =
             Convert.ToBase64String(
@@ -647,12 +632,12 @@ internal static class Program
             }
             catch (InvalidOperationException)
             {
-                // Prozess war bereits beendet.
+                // Prozess bereits beendet.
             }
 
             throw new InvalidOperationException(
-                "Der Launcher-Test hat das "
-                + "Zeitlimit überschritten.");
+                "Der Launcher-Test hat "
+                + "das Zeitlimit überschritten.");
         }
 
         return (
@@ -780,7 +765,6 @@ internal static class Program
 
         Console.WriteLine(
             "----------------------------------------");
-
         Console.WriteLine();
     }
 
