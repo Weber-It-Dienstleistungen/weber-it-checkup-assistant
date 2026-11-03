@@ -81,18 +81,36 @@ public partial class CleanupActionSelectionDialog :
     public bool HasSelectableCategories =>
         AvailableCategories.Count > 0;
 
+    // =============================================
+    // SCHRITT 55.14.30e
+    // KATEGORIEN FÜR PLANPRÜFUNG
+    // =============================================
+
+    /*
+     * Der Zähler beschreibt ausschließlich
+     * die Kategorien, für die ein Plan
+     * geprüft werden kann.
+     *
+     * Die tatsächliche technische
+     * Ausführbarkeit wird separat in
+     * CleanupActionPlanSnapshot geprüft.
+     *
+     * Insbesondere Windows-Temp darf hier
+     * mitzählen, obwohl seine produktive
+     * Ausführung noch gesperrt ist.
+     */
     public string SelectableCategoryCountText =>
         AvailableCategories.Count switch
         {
             0 =>
-                "Keine sicher auswählbare Kategorie",
+                "Keine Kategorie für die Planprüfung verfügbar",
 
             1 =>
-                "1 sicher auswählbare Kategorie",
+                "1 Kategorie für die Planprüfung verfügbar",
 
             _ =>
-                $"{AvailableCategories.Count} "
-                + "sicher auswählbare Kategorien"
+                $"{AvailableCategories.Count} Kategorien "
+                + "für die Planprüfung verfügbar"
         };
 
     public string SelectionStatusText
@@ -354,8 +372,8 @@ public partial class CleanupActionSelectionDialog :
 
     private static CheckupTaskActionResult
         CreateTaskActionResult(
-            CheckupTaskActionPlan plan,
-            CleanupActionExecutionResult executionResult)
+        CheckupTaskActionPlan plan,
+        CleanupActionExecutionResult executionResult)
     {
         return new CheckupTaskActionResult
         {
@@ -397,7 +415,7 @@ public partial class CleanupActionSelectionDialog :
 
     private static CheckupTaskActionStatus
         DetermineActionStatus(
-            CleanupActionExecutionResult executionResult)
+        CleanupActionExecutionResult executionResult)
     {
         if (executionResult.IsSuccessful
             || executionResult.IsPartiallySuccessful)

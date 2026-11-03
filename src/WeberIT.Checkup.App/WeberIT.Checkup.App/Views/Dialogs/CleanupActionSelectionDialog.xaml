@@ -136,19 +136,19 @@
                     FontSize="21"
                     FontWeight="SemiBold"
                     Foreground="{StaticResource TextPrimaryBrush}"
-                    Text="Sichere Bereinigungskategorie auswählen" />
+                    Text="Bereinigungskategorie auswählen" />
 
                 <TextBlock
                     Margin="0,6,0,0"
                     Foreground="{StaticResource TextSecondaryBrush}"
-                    Text="Angezeigt werden ausschließlich automatisch ausführbare, sicher freigegebene Kategorien mit einem ausreichend belastbaren Messergebnis. Benutzer- und Windows-Temporärdateien dürfen auch bei einer Teilmessung ausgewählt werden; die angezeigten Werte sind dann Mindestwerte."
+                    Text="Angezeigt werden Bereinigungskategorien mit ausreichend belastbaren Messergebnissen. Die technische Ausführung ist nur für ausdrücklich freigegebene Kategorien möglich. Benutzer- und Windows-Temporärdateien dürfen auch bei einer Teilmessung für die Vorschau ausgewählt werden; die angezeigten Werte sind dann Mindestwerte."
                     TextWrapping="Wrap" />
 
                 <TextBlock
                     Margin="0,6,0,0"
                     FontSize="11"
                     Foreground="{StaticResource WarningBrush}"
-                    Text="Pro Ausführung kann genau eine Kategorie ausgewählt werden. Sie wird anschließend einzeln geprüft, ausdrücklich bestätigt, technisch ausgeführt und dokumentiert. Für weitere Kategorien öffnen Sie die Bereinigungsaufgabe danach erneut. Browsercache erfordert vollständig beendete Browser; Windows-Temp zusätzlich Administratorrechte."
+                    Text="Pro Bereinigungsplan kann genau eine Kategorie ausgewählt werden. Freigegebene Aktionen werden einzeln geprüft, ausdrücklich bestätigt, ausgeführt und dokumentiert. Browsercache erfordert vollständig beendete Browser. Windows-Temp befindet sich noch in der Sicherheitsprüfung und ist derzeit ausschließlich als Vorschau verfügbar."
                     TextWrapping="Wrap" />
 
             </StackPanel>
@@ -393,7 +393,7 @@
                     VerticalAlignment="Center"
                     FontSize="12"
                     Foreground="{StaticResource TextMutedBrush}"
-                    Text="Eine Kategorie pro geprüftem und bestätigtem Ausführungsvorgang"
+                    Text="Eine Kategorie pro Plan. Technische Ausführung nur nach Freigabe und ausdrücklicher Bestätigung."
                     TextWrapping="Wrap" />
 
                 <Button
