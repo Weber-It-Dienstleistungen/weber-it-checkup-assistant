@@ -4,17 +4,25 @@ using WeberIT.Checkup.App.Models;
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.14.30a
+/// Sprint 55.14.33b
 ///
 /// Erstellt geprüfte Kopien kontrollierter
 /// Bereinigungspläne.
 ///
-/// Die Windows-Temp-Bereinigung bleibt
-/// bis zur ausdrücklichen Produktivfreigabe
-/// ausschließlich als Vorschau verfügbar.
+/// Windows-Temp bleibt grundsätzlich für
+/// die produktive Ausführung gesperrt.
+///
+/// Ausschließlich ein beaufsichtigter
+/// Debug-Echt-Test kann vorübergehend
+/// die Planbestätigung ermöglichen.
+///
+/// Die eigentliche Ausführung wird
+/// unabhängig davon zusätzlich im
+/// WindowsTemporaryFilesCleanupExecutor
+/// geprüft.
 ///
 /// Keine Änderung an der Bereinigungs-Engine.
-/// Keine produktiven Löschoperationen.
+/// Keine Löschoperationen in dieser Klasse.
 /// </summary>
 internal static class CleanupActionPlanSnapshot
 {
@@ -132,15 +140,15 @@ internal static class CleanupActionPlanSnapshot
             plan.CleanupCategories[0];
 
         /*
-         * Windows-Temp wird derzeit bewusst
-         * nicht als ausführbar eingestuft.
+         * Die Kategorie wird zuerst auf
+         * ihre grundsätzliche Ausführbarkeit
+         * geprüft.
          *
-         * Die neue Handle-Engine existiert,
-         * die produktive Sicherheitsfreigabe
-         * ist aber noch nicht erteilt.
+         * Windows-Temp erhält diese nur
+         * für den beaufsichtigten Debug-Test.
          *
-         * Deshalb darf die Planvorschau
-         * keinen ausführbaren Start anbieten.
+         * Alle bestehenden zusätzlichen
+         * Bedingungen bleiben erhalten.
          */
         return IsExecutableCategory(
                    category)
@@ -173,27 +181,44 @@ internal static class CleanupActionPlanSnapshot
             plan.CleanupCategories[0];
 
         // =========================================
-        // WINDOWS-TEMP: SICHERHEITSSPERRE
+        // WINDOWS-TEMP
         // =========================================
 
-        /*
-         * Die Vorschau bleibt erlaubt.
-         *
-         * Die produktive Ausführung wird
-         * dagegen erst nach Abschluss der
-         * Sicherheitsprüfung freigegeben.
-         *
-         * Eine zusätzliche UAC-Bestätigung
-         * beim Aktionsstart wird ausdrücklich
-         * nicht behauptet:
-         *
-         * Das aktuelle App-Manifest fordert
-         * Administratorrechte bereits beim
-         * Programmstart an.
-         */
         if (category.Category
             == CleanupCategoryType.WindowsTemporaryFiles)
         {
+            /*
+             * Die Meldung muss zum tatsächlichen
+             * Freigabestatus passen.
+             *
+             * Eine separate UAC-Abfrage beim
+             * Aktionsstart wird nicht behauptet.
+             *
+             * Das aktuelle Manifest fordert
+             * Administratorrechte bereits
+             * beim Programmstart an.
+             */
+            if (CanExecute(plan))
+            {
+                return
+                    "BEAUFSICHTIGTER DEBUG-ECHT-TEST: "
+                    + "Die Windows-Temp-Bereinigung ist "
+                    + "in dieser Debug-Sitzung zur "
+                    + "technischen Ausführung freigegeben. "
+                    + "Nach ausdrücklicher Bestätigung "
+                    + "werden zulässige Inhalte des "
+                    + "lokalen Windows-Temp-Ordners "
+                    + "tatsächlich gelöscht. "
+                    + "Die angezeigten Scanwerte sind "
+                    + "eine Momentaufnahme und keine "
+                    + "feste Löschliste. "
+                    + "Die Anwendung benötigt bereits "
+                    + "beim Programmstart "
+                    + "Administratorrechte. "
+                    + "Diese Testfreigabe gilt nicht "
+                    + "für normale Release-Builds.";
+            }
+
             return
                 "Die Windows-Temp-Bereinigung befindet "
                 + "sich noch in der Sicherheitsprüfung. "
@@ -359,22 +384,57 @@ internal static class CleanupActionPlanSnapshot
         CleanupActionCategory category)
     {
         /*
-         * WindowsTemporaryFiles ist hier
-         * bewusst nicht enthalten.
+         * Windows-Temp darf die Planprüfung
+         * nur während des beaufsichtigten
+         * Debug-Echt-Tests passieren.
          *
-         * Die Kategorie bleibt analysierbar
-         * und in der Planvorschau sichtbar.
+         * Der Executor besitzt zusätzlich
+         * seine eigene Ausführungssperre.
          *
-         * Erst mit der späteren ausdrücklichen
-         * Freigabe darf diese Sperre zusammen
-         * mit der Executor-Freigabesperre
-         * überprüft und geändert werden.
+         * Alle anderen Kategorien behalten
+         * ihr bisheriges Verhalten.
          */
+        if (category.Category
+            == CleanupCategoryType.WindowsTemporaryFiles)
+        {
+            return IsAttendedDebugTrialAllowed();
+        }
+
         return category.Category
             is CleanupCategoryType.UserTemporaryFiles
             or CleanupCategoryType.DirectXShaderCache
             or CleanupCategoryType.ThumbnailCache
             or CleanupCategoryType.BrowserCache;
+    }
+
+    // =============================================
+    // BEAUFSICHTIGTEN DEBUG-TEST PRÜFEN
+    // =============================================
+
+    private static bool IsAttendedDebugTrialAllowed()
+    {
+#if DEBUG
+
+        /*
+         * Dieselben Bedingungen wie im
+         * WindowsTemporaryFilesCleanupExecutor:
+         *
+         * - Aktiver Debugger.
+         * - Tatsächliche WPF-Anwendung.
+         *
+         * Ein gewöhnlicher Release-Build
+         * erhält damit keine Freigabe.
+         */
+        return
+            System.Diagnostics.Debugger.IsAttached
+            && System.Windows.Application.Current
+                is global::WeberIT.Checkup.App.App;
+
+#else
+
+        return false;
+
+#endif
     }
 
     // =============================================

@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿
+using System.Windows;
 using System.Windows.Controls;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Cleanup;
@@ -6,6 +7,21 @@ using WeberIT.Checkup.App.Services.Tasks;
 
 namespace WeberIT.Checkup.App.Views.Dialogs;
 
+/// <summary>
+/// Sprint 55.14.33c
+///
+/// Vorschau und Bestätigung kontrollierter
+/// Bereinigungsaktionen.
+///
+/// Windows-Temp:
+/// - Beaufsichtigten Debug-Echt-Test anzeigen.
+/// - Tatsächliche Löschwirkung klar benennen.
+/// - Keine zusätzliche UAC-Abfrage behaupten.
+/// - Scanwerte als Momentaufnahme kennzeichnen.
+/// - Ausdrückliche Bestätigung verlangen.
+///
+/// Keine Änderung an der Lösch-Engine.
+/// </summary>
 public partial class CleanupActionPlanPreviewDialog : Window
 {
     private const string SupportedActionCode =
@@ -88,6 +104,10 @@ public partial class CleanupActionPlanPreviewDialog : Window
         private set;
     }
 
+    // =============================================
+    // AUSFÜHRBARKEIT ANZEIGEN
+    // =============================================
+
     private void ApplyExecutionAvailability()
     {
         if (_executionIsAvailable)
@@ -107,21 +127,40 @@ public partial class CleanupActionPlanPreviewDialog : Window
             StartCleanupButton.IsEnabled =
                 false;
 
-            FooterStatusTextBlock.Text =
-                _isBrowserCachePlan
-                    ? "Ausführung nur bei vollständig "
-                      + "beendeten Browsern möglich"
-                    : _isWindowsTemporaryFilesPlan
-                        ? "Separate Administratorbestätigung "
-                          + "beim Start erforderlich"
-                        : "Ausführung erst nach ausdrücklicher "
-                          + "Bestätigung möglich";
+            // =====================================
+            // WINDOWS-TEMP: BEAUFSICHTIGTER TEST
+            // =====================================
+
+            if (_isWindowsTemporaryFilesPlan)
+            {
+                ApplyWindowsTempTrialNotice();
+
+                FooterStatusTextBlock.Text =
+                    "Debug-Echt-Test: Administratorrechte "
+                    + "bereits beim Programmstart erforderlich";
+            }
+            else if (_isBrowserCachePlan)
+            {
+                FooterStatusTextBlock.Text =
+                    "Ausführung nur bei vollständig "
+                    + "beendeten Browsern möglich";
+            }
+            else
+            {
+                FooterStatusTextBlock.Text =
+                    "Ausführung erst nach ausdrücklicher "
+                    + "Bestätigung möglich";
+            }
 
             CloseButton.Content =
                 "Zurück";
 
             return;
         }
+
+        // =====================================
+        // REINE PLANVORSCHAU
+        // =====================================
 
         ExecutionAvailableNotice.Visibility =
             Visibility.Collapsed;
@@ -145,6 +184,51 @@ public partial class CleanupActionPlanPreviewDialog : Window
             "Planvorschau schließen";
     }
 
+    // =============================================
+    // WINDOWS-TEMP-TEST HERVORHEBEN
+    // =============================================
+
+    private void ApplyWindowsTempTrialNotice()
+    {
+        /*
+         * Die bestehende Hinweisfläche der
+         * XAML-Datei wird für den beaufsichtigten
+         * Windows-Temp-Test präzisiert.
+         *
+         * Andere Bereinigungskategorien
+         * behalten ihre bisherigen Texte.
+         */
+        if (ExecutionAvailableNotice.Child
+            is not StackPanel noticePanel
+            || noticePanel.Children.Count < 2
+            || noticePanel.Children[0]
+                is not TextBlock noticeTitle
+            || noticePanel.Children[1]
+                is not TextBlock noticeDescription)
+        {
+            return;
+        }
+
+        noticeTitle.Text =
+            "Beaufsichtigter Windows-Temp-Echt-Test";
+
+        noticeDescription.Text =
+            "ACHTUNG: Dies ist keine Simulation. "
+            + "Nach ausdrücklicher Bestätigung "
+            + "führt der Checkup Assistent echte "
+            + "Löschoperationen im lokalen "
+            + "Windows-Temp-Verzeichnis aus. "
+            + "Die allgemeine Produktivfreigabe "
+            + "bleibt geschlossen. "
+            + "Diese Ausführung ist ausschließlich "
+            + "in der aktuell zugelassenen "
+            + "Debug-Sitzung möglich.";
+    }
+
+    // =============================================
+    // KATEGORIESPEZIFISCHE WARNUNGEN
+    // =============================================
+
     private void AddCategorySpecificWarning()
     {
         if (_isBrowserCachePlan)
@@ -162,19 +246,44 @@ public partial class CleanupActionPlanPreviewDialog : Window
             return;
         }
 
-        if (_isWindowsTemporaryFilesPlan)
+        if (_isWindowsTemporaryFilesPlan
+            && _executionIsAvailable)
         {
             AddExecutionWarning(
-                "Administratorbestätigung erforderlich",
-                "Windows fordert beim Start der Bereinigung "
-                + "eine separate UAC-Bestätigung an. "
-                + "Verarbeitet werden ausschließlich Inhalte "
-                + "des lokalen Windows-Temp-Ordners. Der "
-                + "Stammordner bleibt bestehen, Verknüpfungen "
-                + "werden nicht verfolgt und gesperrte Dateien "
-                + "werden nicht gewaltsam entfernt.");
+                "Echte Löschung im Windows-Temp-Verzeichnis",
+                "Die Scanwerte sind eine Momentaufnahme "
+                + "und keine feste Löschliste. "
+                + "Die Bereinigungs-Engine prüft die "
+                + "vorhandenen Einträge zum Zeitpunkt "
+                + "der Ausführung erneut und versucht, "
+                + "zulässige Dateien und leere "
+                + "Unterordner zu entfernen. "
+                + "Der Windows-Temp-Stammordner "
+                + "bleibt bestehen. "
+                + "Geschützte, gesperrte und "
+                + "sicherheitsbedingt ausgeschlossene "
+                + "Einträge werden nicht erzwungen. "
+                + "Erfolgreich gelöschte Dateien "
+                + "werden nicht automatisch "
+                + "wiederhergestellt.");
+
+            AddExecutionWarning(
+                "Administratorrechte und Testbedingungen",
+                "Die Anwendung fordert Administratorrechte "
+                + "gemäß ihrem Manifest bereits beim "
+                + "Programmstart an. "
+                + "Beim Start dieser Bereinigung erfolgt "
+                + "keine zusätzliche UAC-Abfrage. "
+                + "Der Test sollte nur bei inaktiven "
+                + "Windows-Updates und Installationen "
+                + "sowie mit geeigneter Systemsicherung "
+                + "ausgeführt werden.");
         }
     }
+
+    // =============================================
+    // WARNHINWEIS DARSTELLEN
+    // =============================================
 
     private void AddExecutionWarning(
         string title,
@@ -238,6 +347,10 @@ public partial class CleanupActionPlanPreviewDialog : Window
             warningText);
     }
 
+    // =============================================
+    // AUSFÜHRUNG BESTÄTIGEN
+    // =============================================
+
     private void ExecutionConfirmationCheckBox_OnChanged(
         object sender,
         RoutedEventArgs e)
@@ -247,6 +360,10 @@ public partial class CleanupActionPlanPreviewDialog : Window
             && ExecutionConfirmationCheckBox.IsChecked
                 == true;
     }
+
+    // =============================================
+    // BEREINIGUNG ANFORDERN
+    // =============================================
 
     private void StartCleanupButton_OnClick(
         object sender,
@@ -267,6 +384,15 @@ public partial class CleanupActionPlanPreviewDialog : Window
 
         try
         {
+            /*
+             * Der bestätigte Plan wird nochmals
+             * durch die zentrale Planprüfung
+             * validiert.
+             *
+             * Auch der Executor überprüft
+             * anschließend unabhängig seine
+             * eigene technische Freigabe.
+             */
             ConfirmedPlan =
                 CleanupActionPlanSnapshot
                     .CreateExecutableCopy(
@@ -297,6 +423,10 @@ public partial class CleanupActionPlanPreviewDialog : Window
             dialog.ShowDialog();
         }
     }
+
+    // =============================================
+    // BROWSERCACHE-BEREITSCHAFT
+    // =============================================
 
     private bool ConfirmBrowserCacheReadiness()
     {
@@ -332,6 +462,10 @@ public partial class CleanupActionPlanPreviewDialog : Window
 
         return false;
     }
+
+    // =============================================
+    // DIALOG SCHLIESSEN
+    // =============================================
 
     private void CloseButton_OnClick(
         object sender,

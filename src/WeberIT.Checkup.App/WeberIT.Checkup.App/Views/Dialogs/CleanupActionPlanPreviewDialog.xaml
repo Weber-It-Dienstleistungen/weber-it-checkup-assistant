@@ -79,7 +79,7 @@
                                 Content="{TemplateBinding Content}"
                                 ContentTemplate="{TemplateBinding ContentTemplate}"
                                 RecognizesAccessKey="True"
-                                SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                SnapsToDevicePixels="True" />
 
                         </Grid>
 
@@ -471,7 +471,7 @@
                             Margin="36,10,0,0"
                             FontSize="11"
                             Foreground="{StaticResource TextSecondaryBrush}"
-                            Text="Geöffnete oder gesperrte Dateien können übersprungen werden. Nicht freigegebene Dateien und die Zielordner selbst bleiben bestehen. Das Ergebnis wird anschließend im Checkup protokolliert."
+                            Text="Geöffnete, gesperrte oder geschützte Dateien können übersprungen werden. Der Windows-Temp-Stammordner bleibt bestehen; vollständig geleerte Unterordner können entfernt werden. Erfolgreich gelöschte Dateien werden nicht automatisch wiederhergestellt. Das Ergebnis wird anschließend im Checkup protokolliert."
                             TextWrapping="Wrap" />
 
                     </StackPanel>

@@ -10,7 +10,7 @@ using WeberIT.Checkup.App.Services.Interfaces;
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.14.28d
+/// Sprint 55.14.33a
 ///
 /// Kontrollierte Windows-Temp-Bereinigung
 /// mit direkter C#-Handle-Integration.
@@ -31,8 +31,14 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 /// Kein automatischer Wiederanlauf.
 ///
 /// WICHTIG:
-/// Die produktive Windows-Temp-Bereinigung
-/// bleibt ausdrücklich deaktiviert.
+/// Die allgemeine Produktivfreigabe bleibt
+/// ausdrücklich deaktiviert.
+///
+/// Für einen beaufsichtigten Echt-Test
+/// existiert eine zusätzliche Freigabe,
+/// die ausschließlich bei einem Debug-Build
+/// mit aktiv verbundenem Debugger und
+/// laufender WPF-Anwendung greift.
 /// </summary>
 public sealed class WindowsTemporaryFilesCleanupExecutor
 {
@@ -54,23 +60,59 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
     // =============================================
 
     /*
-     * Diese Sperre ist absichtlich statisch
-     * und bleibt bis zur ausdrücklichen
-     * Sicherheitsfreigabe geschlossen.
+     * Diese allgemeine Freigabesperre bleibt
+     * ausdrücklich geschlossen.
      *
-     * false:
-     * - Keine produktive Bereinigung.
-     * - Keine Handle-Engine-Ausführung.
-     * - Kein alternativer Ausführungspfad.
+     * Sie darf erst nach abgeschlossener
+     * Produktivbewertung bewusst geändert
+     * werden.
      *
-     * Eine spätere Freigabe benötigt eine
-     * bewusst geprüfte Quellcodeänderung.
-     *
-     * Feldname und Typ bleiben für unsere
-     * Sicherheits-Regressionstests stabil.
+     * Unsere bestehenden Regressionstests
+     * überwachen weiterhin diesen Wert.
      */
     private static readonly bool HandleCleanupReleaseApproved =
         false;
+
+    // =============================================
+    // BEAUFSICHTIGTER DEBUG-ECHT-TEST
+    // =============================================
+
+    /// <summary>
+    /// Erlaubt einen beaufsichtigten Echt-Test
+    /// ausschließlich unter eng begrenzten
+    /// Entwicklungsbedingungen.
+    ///
+    /// Voraussetzungen:
+    ///
+    /// - Debug-Build.
+    /// - Aktiver Debugger.
+    /// - Tatsächliche WPF-Anwendung.
+    ///
+    /// Der SandboxTestRunner besitzt keine
+    /// laufende WPF-Anwendung und erhält
+    /// dadurch keine Ausführungsfreigabe.
+    ///
+    /// In Release-Builds gibt diese Methode
+    /// grundsätzlich false zurück.
+    ///
+    /// Diese Testfreigabe ersetzt ausdrücklich
+    /// keine allgemeine Produktivfreigabe.
+    /// </summary>
+    private static bool IsAttendedDebugTrialAllowed()
+    {
+#if DEBUG
+
+        return
+            System.Diagnostics.Debugger.IsAttached
+            && System.Windows.Application.Current
+                is global::WeberIT.Checkup.App.App;
+
+#else
+
+        return false;
+
+#endif
+    }
 
     // =============================================
     // AUSFÜHRUNGSKOORDINATION
@@ -175,22 +217,31 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         }
 
         // =========================================
-        // PRODUKTIVE FREIGABE PRÜFEN
+        // FREIGABE PRÜFEN
         // =========================================
 
         /*
-         * Die handle-basierte Engine ist
-         * implementiert und wurde bereits
-         * in Sandboxen getestet.
+         * Zwei strikt getrennte Wege:
          *
-         * Die Freigabe für das echte
-         * Windows-Temp-Verzeichnis steht
-         * jedoch weiterhin aus.
+         * 1. Allgemeine Produktivfreigabe.
+         *    Diese bleibt geschlossen.
          *
-         * Deshalb bleibt dieser Pfad
-         * ausdrücklich gesperrt.
+         * 2. Beaufsichtigter Debug-Echt-Test.
+         *    Nur mit aktivem Debugger und
+         *    tatsächlicher WPF-Anwendung.
+         *
+         * Die Freigabe beeinflusst weder die
+         * Zielautorisierung noch die Prüfung
+         * der Administratorrechte.
+         *
+         * Diese erfolgen weiterhin im
+         * Handle-Adapter.
          */
-        if (!HandleCleanupReleaseApproved)
+        var executionApproved =
+            HandleCleanupReleaseApproved
+            || IsAttendedDebugTrialAllowed();
+
+        if (!executionApproved)
         {
             return CreateBlockedResult(
                 plan.Id,
