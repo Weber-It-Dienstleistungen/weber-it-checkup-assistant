@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "WeberIT.Checkup.App": {
+      "commandName": "Project",
+      "commandLineArgs": "--weberit-windows-temp-worker"
+    }
+  }
+}

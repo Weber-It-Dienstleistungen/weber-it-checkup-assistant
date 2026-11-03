@@ -11,16 +11,19 @@ using WeberIT.Checkup.App.Services.Tasks;
 namespace WeberIT.Checkup.SandboxTestRunner;
 
 /// <summary>
-/// Sprint 55.14.23
+/// Sprint 55.14.26i
 ///
 /// Eigenständiger Sandbox-TestRunner.
 ///
-/// 65 bestehende Prüfungen und zehn
-/// zusätzliche Engine-Integrationstests.
+/// 75 bestehende Prüfungen und fünf
+/// zusätzliche Executor-Sicherheitstests.
 ///
 /// Keine Administratorrechte.
 /// Keine produktive Windows-Temp-Bereinigung.
 /// Reale Löschungen nur in GUID-Sandboxen.
+///
+/// Die neue direkte Windows-Temp-Bereinigung
+/// bleibt ausdrücklich gesperrt.
 /// </summary>
 internal static class Program
 {
@@ -210,13 +213,35 @@ internal static class Program
             Console.WriteLine();
 
             // =================================
+            // TESTBLOCK 12: EXECUTOR-SICHERHEIT
+            // SPRINT 55.14.26i
+            // =================================
+
+            /*
+             * Fünf zusätzliche Prüfungen:
+             *
+             * - Produktive Freigabesperre
+             * - Gültiger Plan wird blockiert
+             * - Abbruch vor Start
+             * - Parallele Ausführung
+             * - Ungültiger Aktionsplan
+             *
+             * Dieser Testblock führt keine
+             * Löschoperationen durch.
+             */
+            RunTestBlock(
+                "TESTBLOCK 12 - EXECUTOR-SICHERHEIT",
+                WindowsTemporaryFilesCleanupExecutorReleaseGateRegressionTests
+                    .RunAll);
+
+            // =================================
             // GESAMTERGEBNIS
             // =================================
 
             Console.WriteLine(
                 "========================================");
             Console.WriteLine(
-                " ERGEBNIS: ALLE 75 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 80 TESTS BESTANDEN");
             Console.WriteLine(
                 "========================================");
 

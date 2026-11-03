@@ -30,6 +30,17 @@ public partial class App : Application
 {
     private readonly IHost _host;
 
+    /*
+     * Sprint 55.14.26c:
+     *
+     * Ein erhöhter Worker startet den
+     * regulären Anwendungshost nicht.
+     *
+     * Der tatsächliche Startzustand wird
+     * für OnExit festgehalten.
+     */
+    private bool _hostStarted;
+
     public App()
     {
         _host =
@@ -412,6 +423,34 @@ public partial class App : Application
     protected override async void OnStartup(
         StartupEventArgs e)
     {
+        // =========================================
+        // SPRINT 55.14.26c
+        // EINGESCHRÄNKTEN WORKER ABFANGEN
+        // =========================================
+
+        /*
+         * Der Worker-Modus wird vor der
+         * Datenbankinitialisierung und vor
+         * dem Start des Anwendungshosts
+         * erkannt.
+         *
+         * Kein Hauptfenster.
+         * Keine regulären Anwendungsdienste.
+         * Keine Freigabe der Bereinigung.
+         */
+        if (WindowsTemporaryFilesCleanupWorkerEntryPoint
+                .TryHandle(
+                    e.Args,
+                    out var workerExitCode))
+        {
+            Shutdown(workerExitCode);
+            return;
+        }
+
+        // =========================================
+        // NORMALER ANWENDUNGSSTART
+        // =========================================
+
         var databasePaths =
             _host.Services.GetRequiredService<DatabasePaths>();
 
@@ -435,7 +474,7 @@ public partial class App : Application
                  Datenbankpfad:
                  {databasePaths.DatabaseFilePath}
 
-                 Prüfe bitte, ob der Programmordner und der verwendete Datenträger beschreibbar sind. Stelle außerdem sicher, dass der USB-Stick nicht schreibgeschützt oder entfernt wurde.
+                 Prüfe bitte, ob der Programmordner und der verwendete Datenträger beschreibbar ist. Stelle außerdem sicher, dass der USB-Stick nicht schreibgeschützt oder entfernt wurde.
 
                  Technische Ursache:
                  {exception.Message}
@@ -451,6 +490,12 @@ public partial class App : Application
 
         await _host.StartAsync();
 
+        /*
+         * Erst nach erfolgreichem Start
+         * darf OnExit den Host stoppen.
+         */
+        _hostStarted = true;
+
         var mainWindow =
             _host.Services.GetRequiredService<MainWindow>();
 
@@ -463,7 +508,17 @@ public partial class App : Application
     protected override async void OnExit(
         ExitEventArgs e)
     {
-        await _host.StopAsync();
+        /*
+         * Im Worker-Modus wurde der Host
+         * nicht gestartet.
+         *
+         * Die reguläre Anwendung behält
+         * ihren bisherigen Stop-Ablauf.
+         */
+        if (_hostStarted)
+        {
+            await _host.StopAsync();
+        }
 
         _host.Dispose();
 

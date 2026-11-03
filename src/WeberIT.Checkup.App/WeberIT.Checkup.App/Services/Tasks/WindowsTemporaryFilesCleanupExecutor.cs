@@ -9,19 +9,28 @@ using WeberIT.Checkup.App.Services.Interfaces;
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Führt die kontrollierte Windows-Temp-Bereinigung
-/// über einen gesonderten, erhöhten PowerShell-Prozess aus.
+/// Sprint 55.14.26g
 ///
-/// Sprint 55.13.52:
-/// - Ausgelagerten Skriptgenerator verwenden.
-/// - Überspringursachen aus Worker-JSON übernehmen.
-/// - Ursachen vor Übernahme streng validieren.
-/// - Verifizierten Skriptinhalt direkt ausführen,
-///   ohne die Datei nach der Hashprüfung
-///   ein zweites Mal zu öffnen.
+/// Kontrollierte Windows-Temp-Bereinigung.
 ///
-/// Aktionsplan, Administratorrechte,
-/// Skriptintegrität und Zielpfad werden geprüft.
+/// Neuer Ausführungspfad:
+/// - Aktionsplan validieren
+/// - Exklusive Ausführung sicherstellen
+/// - Produktive Freigabe kontrollieren
+/// - Handle-Adapter asynchron ausführen
+/// - Vorhandenes Ergebnismodell verwenden
+///
+/// Die bisherige PowerShell-Ausführung
+/// wird nicht mehr produktiv aufgerufen.
+///
+/// Ihre privaten Hilfsmethoden bleiben
+/// vorübergehend für bestehende
+/// Regressionstests erhalten.
+///
+/// WICHTIG:
+/// Die neue Bereinigung ist bis zur
+/// ausdrücklichen Sicherheitsfreigabe
+/// deaktiviert.
 /// </summary>
 public sealed class WindowsTemporaryFilesCleanupExecutor
 {
@@ -36,6 +45,30 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
 
     private const int MaximumDiagnosticLength = 3000;
 
+    /*
+     * SPRINT 55.14.26g
+     *
+     * Explizite produktive Freigabesperre.
+     *
+     * false:
+     * Keine Windows-Temp-Bereinigung.
+     * Weder über PowerShell noch über
+     * die neue Handle-Engine.
+     *
+     * Die Freigabe erfolgt ausschließlich
+     * durch eine spätere, geprüfte
+     * Quellcodeänderung.
+     */
+    private static readonly bool HandleCleanupReleaseApproved =
+        false;
+
+    /*
+     * Vorübergehend für die bisherige
+     * Constructor-Signatur erhalten.
+     *
+     * Der neue Ausführungspfad benötigt
+     * keinen externen Prozessrunner.
+     */
     private readonly IMaintenanceProcessRunner
         _processRunner;
 
@@ -60,6 +93,10 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         _executionCoordinator = executionCoordinator;
     }
 
+    // =============================================
+    // NEUER PRODUKTIVER EINSTIEG
+    // =============================================
+
     public async Task<CleanupActionExecutionResult>
         ExecuteAsync(
             CheckupTaskActionPlan plan,
@@ -67,6 +104,15 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
     {
         ArgumentNullException.ThrowIfNull(plan);
 
+        /*
+         * Die vollständige fachliche
+         * Validierung bleibt erhalten.
+         *
+         * Kein freier Befehlsaufruf.
+         * Nur eine Windows-Temp-Kategorie.
+         * Administratorrechte verpflichtend.
+         * Kein automatischer Neustart.
+         */
         ValidatePlan(plan);
 
         var startedAt = DateTimeOffset.Now;
@@ -78,6 +124,14 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
                 startedAt);
         }
 
+        /*
+         * Die bestehende Ausführungssperre
+         * wird unverändert übernommen.
+         *
+         * Auch der direkte C#-Ablauf darf
+         * nicht parallel zu einer anderen
+         * kontrollierten Systemaktion laufen.
+         */
         using var executionLease =
             _executionCoordinator.TryBeginExecution(
                 plan.ActionCode,
@@ -91,130 +145,96 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
                 BuildExecutionBlockedMessage());
         }
 
-        var temporaryDirectory = string.Empty;
+        // =========================================
+        // AUSDRÜCKLICHE FREIGABESPERRE
+        // =========================================
+
+        /*
+         * Die neue Engine ist bereits
+         * implementiert und getestet.
+         *
+         * Eine Freigabe für produktive
+         * Windows-Temp-Verzeichnisse wurde
+         * jedoch noch nicht erteilt.
+         *
+         * Deshalb erfolgt hier ein
+         * kontrollierter Sicherheitsstopp.
+         *
+         * Es gibt keinen Rückfall auf
+         * den bisherigen PowerShell-Ablauf.
+         */
+        if (!HandleCleanupReleaseApproved)
+        {
+            return CreateBlockedResult(
+                plan.Id,
+                startedAt,
+                "Die neue Windows-Temp-Bereinigung "
+                + "befindet sich noch in der "
+                + "Sicherheitsprüfung und ist "
+                + "für produktive Ausführungen "
+                + "nicht freigegeben.");
+        }
+
+        // =========================================
+        // HANDLE-ADAPTER AUSFÜHREN
+        // =========================================
 
         try
         {
-            temporaryDirectory =
-                CreateTemporaryDirectory();
-
-            var cancellationMarkerPath =
-                Path.Combine(
-                    temporaryDirectory,
-                    "cancel.requested");
-
-            var resultFilePath =
-                Path.Combine(
-                    temporaryDirectory,
-                    "worker-result.json");
-
-            var cleanupScriptPath =
-                Path.Combine(
-                    temporaryDirectory,
-                    "windows-temp-cleanup.ps1");
-
-            var cleanupScript =
-                BuildCleanupScript(
-                    cancellationMarkerPath,
-                    resultFilePath);
-
-            var expectedScriptHash =
-                WriteCleanupScript(
-                    cleanupScriptPath,
-                    cleanupScript);
-
-            var powershellPath =
-                ResolvePowerShellPath();
-
-            /*
-             * Sprint 55.13.52:
-             *
-             * Der Launcher liest den Skriptinhalt
-             * genau einmal, überprüft dessen Hash
-             * und führt anschließend den bereits
-             * geprüften Speicherinhalt aus.
-             *
-             * Eine zweite Dateiöffnung nach
-             * der Hashprüfung entfällt.
-             */
-            var verifiedLauncherScript =
-                BuildVerifiedLauncherScript(
-                    cleanupScriptPath,
-                    expectedScriptHash);
-
-            var arguments = new List<string>
-            {
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-Command",
-                verifiedLauncherScript
-            };
-
-            using var cancellationRegistration =
-                cancellationToken.Register(
-                    () => TryCreateCancellationMarker(
-                        cancellationMarkerPath));
-
-            var processResult =
-                await _processRunner.RunAsync(
-                    powershellPath,
-                    arguments,
-                    requiresAdministrator: true);
-
-            if (processResult.ElevationWasCancelled)
-            {
-                return CreateCancelledBeforeStartResult(
-                    plan.Id,
-                    startedAt);
-            }
-
-            if (!processResult.WasStarted)
-            {
-                return CreateTechnicalFailureResult(
-                    plan.Id,
-                    startedAt,
-                    BuildProcessFailureMessage(processResult));
-            }
-
-            if (!processResult.WasElevated)
-            {
-                return CreateTechnicalFailureResult(
-                    plan.Id,
-                    startedAt,
-                    "Die Windows-Temp-Bereinigung wurde nicht "
-                    + "mit bestätigten Administratorrechten "
-                    + "ausgeführt.");
-            }
-
-            var workerResult =
-                ParseWorkerResult(
-                    resultFilePath,
-                    processResult);
-
-            ValidateWorkerResult(workerResult);
-
             var plannedCategory =
                 plan.CleanupCategories.Single();
 
+            /*
+             * Die Dateisystemverarbeitung
+             * erfolgt außerhalb des
+             * WPF-UI-Threads.
+             *
+             * Der CancellationToken wird
+             * unmittelbar weitergereicht.
+             *
+             * Task.Run erhält absichtlich
+             * keinen eigenen Abbruchtoken,
+             * damit auch ein inzwischen
+             * abgebrochener Start durch
+             * den Adapter eindeutig als
+             * Abbruchergebnis zurückkehrt.
+             */
             var categoryResult =
-                CreateCategoryResult(
-                    plannedCategory,
-                    workerResult);
+                await Task.Run(
+                    () =>
+                        WindowsTemporaryFilesHandleCleanupAdapter
+                            .Execute(
+                                plannedCategory,
+                                cancellationToken));
 
+            /*
+             * Der Adapter liefert bereits
+             * das persistierte Kategorieformat.
+             *
+             * Insbesondere bleiben erhalten:
+             *
+             * - WasStarted
+             * - WasCancelled
+             * - TargetPath
+             * - DeletedFileCount
+             * - DeletedDirectoryCount
+             * - DeletedSizeBytes
+             * - FailedEntryCount
+             * - SkippedEntryCount
+             * - SkippedEntryReasons
+             * - ErrorMessage
+             */
             return new CleanupActionExecutionResult
             {
                 PlanId = plan.Id,
 
                 WasCancelled =
-                    workerResult.WasCancelled,
+                    categoryResult.WasCancelled,
 
                 ErrorMessage =
-                    DetermineOverallErrorMessage(
-                        categoryResult,
-                        processResult,
-                        workerResult),
+                    categoryResult.WasCancelled
+                        ? string.Empty
+                        : categoryResult.ErrorMessage,
 
                 StartedAt = startedAt,
                 FinishedAt = DateTimeOffset.Now,
@@ -228,18 +248,21 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         }
         catch (Exception exception)
         {
+            /*
+             * Unerwartete Fehler werden
+             * ausdrücklich dokumentiert.
+             *
+             * Kein automatischer Wiederanlauf.
+             * Kein Rückfall auf PowerShell.
+             */
             return CreateTechnicalFailureResult(
                 plan.Id,
                 startedAt,
                 string.IsNullOrWhiteSpace(exception.Message)
-                    ? "Die erhöhte Windows-Temp-Bereinigung "
+                    ? "Die handle-basierte "
+                      + "Windows-Temp-Bereinigung "
                       + "wurde unerwartet abgebrochen."
                     : exception.Message);
-        }
-        finally
-        {
-            TryDeleteTemporaryDirectory(
-                temporaryDirectory);
         }
     }
 
@@ -318,6 +341,26 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
                 + "keine Windows-Temp-Kategorie.");
         }
     }
+
+    // =============================================
+    // BISHERIGE POWERSHELL-HILFSMETHODEN
+    // =============================================
+
+    /*
+     * Die folgenden privaten Methoden
+     * bleiben zunächst erhalten.
+     *
+     * Bestehende Regressionstests greifen
+     * teilweise über Reflection auf diese
+     * Methoden und Ergebnisverträge zu.
+     *
+     * Sie gehören nicht mehr zum aktiven
+     * ExecuteAsync-Ausführungspfad.
+     *
+     * Eine Entfernung erfolgt erst
+     * gemeinsam mit der Überarbeitung
+     * der betroffenen Regressionstests.
+     */
 
     // =============================================
     // TEMPORÄREN ARBEITSBEREICH ERSTELLEN
@@ -400,8 +443,8 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         if (!File.Exists(normalizedScriptPath))
         {
             throw new IOException(
-                "Das erhöhte Bereinigungsskript konnte "
-                + "nicht zuverlässig gespeichert werden.");
+                "Das erhöhte Bereinigungsskript konnte nicht "
+                + "zuverlässig gespeichert werden.");
         }
 
         var writtenContent =
@@ -469,18 +512,6 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         string cleanupScriptPath,
         string expectedScriptHash)
     {
-        /*
-         * Sprint 55.13.52:
-         *
-         * Der zuvor inline definierte Launcher
-         * wurde vollständig ausgelagert.
-         *
-         * Der bestehende private Einstiegspunkt
-         * bleibt für Regressionstests erhalten.
-         *
-         * Die Ausführung des Skriptpfads per
-         * "& $scriptPath" gibt es nicht mehr.
-         */
         return
             WindowsTemporaryFilesVerifiedLauncherScript
                 .Build(
@@ -496,14 +527,6 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         string cancellationMarkerPath,
         string resultFilePath)
     {
-        /*
-         * Dieser Einstiegspunkt bleibt für
-         * die bestehenden Regressionstests
-         * erhalten.
-         *
-         * Der eigentliche PowerShell-Code
-         * liegt in der ausgelagerten Klasse.
-         */
         return
             WindowsTemporaryFilesCleanupPowerShellScript
                 .Build(
@@ -829,11 +852,6 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
             CleanupActionCategory category,
             WindowsTemporaryFilesWorkerResult workerResult)
     {
-        /*
-         * Vom erhöhten Prozess übertragene
-         * Ursachen erst nach der Validierung
-         * in unser persistiertes Modell übernehmen.
-         */
         var skippedEntryReasons =
             WindowsTemporaryFilesSkipReasonContract
                 .Normalize(
@@ -1059,8 +1077,9 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         }
         catch
         {
-            // Ein fehlgeschlagener Abbruchmarker darf
-            // den erhöhten Prozess nicht gewaltsam beenden.
+            // Fehler beim Abbruchmarker dürfen
+            // das eigentliche Ergebnis nicht
+            // verändern.
         }
     }
 
@@ -1083,8 +1102,7 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
         }
         catch
         {
-            // Temporäre Kommunikationsdaten dürfen die
-            // fachliche Ergebnisverarbeitung nicht überlagern.
+            // Historischer Testhelfer.
         }
     }
 
@@ -1100,7 +1118,7 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
     }
 
     // =============================================
-    // JSON-DATENVERTRAG DES ERHÖHTEN WORKERS
+    // JSON-DATENVERTRAG DES BISHERIGEN WORKERS
     // =============================================
 
     private sealed class WindowsTemporaryFilesWorkerResult
@@ -1122,13 +1140,6 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
 
         public long SkippedEntryCount { get; set; }
 
-        /*
-         * Optionales Feld für die
-         * Ursachen der Ausschlüsse.
-         *
-         * Historische Ergebnisse ohne
-         * dieses Feld bleiben kompatibel.
-         */
         public List<WindowsTemporaryFilesSkipReasonRecord?>?
             SkippedEntryReasons
         {
