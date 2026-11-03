@@ -11,16 +11,16 @@ using WeberIT.Checkup.App.Services.Tasks;
 namespace WeberIT.Checkup.SandboxTestRunner;
 
 /// <summary>
-/// Sprint 55.14.13
+/// Sprint 55.14.17
 ///
 /// Eigenständiger Teststarter für die
 /// Windows-Temp-Bereinigung.
 ///
-/// 53 bestehende Tests und sechs neue
-/// Handle-Verzeichnis-Löschtests.
+/// 59 bestehende Regressionstests
+/// plus sechs neue Tests zur
+/// handle-basierten Verzeichnisdurchsuchung.
 ///
-/// Sämtliche Tests laufen ohne
-/// Administratorrechte.
+/// Sämtliche Tests ohne Administratorrechte.
 ///
 /// Echte Löschoperationen betreffen
 /// ausschließlich künstliche Sandbox-Daten.
@@ -185,6 +185,28 @@ internal static class Program
             Console.WriteLine();
 
             // =================================
+            // TESTBLOCK 10: VERZEICHNISDURCHSUCHUNG
+            // =================================
+
+            PrintHeading(
+                "TESTBLOCK 10 - HANDLE-BASIERTE VERZEICHNISDURCHSUCHUNG");
+
+            Console.WriteLine(
+                "Prüfe Verzeichnisaufzählung, "
+                + "verschachtelte Ordner, "
+                + "leere Verzeichnisse, "
+                + "Abbruch, Identitätswechsel "
+                + "und Junction-Schutz.");
+
+            Console.WriteLine();
+
+            Console.WriteLine(
+                WindowsTemporaryFilesHandleDirectoryEnumerationRegressionTests
+                    .RunAll());
+
+            Console.WriteLine();
+
+            // =================================
             // GESAMTERGEBNIS
             // =================================
 
@@ -192,7 +214,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 59 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 65 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");
@@ -212,7 +234,7 @@ internal static class Program
             Console.Error.WriteLine(
                 "========================================");
 
-            Console.Error.WriteLine();
+            Console.WriteLine();
 
             Console.Error.WriteLine(
                 exception.ToString());
