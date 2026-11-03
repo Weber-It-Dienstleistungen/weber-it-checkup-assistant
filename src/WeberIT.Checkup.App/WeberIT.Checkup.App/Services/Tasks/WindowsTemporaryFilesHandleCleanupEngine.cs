@@ -11,7 +11,7 @@ using WeberIT.Checkup.App.Models;
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.14.20
+/// Sprint 55.14.31a
 ///
 /// Koordiniert einen vollständigen,
 /// handle-basierten Bereinigungslauf.
@@ -26,15 +26,17 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 ///
 /// Der Stammordner wird nicht gelöscht.
 ///
-/// WICHTIG:
-/// Diese Klasse autorisiert selbst keinen
-/// beliebigen Windows-Zielpfad.
+/// Die produktive Freigabe bleibt im
+/// WindowsTemporaryFilesCleanupExecutor
+/// ausdrücklich gesperrt.
 ///
-/// Der Aufrufer muss das Stammhandle aus
-/// einem ausdrücklich freigegebenen
-/// Zielbereich bereitstellen.
+/// Neuer Debug-Testzugang:
+/// Ein Regressionstest kann nach der ersten
+/// erfolgreich dokumentierten Dateilöschung
+/// kontrolliert einen Abbruch anfordern.
 ///
-/// Noch keine produktive Integration.
+/// Keine zeitgesteuerten Testabbrüche.
+/// Keine Änderung der produktiven Löschlogik.
 /// </summary>
 internal static class WindowsTemporaryFilesHandleCleanupEngine
 {
@@ -76,27 +78,66 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
     }
 
     // =============================================
-    // BEREINIGUNG STARTEN
+    // NORMALER ENGINE-AUFRUF
     // =============================================
 
-    /// <summary>
-    /// Führt die Bereinigung innerhalb eines
-    /// bereits geöffneten Verzeichnisses aus.
-    ///
-    /// Das Stammhandle gehört dem Aufrufer
-    /// und wird hier nicht geschlossen.
-    ///
-    /// Es erfolgt keine erneute Auflösung
-    /// des Stammverzeichnisses über einen
-    /// vollständigen Dateipfad.
-    ///
-    /// Keine Administratorrechte anfordern.
-    /// Keine Berechtigungen verändern.
-    /// Keine rekursive Zwangslöschung.
-    /// </summary>
     internal static ExecutionResult Execute(
         SafeFileHandle approvedRootDirectory,
         CancellationToken cancellationToken = default)
+    {
+        return ExecuteCore(
+            approvedRootDirectory,
+            cancellationToken,
+            onFirstDeletedFile: null);
+    }
+
+#if DEBUG
+
+    // =============================================
+    // AUSSCHLIESSLICH DEBUG-REGRESSIONSTEST
+    // =============================================
+
+    /// <summary>
+    /// Ermöglicht einen deterministischen
+    /// Abbruchtest ausschließlich im Debug-Build.
+    ///
+    /// Der Test übergibt ein zuvor geprüftes
+    /// Stammhandle seiner eigenen GUID-Sandbox.
+    ///
+    /// Nach der ersten erfolgreich dokumentierten
+    /// Dateilöschung wird der Callback aufgerufen.
+    ///
+    /// Dieser kann den übergebenen
+    /// CancellationToken abbrechen.
+    ///
+    /// Die Funktion autorisiert ausdrücklich
+    /// keine produktiven Zielpfade.
+    /// </summary>
+    internal static ExecutionResult
+        ExecuteForCancellationRegressionTest(
+            SafeFileHandle approvedRootDirectory,
+            CancellationToken cancellationToken,
+            Action cancelAfterFirstDeletedFile)
+    {
+        ArgumentNullException.ThrowIfNull(
+            cancelAfterFirstDeletedFile);
+
+        return ExecuteCore(
+            approvedRootDirectory,
+            cancellationToken,
+            cancelAfterFirstDeletedFile);
+    }
+
+#endif
+
+    // =============================================
+    // GEMEINSAMER ENGINE-KERN
+    // =============================================
+
+    private static ExecutionResult ExecuteCore(
+        SafeFileHandle approvedRootDirectory,
+        CancellationToken cancellationToken,
+        Action? onFirstDeletedFile)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -141,11 +182,18 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
                 + "nicht zulässig.");
         }
 
-        var state = new ExecutionState();
+        var state =
+            new ExecutionState(
+                onFirstDeletedFile);
+
+        // =========================================
+        // ABBRUCH VOR BEGINN
+        // =========================================
 
         if (cancellationToken.IsCancellationRequested)
         {
             state.WasCancelled = true;
+
             return state.CreateResult();
         }
 
@@ -158,6 +206,19 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
                 depth: 0,
                 state,
                 cancellationToken);
+
+            /*
+             * Auch nach dem letzten Eintrag
+             * einen inzwischen angeforderten
+             * Abbruch berücksichtigen.
+             *
+             * Dadurch wird ein unmittelbar
+             * nach der letzten Änderung
+             * eingetroffener Abbruch nicht
+             * versehentlich als normal
+             * abgeschlossener Lauf gemeldet.
+             */
+            cancellationToken.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
@@ -177,7 +238,8 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
              * Es erfolgt kein automatischer
              * Wiederholungsversuch.
              */
-            state.RecordFatalError(exception);
+            state.RecordFatalError(
+                exception);
         }
 
         return state.CreateResult();
@@ -544,6 +606,26 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
             CleanupSkippedEntryReason,
             long> _skipReasons = new();
 
+        /*
+         * Im normalen produktiven Aufruf
+         * ist dieser Callback immer null.
+         *
+         * Ausschließlich der Debug-Testzugang
+         * kann ihn setzen.
+         *
+         * Er wird genau einmal nach der ersten
+         * erfolgreich dokumentierten
+         * Dateilöschung aufgerufen.
+         */
+        private readonly Action? _onFirstDeletedFile;
+
+        public ExecutionState(
+            Action? onFirstDeletedFile)
+        {
+            _onFirstDeletedFile =
+                onFirstDeletedFile;
+        }
+
         public bool WasStarted { get; set; }
 
         public bool WasCancelled { get; set; }
@@ -583,6 +665,23 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
             else
             {
                 DeletedSizeBytes += sizeBytes;
+            }
+
+            /*
+             * Der Callback wird erst nach
+             * vollständig erfolgter
+             * Ergebnisdokumentation ausgeführt.
+             *
+             * Dadurch kann ein Regressionstest
+             * exakt an dieser Stelle einen
+             * Abbruch anfordern.
+             *
+             * Der normale Aufruf besitzt
+             * keinen Callback.
+             */
+            if (DeletedFileCount == 1)
+            {
+                _onFirstDeletedFile?.Invoke();
             }
         }
 

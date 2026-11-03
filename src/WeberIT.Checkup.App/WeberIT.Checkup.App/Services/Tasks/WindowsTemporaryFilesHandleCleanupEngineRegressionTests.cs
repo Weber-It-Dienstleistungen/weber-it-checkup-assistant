@@ -12,21 +12,35 @@ using WeberIT.Checkup.App.Models;
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.14.22
+/// Sprint 55.14.31d
 ///
-/// Integrationstest für die vollständige
+/// Integrationstests für die vollständige
 /// handle-basierte Bereinigungs-Engine.
 ///
-/// Ein kontrollierter Bereinigungslauf
-/// und ein Abbruchtest vor dem Start.
+/// Geprüft werden:
+/// - Regulärer Bereinigungslauf.
+/// - Löschzähler und Dateigrößen.
+/// - Dateisperren und Schutzattribute.
+/// - Unveränderte Außenbereiche.
+/// - Abbruch vor Ausführungsbeginn.
+/// - Abbruch nach der ersten Dateilöschung.
+/// - Erhalt bestätigter Teilergebnisse.
 ///
 /// Sicherheitsregeln:
-/// - Ausschließlich eigene GUID-Sandbox.
+/// - Ausschließlich eigene GUID-Sandboxen.
 /// - Keine Administratorrechte.
 /// - Kein produktiver Windows-Temp-Zugriff.
 /// - Keine rekursive Testdatenbereinigung.
 /// - Keine fremden Dateien verändern.
 /// - Keine automatische Wiederholung.
+/// - Keine zeitgesteuerten Testabbrüche.
+///
+/// Im Abbruchszenario bleibt locked.txt
+/// während der Engine-Ausführung ausdrücklich
+/// exklusiv geöffnet.
+///
+/// Der produktive Freigabeschalter bleibt
+/// unverändert geschlossen.
 /// </summary>
 public static class
     WindowsTemporaryFilesHandleCleanupEngineRegressionTests
@@ -230,10 +244,13 @@ public static class
 
             Verify(
                 "Gesperrte und geschützte Stammdateien unverändert",
-                File.ReadAllText(sandbox.LockedFile)
+                File.Exists(sandbox.LockedFile)
+                && File.ReadAllText(sandbox.LockedFile)
                     == LockedContent
+                && File.Exists(sandbox.ReadOnlyFile)
                 && File.ReadAllText(sandbox.ReadOnlyFile)
                     == ReadOnlyContent
+                && File.Exists(sandbox.SystemFile)
                 && File.ReadAllText(sandbox.SystemFile)
                     == SystemContent
                 && HasAttribute(
@@ -244,14 +261,39 @@ public static class
                     FileAttributes.System)
                 && Directory.Exists(
                     sandbox.TargetDirectory)
+                && File.Exists(sandbox.OutsideFile)
                 && File.ReadAllText(sandbox.OutsideFile)
                     == OutsideContent,
                 results);
         }
 
         // =====================================
-        // PRÜFUNG 10: ABBRUCH VOR BEGINN
+        // PRÜFUNG 10: ABBRUCH VOR UND
+        // WÄHREND DER BEREINIGUNG
         // =====================================
+
+        /*
+         * Diese Prüfung besteht aus zwei
+         * unabhängigen Szenarien:
+         *
+         * A: Abbruch vor Ausführungsbeginn.
+         *
+         * B: Abbruch unmittelbar nach der
+         *    ersten bestätigten Dateilöschung.
+         *
+         * Beide Szenarien verwenden eigene
+         * GUID-Sandboxen.
+         *
+         * Damit bleiben zehn fachliche
+         * Engine-Integrationstests erhalten.
+         */
+
+        // =====================================
+        // SZENARIO A: ABBRUCH VOR START
+        // =====================================
+
+        var cancellationBeforeStartIsSafe =
+            false;
 
         using (var cancelledSandbox = new TestSandbox())
         {
@@ -271,23 +313,273 @@ public static class
                         root,
                         cancellation.Token);
 
-            Verify(
-                "Abbruch vor Start verhindert jede Bereinigung",
+            cancellationBeforeStartIsSafe =
                 cancelledResult.WasCancelled
                 && !cancelledResult.WasStarted
                 && cancelledResult.DeletedFileCount == 0
                 && cancelledResult.DeletedDirectoryCount == 0
                 && cancelledResult.ProcessedEntryCount == 0
+                && string.IsNullOrWhiteSpace(
+                    cancelledResult.ErrorMessage)
+                && File.Exists(
+                    cancelledSandbox.NormalFile)
                 && File.ReadAllText(
                     cancelledSandbox.NormalFile)
                     == NormalContent
+                && File.Exists(
+                    cancelledSandbox.NestedNormalFile)
                 && File.ReadAllText(
                     cancelledSandbox.NestedNormalFile)
                     == NestedNormalContent
                 && Directory.Exists(
-                    cancelledSandbox.EmptyDirectory),
-                results);
+                    cancelledSandbox.EmptyDirectory)
+                && File.Exists(
+                    cancelledSandbox.OutsideFile)
+                && File.ReadAllText(
+                    cancelledSandbox.OutsideFile)
+                    == OutsideContent;
         }
+
+        // =====================================
+        // SZENARIO B: ABBRUCH NACH ERSTER
+        // ERFOLGREICHER DATEILÖSCHUNG
+        // =====================================
+
+        var cancellationDuringExecutionIsSafe =
+            false;
+
+        using (var runningSandbox = new TestSandbox())
+        {
+            /*
+             * Zwei normale, selbst erzeugte
+             * Dateien sind löschbar:
+             *
+             * - normal.txt
+             * - nested-normal.txt
+             *
+             * Die übrigen Testdateien bleiben
+             * geschützt oder gesperrt.
+             */
+            var normalFileBytes =
+                checked(
+                    (ulong)new FileInfo(
+                        runningSandbox.NormalFile).Length);
+
+            var nestedFileBytes =
+                checked(
+                    (ulong)new FileInfo(
+                        runningSandbox.NestedNormalFile).Length);
+
+            using var cancellation =
+                new CancellationTokenSource();
+
+            var callbackCount =
+                0;
+
+            WindowsTemporaryFilesHandleCleanupEngine
+                .ExecutionResult result;
+
+            // =================================
+            // EXKLUSIVE DATEISPERRE
+            // =================================
+
+            /*
+             * WICHTIGE KORREKTUR:
+             *
+             * Im vorigen Testentwurf wurde
+             * locked.txt nicht exklusiv
+             * geöffnet.
+             *
+             * Dadurch war die Datei regulär
+             * löschbar und konnte bereits
+             * die erste gelöschte Datei sein.
+             *
+             * Jetzt bleibt sie wie im
+             * regulären Integrationstest
+             * während der gesamten
+             * Engine-Ausführung gesperrt.
+             *
+             * Erst nach Freigabe der Sperre
+             * kontrollieren wir ihren Inhalt.
+             */
+            using (var fileLock = new FileStream(
+                runningSandbox.LockedFile,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.None))
+            {
+                using var root =
+                    WindowsTemporaryFilesHandleAccess
+                        .OpenRootDirectory(
+                            runningSandbox.TargetDirectory);
+
+                /*
+                 * Die Engine ruft den Callback
+                 * genau nach der ersten
+                 * erfolgreich dokumentierten
+                 * Dateilöschung auf.
+                 *
+                 * Kein Thread.Sleep.
+                 * Kein Timer.
+                 * Kein zweiter Prozess.
+                 *
+                 * Der Callback fordert nur
+                 * den kontrollierten Abbruch an.
+                 */
+                result =
+                    WindowsTemporaryFilesHandleCleanupEngine
+                        .ExecuteForCancellationRegressionTest(
+                            root,
+                            cancellation.Token,
+                            () =>
+                            {
+                                callbackCount++;
+                                cancellation.Cancel();
+                            });
+            }
+
+            // =================================
+            // TATSÄCHLICHE DATEIZUSTÄNDE
+            // =================================
+
+            var normalFileStillExists =
+                File.Exists(
+                    runningSandbox.NormalFile);
+
+            var nestedFileStillExists =
+                File.Exists(
+                    runningSandbox.NestedNormalFile);
+
+            /*
+             * Genau eine der beiden Dateien
+             * muss erhalten geblieben sein.
+             *
+             * Welche zuerst verarbeitet wird,
+             * ist bewusst nicht vorgegeben.
+             */
+            var exactlyOneFileRemains =
+                normalFileStillExists
+                != nestedFileStillExists;
+
+            var remainingFileIsUnchanged =
+                normalFileStillExists
+                    ? File.ReadAllText(
+                        runningSandbox.NormalFile)
+                        == NormalContent
+                    : nestedFileStillExists
+                      && File.ReadAllText(
+                          runningSandbox.NestedNormalFile)
+                          == NestedNormalContent;
+
+            /*
+             * Wenn die normale Datei noch
+             * vorhanden ist, muss die Datei
+             * im Unterordner gelöscht worden
+             * sein – und umgekehrt.
+             */
+            var expectedDeletedBytes =
+                normalFileStillExists
+                    ? nestedFileBytes
+                    : normalFileBytes;
+
+            /*
+             * Der leere Testunterordner kann
+             * bereits vor der ersten Datei
+             * verarbeitet worden sein.
+             *
+             * Deshalb darf sein Zustand
+             * nicht von einer angenommenen
+             * Aufzählungsreihenfolge abhängen.
+             */
+            var emptyDirectoryStillExists =
+                Directory.Exists(
+                    runningSandbox.EmptyDirectory);
+
+            var directoryCountIsConsistent =
+                result.DeletedDirectoryCount
+                    == (emptyDirectoryStillExists ? 0 : 1);
+
+            // =================================
+            // SCHUTZ DER ÜBRIGEN DATEIEN
+            // =================================
+
+            /*
+             * Fehlende Dateien sollen zu
+             * einer fehlgeschlagenen
+             * Testbedingung führen.
+             *
+             * Deshalb vor jedem Lesezugriff
+             * zunächst die Existenz prüfen.
+             */
+            var protectedEntriesAreUnchanged =
+                Directory.Exists(
+                    runningSandbox.NestedDirectory)
+                && File.Exists(
+                    runningSandbox.ReadOnlyFile)
+                && File.ReadAllText(
+                    runningSandbox.ReadOnlyFile)
+                    == ReadOnlyContent
+                && File.Exists(
+                    runningSandbox.NestedReadOnlyFile)
+                && File.ReadAllText(
+                    runningSandbox.NestedReadOnlyFile)
+                    == NestedReadOnlyContent
+                && File.Exists(
+                    runningSandbox.SystemFile)
+                && File.ReadAllText(
+                    runningSandbox.SystemFile)
+                    == SystemContent
+                && File.Exists(
+                    runningSandbox.LockedFile)
+                && File.ReadAllText(
+                    runningSandbox.LockedFile)
+                    == LockedContent
+                && HasAttribute(
+                    runningSandbox.ReadOnlyFile,
+                    FileAttributes.ReadOnly)
+                && HasAttribute(
+                    runningSandbox.NestedReadOnlyFile,
+                    FileAttributes.ReadOnly)
+                && HasAttribute(
+                    runningSandbox.SystemFile,
+                    FileAttributes.System);
+
+            var outsideAreaIsUnchanged =
+                Directory.Exists(
+                    runningSandbox.TargetDirectory)
+                && File.Exists(
+                    runningSandbox.OutsideFile)
+                && File.ReadAllText(
+                    runningSandbox.OutsideFile)
+                    == OutsideContent;
+
+            // =================================
+            // GESAMTBEWERTUNG
+            // =================================
+
+            cancellationDuringExecutionIsSafe =
+                callbackCount == 1
+                && cancellation.IsCancellationRequested
+                && result.WasStarted
+                && result.WasCancelled
+                && result.DeletedFileCount == 1
+                && result.DeletedSizeBytes
+                    == expectedDeletedBytes
+                && result.FailedEntryCount == 0
+                && string.IsNullOrWhiteSpace(
+                    result.ErrorMessage)
+                && exactlyOneFileRemains
+                && remainingFileIsUnchanged
+                && directoryCountIsConsistent
+                && protectedEntriesAreUnchanged
+                && outsideAreaIsUnchanged;
+        }
+
+        Verify(
+            "Abbruch vor Start und nach erster Löschung sicher dokumentiert",
+            cancellationBeforeStartIsSafe
+            && cancellationDuringExecutionIsSafe,
+            results);
 
         return
             $"Alle {results.Count} Engine-Integrationstests "
@@ -522,7 +814,8 @@ public static class
 
             File.SetAttributes(
                 NestedReadOnlyFile,
-                File.GetAttributes(NestedReadOnlyFile)
+                File.GetAttributes(
+                    NestedReadOnlyFile)
                     | FileAttributes.ReadOnly);
 
             File.WriteAllText(
