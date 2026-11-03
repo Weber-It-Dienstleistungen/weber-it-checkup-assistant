@@ -16,13 +16,14 @@ using EngineResult =
 namespace WeberIT.Checkup.App.Services.Tasks;
 
 /// <summary>
-/// Sprint 55.14.28a
+/// Sprint 55.14.29d
 ///
-/// Zwölf Basistests für die neue direkte
+/// Zwölf Regressionstests für die direkte
 /// C#-Ergebnisübertragung.
 ///
-/// Ersetzt die zwölf veralteten Tests
-/// der PowerShell-Ausführungsarchitektur.
+/// Prüft insbesondere, dass gemeldete
+/// Löschungen bei einem Fehler während
+/// der Ergebnisumwandlung erhalten bleiben.
 ///
 /// Sicherheitsregeln:
 /// - Keine Administratorrechte.
@@ -32,12 +33,12 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 /// - Kein Dateisystemzugriff.
 /// - Ausschließlich künstliche Ergebnisse.
 ///
-/// Aufgerufen wird ausschließlich die
-/// private, reine Konvertierungsfunktion
-/// des Handle-Adapters.
+/// Es werden ausschließlich private,
+/// nicht destruktive Ergebnisfunktionen
+/// des Adapters getestet.
 ///
-/// Die produktive Execute-Methode des
-/// Adapters wird niemals aufgerufen.
+/// Die Execute-Methode des Adapters
+/// wird niemals aufgerufen.
 /// </summary>
 public static class
     WindowsTemporaryFilesCleanupBaselineRegressionTests
@@ -45,14 +46,12 @@ public static class
     private const string TestCategoryTitle =
         "Windows-Temp";
 
-    /*
-     * Absichtlich kein echter Dateipfad.
-     *
-     * Dieser Wert wird nur innerhalb
-     * künstlicher Ergebnisobjekte verwendet.
-     */
     private const string TestTarget =
         "TEST_ONLY_WINDOWS_TEMP_TARGET";
+
+    // =============================================
+    // ERGEBNISKONVERTIERUNG
+    // =============================================
 
     private static readonly MethodInfo
         ResultConversionMethod =
@@ -64,6 +63,22 @@ public static class
             ?? throw new InvalidOperationException(
                 "Die Ergebnisübertragung des "
                 + "Handle-Adapters wurde nicht gefunden.");
+
+    // =============================================
+    // TEILERGEBNIS-SICHERUNG
+    // =============================================
+
+    private static readonly MethodInfo
+        ConversionFailureMethod =
+            typeof(WindowsTemporaryFilesHandleCleanupAdapter)
+                .GetMethod(
+                    "CreateConversionFailureResult",
+                    BindingFlags.NonPublic
+                    | BindingFlags.Static)
+            ?? throw new InvalidOperationException(
+                "Die Absicherung der "
+                + "Ergebnisübertragung wurde "
+                + "nicht gefunden.");
 
     // =============================================
     // TESTS AUSFÜHREN
@@ -91,7 +106,7 @@ public static class
             results);
 
         Run(
-            "Teilweise erfolgreiche Bereinigung korrekt bewertet",
+            "Teilerfolg und Übertragungsfehler sicher dokumentiert",
             TestPartialTechnicalFailure,
             results);
 
@@ -343,6 +358,142 @@ public static class
             && result.IsPartiallySuccessful,
             "Der technische Teilerfolg "
             + "wurde falsch bewertet.");
+
+        // =====================================
+        // REGRESSIONSFALL 55.14.29
+        // =====================================
+
+        /*
+         * Simulierter Zustand:
+         *
+         * - Zwei Dateien und ein Ordner
+         *   wurden bereits entfernt.
+         *
+         * - Ein technischer Fehler wurde
+         *   dokumentiert.
+         *
+         * - Vier Einträge wurden übersprungen.
+         *
+         * - Die Aufschlüsselung behauptet
+         *   fünf übersprungene Einträge.
+         *
+         * Die normale Konvertierung muss
+         * diesen Widerspruch erkennen.
+         *
+         * Das gesicherte Teilergebnis
+         * muss die Löschzähler erhalten.
+         */
+
+        var invalidEngineResult =
+            CreateEngineResult(
+                files: 2,
+                directories: 1,
+                bytes: 2048,
+                failures: 1,
+                skipped: 4,
+                reasons:
+                [
+                    Reason(
+                        CleanupSkippedEntryReason.ReadOnly,
+                        5)
+                ],
+                error: "Engine-Teilfehler");
+
+        ExpectException<InvalidOperationException>(
+            () => ConvertResult(
+                invalidEngineResult));
+
+        var retainedResult =
+            ConvertFailureResult(
+                invalidEngineResult,
+                new InvalidOperationException(
+                    "Simulierter Konvertierungsfehler"));
+
+        Require(
+            retainedResult.Category ==
+                CleanupCategoryType.WindowsTemporaryFiles
+            && retainedResult.CategoryTitle ==
+                TestCategoryTitle
+            && retainedResult.TargetPath ==
+                TestTarget,
+            "Die Ergebnisidentität ging "
+            + "beim Übertragungsfehler verloren.");
+
+        Require(
+            retainedResult.WasStarted
+            && !retainedResult.WasCancelled,
+            "Der Ausführungsstatus ging "
+            + "beim Übertragungsfehler verloren.");
+
+        Require(
+            retainedResult.DeletedFileCount == 2
+            && retainedResult.DeletedDirectoryCount == 1
+            && retainedResult.DeletedSizeBytes == 2048,
+            "Bereits gemeldete Löschungen "
+            + "wurden beim Übertragungsfehler "
+            + "nicht vollständig erhalten.");
+
+        Require(
+            retainedResult.FailedEntryCount == 1
+            && retainedResult.SkippedEntryCount == 4,
+            "Fehler- oder Ausschlusszähler "
+            + "gingen bei der Ergebnisübernahme "
+            + "verloren.");
+
+        Require(
+            retainedResult.SkippedEntryReasons.Count == 0,
+            "Widersprüchliche Ausschlussursachen "
+            + "wurden ungeprüft übernommen.");
+
+        /*
+         * KORREKTUR 55.14.29d:
+         *
+         * Bei vollständig leerer Ursachenliste
+         * verwendet das bestehende Modell:
+         *
+         * "Die einzelnen Ursachen wurden in
+         * diesem Ergebnis nicht aufgeschlüsselt."
+         *
+         * Der Hinweis "Nicht näher
+         * aufgeschlüsselt" wird hingegen bei
+         * einer teilweise vorhandenen
+         * Ursachenliste verwendet.
+         *
+         * Deshalb prüfen wir den tatsächlichen
+         * Hinweis und den Gesamtzähler,
+         * statt einen falschen Wortlaut
+         * vorauszusetzen.
+         */
+
+        var skippedReasonsText =
+            retainedResult.SkippedEntryReasonsText;
+
+        Require(
+            skippedReasonsText.Contains(
+                "4 Einträge",
+                StringComparison.Ordinal)
+            && skippedReasonsText.Contains(
+                "nicht aufgeschlüsselt",
+                StringComparison.OrdinalIgnoreCase),
+            "Der Hinweis auf die vier "
+            + "nicht vollständig dokumentierten "
+            + "Ausschlüsse fehlt.");
+
+        Require(
+            retainedResult.ErrorMessage.Contains(
+                "Simulierter Konvertierungsfehler",
+                StringComparison.Ordinal)
+            && retainedResult.ErrorMessage.Contains(
+                "Engine-Teilfehler",
+                StringComparison.Ordinal),
+            "Die Fehlerursachen wurden nicht "
+            + "vollständig dokumentiert.");
+
+        Require(
+            !retainedResult.IsSuccessful
+            && retainedResult.IsPartiallySuccessful,
+            "Das gesicherte Teilergebnis "
+            + "wurde falsch bewertet.");
     }
 
     // =============================================
@@ -529,9 +680,9 @@ public static class
     private static void TestInvalidReasonTotals()
     {
         /*
-         * Die Summe dokumentierter Ursachen
-         * darf den Gesamtzähler nicht
-         * überschreiten.
+         * Die Summe der dokumentierten
+         * Ursachen darf den Gesamtzähler
+         * nicht überschreiten.
          */
         ExpectException<InvalidOperationException>(
             () => ConvertResult(
@@ -549,7 +700,7 @@ public static class
                     ])));
 
         /*
-         * Auch ein Überlauf bei extremen
+         * Ein Überlauf bei extremen
          * Ergebniswerten muss kontrolliert
          * zurückgewiesen werden.
          */
@@ -618,7 +769,7 @@ public static class
     }
 
     // =============================================
-    // NUR ERGEBNISKONVERTIERUNG AUFRUFEN
+    // ERGEBNISKONVERTIERUNG AUFRUFEN
     // =============================================
 
     private static CleanupActionCategoryExecutionResult
@@ -626,12 +777,8 @@ public static class
             EngineResult engineResult)
     {
         /*
-         * Ausschließlich die private
-         * Konvertierungsfunktion aufrufen.
-         *
-         * Niemals:
-         * WindowsTemporaryFilesHandleCleanupAdapter
-         *     .Execute(...)
+         * Nur die private Konvertierungs-
+         * funktion aufrufen.
          *
          * Keine echte Engine-Ausführung.
          */
@@ -656,12 +803,50 @@ public static class
         catch (TargetInvocationException exception)
             when (exception.InnerException is not null)
         {
-            /*
-             * Reflection verpackt Exceptions.
-             *
-             * Für die Tests wird die echte
-             * fachliche Exception benötigt.
-             */
+            ExceptionDispatchInfo.Capture(
+                exception.InnerException!).Throw();
+
+            throw;
+        }
+    }
+
+    // =============================================
+    // TEILERGEBNIS-SICHERUNG AUFRUFEN
+    // =============================================
+
+    private static CleanupActionCategoryExecutionResult
+        ConvertFailureResult(
+            EngineResult engineResult,
+            Exception conversionException)
+    {
+        /*
+         * Ausschließlich die private
+         * Ergebnis-Sicherungsfunktion testen.
+         *
+         * Keine produktive Ausführung.
+         */
+        try
+        {
+            var converted =
+                ConversionFailureMethod.Invoke(
+                    null,
+                    [
+                        TestCategoryTitle,
+                        TestTarget,
+                        engineResult,
+                        conversionException
+                    ]);
+
+            return converted
+                as CleanupActionCategoryExecutionResult
+                ?? throw new InvalidOperationException(
+                    "Die Sicherung des Teilergebnisses "
+                    + "lieferte kein gültiges "
+                    + "Kategorieergebnis.");
+        }
+        catch (TargetInvocationException exception)
+            when (exception.InnerException is not null)
+        {
             ExceptionDispatchInfo.Capture(
                 exception.InnerException!).Throw();
 
