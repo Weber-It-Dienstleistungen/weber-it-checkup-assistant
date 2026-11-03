@@ -31,13 +31,14 @@ public partial class App : Application
     private readonly IHost _host;
 
     /*
-     * Sprint 55.14.26c:
+     * Sprint 55.14.27b
      *
-     * Ein erhöhter Worker startet den
-     * regulären Anwendungshost nicht.
+     * Der reguläre Anwendungshost wird
+     * nur gestoppt, wenn er tatsächlich
+     * erfolgreich gestartet wurde.
      *
-     * Der tatsächliche Startzustand wird
-     * für OnExit festgehalten.
+     * Dies schützt insbesondere vorzeitig
+     * abgebrochene Anwendungsstarts.
      */
     private bool _hostStarted;
 
@@ -424,32 +425,19 @@ public partial class App : Application
         StartupEventArgs e)
     {
         // =========================================
-        // SPRINT 55.14.26c
-        // EINGESCHRÄNKTEN WORKER ABFANGEN
+        // REGULÄRER ANWENDUNGSSTART
         // =========================================
 
         /*
-         * Der Worker-Modus wird vor der
-         * Datenbankinitialisierung und vor
-         * dem Start des Anwendungshosts
-         * erkannt.
+         * Sprint 55.14.27b:
          *
-         * Kein Hauptfenster.
-         * Keine regulären Anwendungsdienste.
-         * Keine Freigabe der Bereinigung.
+         * Der inzwischen verworfene
+         * separate Windows-Temp-Worker
+         * wird hier nicht mehr behandelt.
+         *
+         * Der normale Programmstart
+         * bleibt unverändert.
          */
-        if (WindowsTemporaryFilesCleanupWorkerEntryPoint
-                .TryHandle(
-                    e.Args,
-                    out var workerExitCode))
-        {
-            Shutdown(workerExitCode);
-            return;
-        }
-
-        // =========================================
-        // NORMALER ANWENDUNGSSTART
-        // =========================================
 
         var databasePaths =
             _host.Services.GetRequiredService<DatabasePaths>();
@@ -509,11 +497,10 @@ public partial class App : Application
         ExitEventArgs e)
     {
         /*
-         * Im Worker-Modus wurde der Host
-         * nicht gestartet.
-         *
-         * Die reguläre Anwendung behält
-         * ihren bisherigen Stop-Ablauf.
+         * Auch bei einem vorzeitig
+         * abgebrochenen Anwendungsstart
+         * darf kein nicht gestarteter
+         * Host gestoppt werden.
          */
         if (_hostStarted)
         {
