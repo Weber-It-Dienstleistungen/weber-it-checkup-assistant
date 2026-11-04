@@ -1,16 +1,20 @@
 ﻿
 using System;
 using System.Security.Principal;
+using WeberIT.Checkup.App.Services.Cleanup;
 using WeberIT.Checkup.App.Services.Tasks;
 
 namespace WeberIT.Checkup.SandboxTestRunner;
 
 /// <summary>
-/// Sprint 55.14.28i
+/// Sprint 55.14.34k
 ///
 /// Eigenständiger C#-Sandbox-TestRunner.
 ///
-/// 51 aktive Sicherheits- und Regressionstests.
+/// 64 aktive Sicherheits- und Regressionstests:
+///
+/// - 51 bestehende Windows-Temp-Sicherheitstests.
+/// - 13 Bereinigungs-Zwischenprüfungstests.
 ///
 /// Die vier veralteten PowerShell-Sandbox-
 /// Testblöcke werden nicht mehr ausgeführt.
@@ -19,6 +23,8 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 /// - Keine Administratorrechte.
 /// - Kein Zugriff auf produktives Windows-Temp.
 /// - Reale Löschungen nur in GUID-Sandboxen.
+/// - Zwischenprüfungstests verwenden
+///   ausschließlich künstliche Modellobjekte.
 /// - Keine PowerShell-Ausführung.
 /// - Keine produktive Handle-Adapter-Ausführung.
 /// - Produktive Freigabesperre bleibt geschlossen.
@@ -192,6 +198,38 @@ internal static class Program
                     .RunAll);
 
             // =================================
+            // TESTBLOCK 8:
+            // BEREINIGUNGS-ZWISCHENPRÜFUNG
+            // =================================
+
+            /*
+             * Sprint 55.14.34k
+             *
+             * Dieser Testblock verwendet keine
+             * realen Verzeichnisse oder Dateien.
+             *
+             * Geprüft werden ausschließlich
+             * künstliche Datenmodelle:
+             *
+             * - Größen- und Dateiveränderungen
+             * - Unvollständige Messungen
+             * - Unabhängige Objektkopien
+             * - Mehrere Zwischenprüfungen
+             * - JSON-Serialisierung
+             * - Historische Daten
+             * - Abschluss- und Kategorie-Schutz
+             * - Kopien technischer Löschprotokolle
+             *
+             * Die bestehende Windows-Temp-
+             * Ausführungssperre wird nicht
+             * verändert.
+             */
+            RunTestBlock(
+                "TESTBLOCK 8 - BEREINIGUNGS-ZWISCHENPRÜFUNG",
+                CleanupPotentialIntermediateScanRegressionTests
+                    .RunAll);
+
+            // =================================
             // GESAMTERGEBNIS
             // =================================
 
@@ -199,7 +237,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 51 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 64 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");
@@ -219,9 +257,9 @@ internal static class Program
             Console.Error.WriteLine(
                 "========================================");
 
-            Console.Error.WriteLine();
+            Console.WriteLine();
 
-            Console.Error.WriteLine(
+            Console.WriteLine(
                 exception.ToString());
 
             return 1;
