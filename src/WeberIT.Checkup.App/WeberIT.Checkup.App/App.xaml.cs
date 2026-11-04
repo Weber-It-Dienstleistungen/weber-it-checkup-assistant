@@ -175,6 +175,36 @@ public partial class App : Application
                             ICleanupPotentialProvider,
                             CleanupPotentialProvider>();
 
+                        // =========================================
+                        // SCHRITT 55.14.34d
+                        // BEREINIGUNGS-ZWISCHENPRÜFUNG
+                        // =========================================
+
+                        /*
+                         * Eigenständige, ausschließlich
+                         * lesende Zwischenprüfung einzelner
+                         * Bereinigungskategorien.
+                         *
+                         * Verwendet die bereits registrierten:
+                         *
+                         * - IDeviceInformationScanner
+                         * - IDeviceIdentityService
+                         * - ICheckupTaskActionExecutionCoordinator
+                         * - ICustomerService
+                         *
+                         * Die normale Bereinigungsanalyse
+                         * bleibt unverändert.
+                         *
+                         * Eingangsscan und Abschlussscan
+                         * werden nicht überschrieben.
+                         *
+                         * Die Registrierung allein führt
+                         * weder eine Analyse noch eine
+                         * Bereinigung aus.
+                         */
+                        services.AddSingleton<
+                            CleanupPotentialIntermediateScanService>();
+
                         services.AddSingleton<StartupCommandAnalyzer>();
                         services.AddSingleton<ShellLinkTargetReader>();
                         services.AddSingleton<StartupRegistrySourceReader>();

@@ -1,4 +1,7 @@
 ﻿
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace WeberIT.Checkup.App.Models;
@@ -11,8 +14,15 @@ public sealed class CustomerCheckupVisit
     private List<ProgramUpdateIntermediateScan>
         _programUpdateIntermediateScans = new();
 
-    public const int CurrentVisitModelVersion =
-        5;
+    // =============================================
+    // SPRINT 55.14.34b
+    // BEREINIGUNGS-ZWISCHENPRÜFUNGEN
+    // =============================================
+
+    private List<CleanupPotentialIntermediateScan>
+        _cleanupPotentialIntermediateScans = new();
+
+    public const int CurrentVisitModelVersion = 6;
 
     public int VisitModelVersion { get; set; } =
         CurrentVisitModelVersion;
@@ -46,9 +56,14 @@ public sealed class CustomerCheckupVisit
     public string CancellationReason { get; set; } =
         string.Empty;
 
+    // =============================================
+    // PROGRAMMUPDATE-AUSNAHMEN
+    // =============================================
+
     /// <summary>
     /// Bewusst nicht durchgeführte Programmupdates
     /// in genau diesem Kundencheckup.
+    ///
     /// Die Liste wird gemeinsam mit dem Kundencheckup
     /// im Datenbank-JSON gespeichert.
     /// </summary>
@@ -56,13 +71,14 @@ public sealed class CustomerCheckupVisit
         ProgramUpdateExceptions
     {
         get => _programUpdateExceptions;
+
         set => _programUpdateExceptions =
             value ?? new List<ProgramUpdateException>();
     }
 
-    // =====================================================
-    // SCHRITT 55.10.2 – WINGet-ZWISCHENPRÜFUNGEN
-    // =====================================================
+    // =============================================
+    // WINGet-ZWISCHENPRÜFUNGEN
+    // =============================================
 
     /// <summary>
     /// Gespeicherte WinGet-Zwischenprüfungen dieses
@@ -91,22 +107,61 @@ public sealed class CustomerCheckupVisit
             ?? new List<ProgramUpdateIntermediateScan>();
     }
 
-    /// <summary>
-    /// Gibt an, ob Zwischenprüfungen dokumentiert sind.
-    ///
-    /// Diese Eigenschaft wird nicht separat
-    /// gespeichert, sondern aus der Liste berechnet.
-    /// </summary>
     [JsonIgnore]
     public bool HasProgramUpdateIntermediateScans =>
         ProgramUpdateIntermediateScans.Count > 0;
 
-    /// <summary>
-    /// Anzahl der gespeicherten WinGet-Zwischenprüfungen.
-    /// </summary>
     [JsonIgnore]
     public int ProgramUpdateIntermediateScanCount =>
         ProgramUpdateIntermediateScans.Count;
+
+    // =============================================
+    // BEREINIGUNGS-ZWISCHENPRÜFUNGEN
+    // =============================================
+
+    /// <summary>
+    /// Dokumentierte Neumessungen einzelner
+    /// Bereinigungskategorien.
+    ///
+    /// Jede Zwischenprüfung erhält:
+    /// - eine eigene Kennung,
+    /// - die Kennung dieses Kundencheckups,
+    /// - die ursprüngliche Eingangsmessung,
+    /// - eine eigenständige Nachmessung,
+    /// - optional das technische Löschresultat.
+    ///
+    /// Diese Daten ersetzen weder den
+    /// Eingangsscan noch einen späteren
+    /// vollständigen Abschlussscan.
+    ///
+    /// Die Speicherung erfolgt über die
+    /// bestehende JSON-Persistierung des
+    /// Kundencheckups.
+    ///
+    /// Historische Vorgänge ohne dieses Feld
+    /// erhalten eine leere Liste.
+    /// </summary>
+    public List<CleanupPotentialIntermediateScan>
+        CleanupPotentialIntermediateScans
+    {
+        get => _cleanupPotentialIntermediateScans;
+
+        set => _cleanupPotentialIntermediateScans =
+            value
+            ?? new List<CleanupPotentialIntermediateScan>();
+    }
+
+    [JsonIgnore]
+    public bool HasCleanupPotentialIntermediateScans =>
+        CleanupPotentialIntermediateScans.Count > 0;
+
+    [JsonIgnore]
+    public int CleanupPotentialIntermediateScanCount =>
+        CleanupPotentialIntermediateScans.Count;
+
+    // =============================================
+    // VORGANGSSTATUS
+    // =============================================
 
     [JsonIgnore]
     public bool IsInProgress =>
@@ -134,6 +189,10 @@ public sealed class CustomerCheckupVisit
         && HasAfterCheckup
         && HasComparison;
 
+    // =============================================
+    // BERICHTSARCHIV
+    // =============================================
+
     /// <summary>
     /// Gibt an, ob aus diesem bereits abgeschlossenen
     /// Kundencheckup erneut ein PDF-Bericht erzeugt
@@ -143,8 +202,7 @@ public sealed class CustomerCheckupVisit
     /// Vorgang noch seine gespeicherten Prüfdaten.
     ///
     /// Die Eigenschaft wird nicht in der Datenbank
-    /// beziehungsweise im JSON gespeichert, sondern
-    /// beim Zugriff aus den vorhandenen Daten berechnet.
+    /// beziehungsweise im JSON gespeichert.
     /// </summary>
     [JsonIgnore]
     public bool CanRegenerateReport
@@ -185,10 +243,6 @@ public sealed class CustomerCheckupVisit
         }
     }
 
-    /// <summary>
-    /// Verständlicher Archivstatus für die spätere
-    /// Darstellung in der Kundenverwaltung.
-    /// </summary>
     [JsonIgnore]
     public string ReportArchiveStatusText =>
         !IsCompleted
@@ -231,6 +285,10 @@ public sealed class CustomerCheckupVisit
             ? NextCheckupDate.Value.ToString("dd.MM.yyyy")
             : "Noch nicht festgelegt";
 
+    // =============================================
+    // NEUEN KUNDENCHECKUP BEGINNEN
+    // =============================================
+
     public static CustomerCheckupVisit Start(
         CheckupSession beforeCheckup)
     {
@@ -257,9 +315,9 @@ public sealed class CustomerCheckupVisit
         };
     }
 
-    // =====================================================
+    // =============================================
     // ZENTRALE KOPIERMETHODE
-    // =====================================================
+    // =============================================
 
     /// <summary>
     /// Erstellt eine neue Instanz des Kundencheckups
@@ -268,13 +326,8 @@ public sealed class CustomerCheckupVisit
     /// Die bestehenden Scan- und Vergleichsobjekte
     /// werden wie bisher übernommen.
     ///
-    /// Programmupdate-Ausnahmen werden einzeln
-    /// kopiert. Dadurch besitzen Original und Kopie
-    /// weder dieselbe Ausnahmeliste noch dieselben
-    /// Ausnahmeobjekte.
-    ///
-    /// Auch gespeicherte WinGet-Zwischenprüfungen
-    /// werden einzeln und unabhängig kopiert.
+    /// Programmupdate-Ausnahmen sowie sämtliche
+    /// Zwischenprüfungen werden einzeln kopiert.
     ///
     /// Die Vorgangs-ID und die archivierten
     /// Entscheidungsdaten bleiben unverändert.
@@ -328,18 +381,20 @@ public sealed class CustomerCheckupVisit
                 ProgramUpdateIntermediateScans
                     .Select(scan =>
                         scan.CreateIndependentCopy())
+                    .ToList(),
+
+            CleanupPotentialIntermediateScans =
+                CleanupPotentialIntermediateScans
+                    .Select(scan =>
+                        scan.CreateIndependentCopy())
                     .ToList()
         };
     }
 
-    /// <summary>
-    /// Erstellt eine unabhängige Kopie einer
-    /// dokumentierten Programmupdate-Ausnahme.
-    ///
-    /// Insbesondere die Genehmigungs-ID,
-    /// Vorgangs-ID und der ursprüngliche
-    /// Entscheidungszeitpunkt bleiben erhalten.
-    /// </summary>
+    // =============================================
+    // PROGRAMMUPDATE-AUSNAHME KOPIEREN
+    // =============================================
+
     private static ProgramUpdateException
         CloneProgramUpdateException(
             ProgramUpdateException source)
@@ -380,17 +435,13 @@ public sealed class CustomerCheckupVisit
         };
     }
 
-    // =====================================================
-    // SCHRITT 55.10.2 – ZWISCHENPRÜFUNG ERFASSEN
-    // =====================================================
+    // =============================================
+    // WINGet-ZWISCHENPRÜFUNG ERFASSEN
+    // =============================================
 
     /// <summary>
     /// Übernimmt ein neues WinGet-Analyseergebnis
-    /// als unabhängige Zwischenprüfung in den
-    /// laufenden Kundencheckup.
-    ///
-    /// Die ursprünglichen Scaninformationen werden
-    /// nicht verändert oder überschrieben.
+    /// als unabhängige Zwischenprüfung.
     ///
     /// Auch fehlgeschlagene Zwischenprüfungen
     /// können dokumentiert werden. Sie gelten
@@ -399,10 +450,6 @@ public sealed class CustomerCheckupVisit
     /// Nach einer vorbereiteten Abschlusskontrolle
     /// oder einem endgültigen Abschluss sind keine
     /// weiteren Zwischenprüfungen zulässig.
-    ///
-    /// Die Persistierung des gesamten Kundencheckups
-    /// erfolgt anschließend durch den aufrufenden
-    /// Anwendungsdienst.
     /// </summary>
     public ProgramUpdateIntermediateScan
         RecordProgramUpdateIntermediateScan(
@@ -434,13 +481,136 @@ public sealed class CustomerCheckupVisit
         return intermediateScan.CreateIndependentCopy();
     }
 
-    // =====================================================
+    // =============================================
+    // BEREINIGUNGS-ZWISCHENPRÜFUNG ERFASSEN
+    // =============================================
+
+    /// <summary>
+    /// Erfasst eine eigenständige Nachmessung
+    /// einer Bereinigungskategorie.
+    ///
+    /// Die ursprüngliche Eingangsmessung
+    /// wird ausschließlich aus dem bereits
+    /// gesicherten Eingangsscan übernommen.
+    ///
+    /// Dadurch kann der aufrufende Dienst
+    /// keine beliebige Vorher-Messung
+    /// als ursprünglichen Zustand ausgeben.
+    ///
+    /// Die neue Zwischenprüfung enthält
+    /// unabhängige Kopien aller Messergebnisse.
+    ///
+    /// Die eigentliche Datenbankspeicherung
+    /// erfolgt anschließend durch den
+    /// aufrufenden Anwendungsdienst.
+    /// </summary>
+    public CleanupPotentialIntermediateScan
+        RecordCleanupPotentialIntermediateScan(
+            CleanupCategoryResult afterMeasurement,
+            DateTime? afterMeasuredAt,
+            CleanupActionCategoryExecutionResult?
+                recordedExecution = null)
+    {
+        ArgumentNullException.ThrowIfNull(
+            afterMeasurement);
+
+        EnsureInProgress();
+
+        // =========================================
+        // VORBEREITETEN ABSCHLUSS SCHÜTZEN
+        // =========================================
+
+        if (IsCompletionPrepared)
+        {
+            throw new InvalidOperationException(
+                "Nach der vorbereiteten Abschlusskontrolle "
+                + "dürfen keine neuen Bereinigungs-"
+                + "Zwischenprüfungen erfasst werden.");
+        }
+
+        // =========================================
+        // ORIGINALEN EINGANGSSCAN HERANZIEHEN
+        // =========================================
+
+        var beforeInformation =
+            BeforeCheckup?.CleanupPotentialInformation;
+
+        if (beforeInformation is null
+            || !beforeInformation.HasAnalysis
+            || beforeInformation.Categories is null)
+        {
+            throw new InvalidOperationException(
+                "Der ursprüngliche Eingangsscan "
+                + "enthält keine verwertbare "
+                + "Bereinigungsanalyse.");
+        }
+
+        /*
+         * Der Eingangswert wird bewusst
+         * nicht als Parameter übergeben.
+         *
+         * Nur der gespeicherte ursprüngliche
+         * Kundencheckup gilt als Quelle.
+         */
+        var beforeMeasurement =
+            beforeInformation.Categories
+                .SingleOrDefault(
+                    category =>
+                        category.Category
+                        == afterMeasurement.Category);
+
+        if (beforeMeasurement is null)
+        {
+            throw new InvalidOperationException(
+                "Die gewählte Bereinigungskategorie "
+                + "ist im ursprünglichen Eingangsscan "
+                + "nicht vorhanden.");
+        }
+
+        // =========================================
+        // TECHNISCHE AKTION ZUORDNEN
+        // =========================================
+
+        if (recordedExecution is not null
+            && recordedExecution.Category
+                != afterMeasurement.Category)
+        {
+            throw new InvalidOperationException(
+                "Die technische Bereinigungsaktion "
+                + "gehört nicht zur ausgewählten "
+                + "Bereinigungskategorie.");
+        }
+
+        // =========================================
+        // UNABHÄNGIGEN MESSDATENSATZ ERSTELLEN
+        // =========================================
+
+        var intermediateScan =
+            CleanupPotentialIntermediateScan.Capture(
+                Id,
+                beforeMeasurement,
+                beforeInformation.AnalysisDate,
+                afterMeasurement,
+                afterMeasuredAt,
+                recordedExecution);
+
+        CleanupPotentialIntermediateScans.Add(
+            intermediateScan);
+
+        VisitModelVersion =
+            CurrentVisitModelVersion;
+
+        return intermediateScan.CreateIndependentCopy();
+    }
+
+    // =============================================
     // PROGRAMMUPDATE-AUSNAHMEN
-    // =====================================================
+    // =============================================
 
     /// <summary>
     /// Dokumentiert eine begründete Ausnahme
     /// für die exakt vorliegende Paketversion.
+    ///
     /// Ein anderer Versionsstand wird dadurch
     /// ausdrücklich nicht freigegeben.
     /// </summary>
@@ -531,10 +701,16 @@ public sealed class CustomerCheckupVisit
             CurrentVisitModelVersion;
     }
 
+    // =============================================
+    // PROGRAMMUPDATE-AUSNAHME WIDERRUFEN
+    // =============================================
+
     /// <summary>
     /// Widerruft eine Freigabe im laufenden
-    /// Kundencheckup. Abgeschlossene Vorgänge
-    /// bleiben unveränderlich.
+    /// Kundencheckup.
+    ///
+    /// Abgeschlossene Vorgänge bleiben
+    /// unveränderlich.
     /// </summary>
     public bool RevokeProgramUpdateException(
         Guid approvalId)
@@ -564,9 +740,9 @@ public sealed class CustomerCheckupVisit
         return removed;
     }
 
-    // =====================================================
+    // =============================================
     // VERGLEICH UND ABSCHLUSS
-    // =====================================================
+    // =============================================
 
     public void StoreComparison(
         CustomerCheckupComparison comparison)
@@ -594,7 +770,6 @@ public sealed class CustomerCheckupVisit
         DateTime? nextCheckupDate)
     {
         ArgumentNullException.ThrowIfNull(afterCheckup);
-
         ArgumentNullException.ThrowIfNull(comparison);
 
         EnsureInProgress();
@@ -732,6 +907,10 @@ public sealed class CustomerCheckupVisit
             CustomerCheckupVisitStatus.Cancelled;
     }
 
+    // =============================================
+    // VORGANGSSTATUS PRÜFEN
+    // =============================================
+
     private void EnsureInProgress()
     {
         if (IsInProgress)
@@ -743,6 +922,10 @@ public sealed class CustomerCheckupVisit
             "Nur ein laufender Kundencheckup kann "
             + "bearbeitet werden.");
     }
+
+    // =============================================
+    // VERGLEICHSERGEBNIS VALIDIEREN
+    // =============================================
 
     private void ValidateComparison(
         CustomerCheckupComparison comparison,
@@ -775,6 +958,10 @@ public sealed class CustomerCheckupVisit
                 nameof(comparison));
         }
     }
+
+    // =============================================
+    // ABSCHLUSSDATEN VALIDIEREN
+    // =============================================
 
     private static void ValidateCompletionDetails(
         string technicianSummary,
@@ -815,6 +1002,10 @@ public sealed class CustomerCheckupVisit
                 + "Nachher-Scan liegen.");
         }
     }
+
+    // =============================================
+    // ABSCHLUSSDATEN ÜBERNEHMEN
+    // =============================================
 
     private void ApplyCompletionDetails(
         string technicianSummary,

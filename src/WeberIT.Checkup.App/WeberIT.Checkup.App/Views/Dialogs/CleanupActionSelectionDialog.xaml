@@ -123,6 +123,10 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <!-- ========================================
+             DIALOGKOPF
+             ======================================== -->
+
         <Border
             Grid.Row="0"
             Padding="28,24"
@@ -144,16 +148,30 @@
                     Text="Angezeigt werden Bereinigungskategorien mit ausreichend belastbaren Messergebnissen. Die technische Ausführung ist nur für ausdrücklich freigegebene Kategorien möglich. Benutzer- und Windows-Temporärdateien dürfen auch bei einer Teilmessung für die Vorschau ausgewählt werden; die angezeigten Werte sind dann Mindestwerte."
                     TextWrapping="Wrap" />
 
+                <!--
+                    Sprint 55.14.34e
+
+                    Die bisherigen Kategoriegrößen
+                    stammen aus dem Eingangsscan.
+
+                    Neue Messwerte werden ausdrücklich
+                    separat angezeigt.
+                -->
+
                 <TextBlock
                     Margin="0,6,0,0"
                     FontSize="11"
                     Foreground="{StaticResource WarningBrush}"
-                    Text="Pro Bereinigungsplan kann genau eine Kategorie ausgewählt werden. Freigegebene Aktionen werden einzeln geprüft, ausdrücklich bestätigt, ausgeführt und dokumentiert. Browsercache erfordert vollständig beendete Browser. Windows-Temp befindet sich noch in der Sicherheitsprüfung und ist derzeit ausschließlich als Vorschau verfügbar."
+                    Text="Pro Bereinigungsplan kann genau eine Kategorie ausgewählt werden. Freigegebene Aktionen werden einzeln geprüft, ausdrücklich bestätigt, ausgeführt und dokumentiert. Browsercache erfordert vollständig beendete Browser. Die produktive Windows-Temp-Ausführung ist weiterhin gesperrt; ein beaufsichtigter Debug-Test kann unter besonderen Bedingungen freigegeben sein."
                     TextWrapping="Wrap" />
 
             </StackPanel>
 
         </Border>
+
+        <!-- ========================================
+             KATEGORIEAUSWAHL
+             ======================================== -->
 
         <Grid
             Grid.Row="1"
@@ -174,12 +192,21 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock
-                    Grid.Column="0"
-                    VerticalAlignment="Center"
-                    FontWeight="SemiBold"
-                    Foreground="{StaticResource TextPrimaryBrush}"
-                    Text="{Binding SelectableCategoryCountText}" />
+                <StackPanel Grid.Column="0">
+
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextPrimaryBrush}"
+                        Text="{Binding SelectableCategoryCountText}" />
+
+                    <TextBlock
+                        Margin="0,4,0,0"
+                        FontSize="11"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Text="Angezeigte Messwerte aus dem ursprünglichen Eingangsscan." />
+
+                </StackPanel>
 
                 <Button
                     Grid.Column="1"
@@ -355,6 +382,10 @@
 
             </ListBox>
 
+            <!-- =====================================
+                 NEUE KONTROLLMESSUNG
+                 ===================================== -->
+
             <Border
                 Grid.Row="4"
                 Padding="12"
@@ -363,14 +394,57 @@
                 BorderThickness="1"
                 CornerRadius="7">
 
-                <TextBlock
-                    Foreground="{StaticResource TextSecondaryBrush}"
-                    Text="{Binding SelectionStatusText}"
-                    TextWrapping="Wrap" />
+                <StackPanel>
+
+                    <TextBlock
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Text="{Binding SelectionStatusText}"
+                        TextWrapping="Wrap" />
+
+                    <Border
+                        Margin="0,10,0,0"
+                        Padding="12,10"
+                        Background="{StaticResource SurfaceBrush}"
+                        CornerRadius="5">
+
+                        <StackPanel>
+
+                            <TextBlock
+                                FontSize="11"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource InformationBrush}"
+                                Text="BEREINIGUNGS-ZWISCHENPRÜFUNG" />
+
+                            <!--
+                                Dieses Feld wird im nächsten
+                                Entwicklungsschritt durch den
+                                echten Messdienst aktualisiert.
+
+                                Es zeigt bewusst einen
+                                separaten Datenstand an.
+                            -->
+
+                            <TextBlock
+                                x:Name="IntermediateScanStatusTextBlock"
+                                Margin="0,6,0,0"
+                                FontSize="12"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                Text="Noch keine neue Kontrollmessung durchgeführt."
+                                TextWrapping="Wrap" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                </StackPanel>
 
             </Border>
 
         </Grid>
+
+        <!-- ========================================
+             DIALOGFUSS
+             ======================================== -->
 
         <Border
             Grid.Row="2"
@@ -386,14 +460,16 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock
                     Grid.Column="0"
                     VerticalAlignment="Center"
-                    FontSize="12"
+                    FontSize="11"
                     Foreground="{StaticResource TextMutedBrush}"
-                    Text="Eine Kategorie pro Plan. Technische Ausführung nur nach Freigabe und ausdrücklicher Bestätigung."
+                    Text="Eine Kategorie pro Plan. Zwischenprüfung und Bereinigung sind getrennte Vorgänge."
                     TextWrapping="Wrap" />
 
                 <Button
@@ -403,9 +479,29 @@
                     IsCancel="True"
                     Click="CloseButton_OnClick" />
 
+                <!--
+                    Sprint 55.14.34e
+
+                    Die Schaltfläche wird erst nach
+                    der Anbindung an den Dienst
+                    sichtbar und freigegeben.
+
+                    Noch kein Klickhandler:
+                    Dieser Schritt verändert
+                    ausschließlich die Oberfläche.
+                -->
+
+                <Button
+                    x:Name="RefreshCleanupButton"
+                    Grid.Column="3"
+                    Width="205"
+                    Content="Kategorie erneut prüfen"
+                    Visibility="Collapsed"
+                    IsEnabled="False" />
+
                 <Button
                     x:Name="PreviewPlanButton"
-                    Grid.Column="3"
+                    Grid.Column="5"
                     MinWidth="170"
                     Content="Aktionsplan prüfen"
                     IsEnabled="False"
