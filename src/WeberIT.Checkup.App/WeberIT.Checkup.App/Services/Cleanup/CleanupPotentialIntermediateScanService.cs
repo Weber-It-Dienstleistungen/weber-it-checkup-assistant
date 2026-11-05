@@ -10,7 +10,7 @@ using WeberIT.Checkup.App.Services.Interfaces;
 namespace WeberIT.Checkup.App.Services.Cleanup;
 
 /// <summary>
-/// Sprint 55.14.34c
+/// Sprint 55.14.34t
 ///
 /// Führt gezielte Bereinigungs-Zwischenprüfungen
 /// während eines laufenden Kundencheckups durch.
@@ -27,6 +27,19 @@ namespace WeberIT.Checkup.App.Services.Cleanup;
 /// - Abschlussentwurf nicht verändern.
 /// - Daten erst nach erfolgreicher Prüfung speichern.
 /// - Bei Speicherfehler Änderungen zurücknehmen.
+///
+/// Ergänzung:
+/// - Beginn der Kontrollmessung dokumentieren.
+/// - Strukturierte Löschprotokolle nur bei
+///   eindeutiger Zuordnung berücksichtigen.
+/// - Keine Vermischung verschiedener Checkups.
+/// - Keine willkürliche Auswahl bei mehreren
+///   möglichen Bereinigungsaktionen.
+/// - Löschprotokoll unabhängig kopieren.
+/// - Aktions-ID, Plan-ID sowie Ausführungsbeginn
+///   und Ausführungsende dauerhaft referenzieren.
+/// - Ohne eindeutiges Protokoll bleibt die
+///   Zwischenprüfung weiterhin möglich.
 ///
 /// Jede Zwischenprüfung erfasst genau
 /// eine Bereinigungskategorie.
@@ -215,6 +228,25 @@ public sealed class CleanupPotentialIntermediateScanService
         cancellationToken.ThrowIfCancellationRequested();
 
         // =========================================
+        // MESSBEGINN FESTHALTEN
+        // =========================================
+
+        /*
+         * Der Zeitpunkt wird unmittelbar
+         * vor der eigentlichen Kategorieanalyse
+         * erfasst.
+         *
+         * Eine Bereinigungsaktion darf nur
+         * zugeordnet werden, wenn sie bereits
+         * vor diesem Zeitpunkt abgeschlossen war.
+         *
+         * Der Zeitpunkt darf ausdrücklich nicht
+         * erst nach der Messung ermittelt werden.
+         */
+        var measurementStartedAt =
+            DateTimeOffset.Now;
+
+        // =========================================
         // AUSGEWÄHLTE KATEGORIE NEU MESSEN
         // =========================================
 
@@ -236,6 +268,16 @@ public sealed class CleanupPotentialIntermediateScanService
                 () => MeasureSelectedCategory(
                     category,
                     systemVolumeRoot));
+
+        /*
+         * Der Abschlusszeitpunkt beschreibt
+         * die tatsächlich beendete Neumessung.
+         *
+         * Er wird unabhängig vom späteren
+         * Datenbankschreibvorgang festgehalten.
+         */
+        var afterMeasuredAt =
+            DateTime.Now;
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -290,6 +332,47 @@ public sealed class CleanupPotentialIntermediateScanService
         cancellationToken.ThrowIfCancellationRequested();
 
         // =========================================
+        // EINDEUTIGES LÖSCHPROTOKOLL SUCHEN
+        // =========================================
+
+        /*
+         * Der Resolver arbeitet ausschließlich
+         * auf bereits gespeicherten strukturierten
+         * Aufgabenprotokollen.
+         *
+         * Er verändert weder die Aufgabenliste
+         * noch die eigentliche Bereinigung.
+         *
+         * Nur genau eine passende Aktion darf
+         * als Nachweis übernommen werden.
+         *
+         * Voraussetzungen:
+         *
+         * - Derselbe Kundencheckup.
+         * - Dieselbe Bereinigungskategorie.
+         * - Gültiger technischer Aktionsstatus.
+         * - Vollständiger Ausführungszeitraum
+         *   vor Beginn dieser Kontrollmessung.
+         * - Aktion nach der vorherigen
+         *   maßgeblichen Messgrenze.
+         *
+         * Bei fehlender oder mehrdeutiger
+         * Zuordnung liefert der Resolver null.
+         *
+         * Die Kontrollmessung bleibt dadurch
+         * unabhängig vom Vorliegen einer
+         * ausgeführten Löschaktion.
+         */
+        var correlation =
+            CleanupExecutionCorrelationResolver.FindUniqueMatch(
+                session,
+                currentVisit,
+                category,
+                measurementStartedAt);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // =========================================
         // UNABHÄNGIGE VORGANGSKOPIE
         // =========================================
 
@@ -304,17 +387,52 @@ public sealed class CleanupPotentialIntermediateScanService
          * Der neue Messwert wird unabhängig
          * kopiert und dokumentiert.
          *
-         * Eine technische Löschaktion wird
-         * hier noch nicht zugeordnet.
+         * Liegt ein eindeutiges strukturiertes
+         * Löschprotokoll vor, wird dessen
+         * Kategorieergebnis ebenfalls als
+         * unabhängige Kopie übernommen.
          *
-         * Ihre spätere Verknüpfung muss über
-         * ein eindeutig bestätigtes
-         * Ausführungsprotokoll erfolgen.
+         * Die technische Löschmenge und
+         * die gemessene Bestandsänderung
+         * bleiben zwei getrennte Sachverhalte.
+         */
+
+        // =========================================
+        // SPRINT 55.14.34t
+        // VOLLSTÄNDIGE REFERENZEN ÜBERGEBEN
+        // =========================================
+
+        /*
+         * Die beiden Kennungen und die beiden
+         * Ausführungszeitpunkte stammen
+         * ausschließlich aus dem eindeutig
+         * gefundenen strukturierten Protokoll.
+         *
+         * Bei correlation == null werden
+         * sämtliche optionalen Werte null.
+         *
+         * Das Datenmodell validiert die
+         * Vollständigkeit, bevor es den
+         * neuen Zwischenbefund übernimmt.
+         *
+         * Es werden keine IDs erfunden und
+         * keine Zeitpunkte nachträglich
+         * aus der Messung abgeleitet.
          */
         var recordedScan =
             updatedVisit.RecordCleanupPotentialIntermediateScan(
                 afterMeasurement,
-                DateTime.Now);
+                afterMeasuredAt,
+                recordedExecution:
+                    correlation?.CategoryResult,
+                recordedActionResultId:
+                    correlation?.ActionResultId,
+                recordedPlanId:
+                    correlation?.PlanId,
+                recordedActionStartedAt:
+                    correlation?.StartedAt,
+                recordedActionFinishedAt:
+                    correlation?.FinishedAt);
 
         // =========================================
         // BESTEHENDEN DATENBANKWEG VERWENDEN

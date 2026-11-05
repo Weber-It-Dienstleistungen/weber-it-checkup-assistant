@@ -177,6 +177,10 @@ public partial class CleanupActionSelectionDialog :
             };
     }
 
+    // =============================================
+    // BEREINIGUNGSPLAN ÖFFNEN
+    // =============================================
+
     private void PreviewPlanButton_OnClick(
         object sender,
         RoutedEventArgs e)
@@ -252,6 +256,10 @@ public partial class CleanupActionSelectionDialog :
         }
     }
 
+    // =============================================
+    // BEREINIGUNGSPLAN ERSTELLEN
+    // =============================================
+
     private CheckupTaskActionPlan BuildPlan()
     {
         var selections =
@@ -273,6 +281,11 @@ public partial class CleanupActionSelectionDialog :
             selections);
     }
 
+    // =============================================
+    // SCHRITT 55.14.34o
+    // KONTEXT VOR AUSFÜHRUNG FESTHALTEN
+    // =============================================
+
     private void ExecuteConfirmedPlan(
         CheckupTaskActionPlan confirmedPlan)
     {
@@ -291,6 +304,47 @@ public partial class CleanupActionSelectionDialog :
             application.Services
                 .GetRequiredService<
                     ICleanupActionExecutor>();
+
+        /*
+         * Die Zuordnung zum Kundencheckup
+         * wird vor der technischen Ausführung
+         * festgehalten.
+         *
+         * Der Kontext wird ausdrücklich nicht
+         * nachträglich nur anhand der Uhrzeit
+         * oder eines Kundennamens geraten.
+         *
+         * Außerhalb eines eindeutig zugeordneten
+         * laufenden Kundencheckups bleibt
+         * die Vorgangskennung null.
+         */
+        Customer? executionCustomer =
+            null;
+
+        CustomerDevice? executionDevice =
+            null;
+
+        Guid? executionVisitId =
+            null;
+
+        if (TryResolveCleanupIntermediateContext(
+                out var customer,
+                out var device,
+                out var visit))
+        {
+            executionCustomer =
+                customer;
+
+            executionDevice =
+                device;
+
+            executionVisitId =
+                visit.Id;
+        }
+
+        // =========================================
+        // BESTÄTIGTE BEREINIGUNG AUSFÜHREN
+        // =========================================
 
         var executionDialog =
             new CleanupActionExecutionDialog(
@@ -319,7 +373,12 @@ public partial class CleanupActionSelectionDialog :
                 "Ergebnis nicht gespeichert",
                 "Das technische Ergebnis konnte nicht "
                 + "eindeutig dem bestätigten "
-                + "Bereinigungsplan zugeordnet werden.");
+                + "Bereinigungsplan zugeordnet werden."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Falls bereits Dateien gelöscht wurden, "
+                + "darf die Bereinigung nicht ungeprüft "
+                + "wiederholt werden.");
 
             return;
         }
@@ -331,22 +390,143 @@ public partial class CleanupActionSelectionDialog :
             return;
         }
 
+        // =========================================
+        // KUNDENKONTEXT NACH AUSFÜHRUNG PRÜFEN
+        // =========================================
+
+        /*
+         * Eine ursprünglich ermittelte Vorgangs-ID
+         * darf nur übernommen werden, wenn
+         * derselbe Kunden-, Geräte- und
+         * Checkup-Kontext weiterhin aktiv ist.
+         *
+         * Weicht der Kontext ab, bleibt das
+         * technische Ergebnis dokumentierbar,
+         * erhält aber keine automatische
+         * Kundencheckup-Zuordnung.
+         */
+        Guid? confirmedVisitId =
+            null;
+
+        if (executionVisitId.HasValue
+            && TryResolveCleanupIntermediateContext(
+                out var currentCustomer,
+                out var currentDevice,
+                out var currentVisit)
+            && ReferenceEquals(
+                executionCustomer,
+                currentCustomer)
+            && ReferenceEquals(
+                executionDevice,
+                currentDevice)
+            && currentVisit.Id
+                == executionVisitId.Value)
+        {
+            confirmedVisitId =
+                executionVisitId.Value;
+        }
+
+        // =========================================
+        // TECHNISCHES ERGEBNIS DOKUMENTIEREN
+        // =========================================
+
         PersistExecutionResult(
             executablePlan,
-            executionResult);
+            executionResult,
+            confirmedVisitId);
     }
+
+    // =============================================
+    // SCHRITT 55.14.34o
+    // STRUKTURIERTES ERGEBNIS SPEICHERN
+    // =============================================
 
     private void PersistExecutionResult(
         CheckupTaskActionPlan plan,
-        CleanupActionExecutionResult executionResult)
+        CleanupActionExecutionResult executionResult,
+        Guid? confirmedVisitId)
     {
-        var actionResult =
-            CreateTaskActionResult(
-                plan,
-                executionResult);
+        string? structuredDocumentationWarning =
+            null;
 
         try
         {
+            /*
+             * Der bisherige lesbare Nachweis
+             * wird unverändert aufgebaut.
+             */
+            var actionResult =
+                CreateTaskActionResult(
+                    plan,
+                    executionResult);
+
+            /*
+             * Nur tatsächlich gestartete
+             * Einzelkategorien erhalten
+             * einen strukturierten Nachweis.
+             *
+             * Vor dem Kopieren wird zusätzlich
+             * geprüft, ob die vom Executor
+             * gemeldete Kategorie tatsächlich
+             * der bestätigten Plankategorie
+             * entspricht.
+             */
+            if (executionResult.CategoryResults.Count == 1
+                && executionResult.CategoryResults[0]
+                    is { WasStarted: true } categoryResult)
+            {
+                if (plan.CleanupCategories.Count != 1
+                    || plan.CleanupCategories[0].Category
+                        != categoryResult.Category)
+                {
+                    structuredDocumentationWarning =
+                        "Die technisch gemeldete "
+                        + "Bereinigungskategorie stimmt "
+                        + "nicht eindeutig mit dem "
+                        + "bestätigten Aktionsplan überein.";
+                }
+                else
+                {
+                    try
+                    {
+                        actionResult.CaptureCleanupExecution(
+                            executionResult,
+                            confirmedVisitId);
+                    }
+                    catch (Exception exception)
+                    {
+                        /*
+                         * Das bisherige lesbare
+                         * Aufgabenprotokoll soll bei
+                         * einem Fehler der neuen
+                         * strukturierten Erfassung
+                         * möglichst erhalten bleiben.
+                         *
+                         * Die Ausnahme darf nicht
+                         * als fehlgeschlagene
+                         * Dateibereinigung erscheinen.
+                         */
+                        structuredDocumentationWarning =
+                            exception.Message;
+                    }
+                }
+            }
+            else if (executionResult.WasStarted)
+            {
+                structuredDocumentationWarning =
+                    "Das Ausführungsergebnis enthält "
+                    + "keine eindeutig gestartete "
+                    + "Einzelkategorie.";
+            }
+
+            /*
+             * Die bestehende Speicherung über
+             * CheckupTaskList bleibt erhalten.
+             *
+             * Das neue strukturierte Ergebnis
+             * wird als Bestandteil desselben
+             * Aufgabenprotokolls persistiert.
+             */
             _taskList.AddTaskActionResult(
                 _task,
                 actionResult);
@@ -367,8 +547,54 @@ public partial class CleanupActionSelectionDialog :
                 + "Technische Ursache:"
                 + Environment.NewLine
                 + exception.Message);
+
+            return;
+        }
+
+        // =========================================
+        // EINGESCHRÄNKTEN NACHWEIS KENNZEICHNEN
+        // =========================================
+
+        /*
+         * Falls nur die neue strukturierte
+         * Erfassung fehlgeschlagen ist,
+         * bleibt das lesbare Aufgabenprotokoll
+         * nach erfolgreicher Persistierung
+         * erhalten.
+         *
+         * Der Techniker wird ausdrücklich
+         * darüber informiert, dass keine
+         * automatische Verknüpfung mit einer
+         * Zwischenprüfung erfolgen darf.
+         */
+        if (!string.IsNullOrWhiteSpace(
+                structuredDocumentationWarning))
+        {
+            ShowMessage(
+                "Bereinigung dokumentiert – strukturierter Nachweis fehlt",
+                "Das bisherige lesbare "
+                + "Bereinigungsprotokoll wurde gespeichert."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Die zusätzlich vorgesehene "
+                + "strukturierte Dokumentation konnte "
+                + "nicht zuverlässig übernommen werden."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Eine automatische Zuordnung zu einer "
+                + "späteren Zwischenprüfung ist deshalb "
+                + "nicht zulässig."
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Technische Ursache:"
+                + Environment.NewLine
+                + structuredDocumentationWarning);
         }
     }
+
+    // =============================================
+    // AUFGABENPROTOKOLL ERSTELLEN
+    // =============================================
 
     private static CheckupTaskActionResult
         CreateTaskActionResult(
@@ -412,6 +638,10 @@ public partial class CleanupActionSelectionDialog :
                 executionResult.FinishedAt
         };
     }
+
+    // =============================================
+    // AKTIONSSTATUS BESTIMMEN
+    // =============================================
 
     private static CheckupTaskActionStatus
         DetermineActionStatus(
@@ -520,6 +750,10 @@ public partial class CleanupActionSelectionDialog :
             "Die kontrollierte Bereinigung konnte "
             + "technisch nicht gestartet werden.";
     }
+
+    // =============================================
+    // DATEILÖSCHUNG ZUSAMMENFASSEN
+    // =============================================
 
     private static string BuildDeletionSummary(
         CleanupActionExecutionResult executionResult)
@@ -675,18 +909,18 @@ public partial class CleanupActionSelectionDialog :
                     .ToString("N0"));
 
             /*
-             * NEU:
              * Aufschlüsselung nach den
              * tatsächlich dokumentierten
              * Überspringursachen.
              *
              * Bei historischen Ergebnissen
-             * wird ausdrücklich festgehalten,
-             * wenn Detaildaten fehlen.
+             * wird festgehalten, wenn
+             * Detaildaten fehlen.
              */
             if (categoryResult.SkippedEntryCount > 0)
             {
                 builder.AppendLine();
+
                 builder.AppendLine(
                     "Ursachen der übersprungenen Einträge:");
 
@@ -713,6 +947,10 @@ public partial class CleanupActionSelectionDialog :
             .ToString()
             .Trim();
     }
+
+    // =============================================
+    // DIALOG SCHLIESSEN
+    // =============================================
 
     private void CloseButton_OnClick(
         object sender,

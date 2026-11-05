@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 namespace WeberIT.Checkup.App.Models;
 
 /// <summary>
-/// Sprint 55.14.34a
+/// Sprint 55.14.34r
 ///
 /// Dokumentiert eine eigenständige
 /// Zwischenprüfung einer Bereinigungskategorie.
@@ -15,6 +15,14 @@ namespace WeberIT.Checkup.App.Models;
 /// Eingangsmessung, Nachmessung und optional
 /// das technische Ausführungsergebnis werden
 /// als voneinander unabhängige Kopien erfasst.
+///
+/// Ergänzung:
+/// Eine zugeordnete Bereinigungsaktion kann
+/// durch Aktions-ID, Plan-ID und vollständigen
+/// Ausführungszeitraum identifiziert werden.
+///
+/// Die bloße Existenz eines Kategorieergebnisses
+/// gilt nicht als vollständige Nachweisreferenz.
 ///
 /// Diese Klasse führt keine Scans und
 /// keine Dateisystemänderungen aus.
@@ -51,8 +59,12 @@ public sealed class CleanupPotentialIntermediateScan
         set;
     } = new();
 
+    // =============================================
+    // TECHNISCHES BEREINIGUNGSERGEBNIS
+    // =============================================
+
     /// <summary>
-    /// Optional zugeordnete technische Aktion.
+    /// Optional zugeordnetes Kategorieergebnis.
     ///
     /// Eine Zwischenprüfung darf auch ohne
     /// vorherige Löschaktion durchgeführt werden.
@@ -63,6 +75,53 @@ public sealed class CleanupPotentialIntermediateScan
     /// </summary>
     public CleanupActionCategoryExecutionResult?
         RecordedExecution
+    {
+        get;
+        set;
+    }
+
+    // =============================================
+    // SPRINT 55.14.34r
+    // VOLLSTÄNDIGE NACHWEISREFERENZ
+    // =============================================
+
+    /// <summary>
+    /// Kennung des ursprünglichen Eintrags
+    /// im technischen Aufgabenprotokoll.
+    ///
+    /// Null bei historischen oder nicht
+    /// eindeutig zugeordneten Ergebnissen.
+    /// </summary>
+    public Guid? RecordedActionResultId
+    {
+        get;
+        set;
+    }
+
+    /// <summary>
+    /// Kennung des bestätigten Bereinigungsplans.
+    /// </summary>
+    public Guid? RecordedPlanId
+    {
+        get;
+        set;
+    }
+
+    /// <summary>
+    /// Tatsächlicher Startzeitpunkt
+    /// der dokumentierten Bereinigungsaktion.
+    /// </summary>
+    public DateTimeOffset? RecordedActionStartedAt
+    {
+        get;
+        set;
+    }
+
+    /// <summary>
+    /// Tatsächlicher Abschlusszeitpunkt
+    /// der dokumentierten Bereinigungsaktion.
+    /// </summary>
+    public DateTimeOffset? RecordedActionFinishedAt
     {
         get;
         set;
@@ -91,24 +150,52 @@ public sealed class CleanupPotentialIntermediateScan
         && IsBeforeReliable
         && IsAfterReliable;
 
+    // =============================================
+    // VERLÄSSLICHKEIT DES LÖSCHNACHWEISES
+    // =============================================
+
+    /// <summary>
+    /// Ein Kategorieergebnis liegt vor.
+    ///
+    /// Dies allein bestätigt noch keine
+    /// vollständig nachvollziehbare
+    /// Aktionszuordnung.
+    /// </summary>
     [JsonIgnore]
     public bool HasRecordedExecution =>
         RecordedExecution is not null
         && RecordedExecution.Category == Category;
 
+    /// <summary>
+    /// Alle zur Identifizierung einer
+    /// Bereinigungsaktion erforderlichen
+    /// Referenzdaten sind vorhanden.
+    ///
+    /// Die Eigenschaft prüft die innere
+    /// Konsistenz dieses Datensatzes.
+    ///
+    /// Eine zusätzliche Überprüfung gegen
+    /// das ursprüngliche Aufgabenprotokoll
+    /// bleibt Aufgabe des Anwendungsdienstes.
+    /// </summary>
+    [JsonIgnore]
+    public bool HasCompleteExecutionReference =>
+        HasRecordedExecution
+        && RecordedExecution!.WasStarted
+        && RecordedActionResultId is Guid actionId
+        && actionId != Guid.Empty
+        && RecordedPlanId is Guid planId
+        && planId != Guid.Empty
+        && RecordedActionStartedAt
+            is DateTimeOffset startedAt
+        && RecordedActionFinishedAt
+            is DateTimeOffset finishedAt
+        && finishedAt >= startedAt;
+
     // =============================================
     // GEMESSENE VERÄNDERUNGEN
     // =============================================
 
-    /// <summary>
-    /// Positive Werte bedeuten eine Verringerung.
-    ///
-    /// Null bedeutet einen unveränderten Bestand.
-    ///
-    /// Ein negativer Änderungswert wird nicht
-    /// durch einen Überlauf von ulong erzeugt:
-    /// Die Richtung wird separat bereitgestellt.
-    /// </summary>
     [JsonIgnore]
     public bool? HasSizeDecreased =>
         !IsComparisonReliable
@@ -161,6 +248,10 @@ public sealed class CleanupPotentialIntermediateScan
         }
     }
 
+    // =============================================
+    // VERSTÄNDLICHER MESSVERGLEICH
+    // =============================================
+
     [JsonIgnore]
     public string ComparisonSummary
     {
@@ -177,13 +268,6 @@ public sealed class CleanupPotentialIntermediateScan
             var difference =
                 AbsoluteSizeChangeBytes ?? 0;
 
-            var direction =
-                HasSizeDecreased == true
-                    ? "verringert"
-                    : HasSizeIncreased == true
-                        ? "erhöht"
-                        : "nicht verändert";
-
             var fileDifference =
                 FileCountChange ?? 0;
 
@@ -195,14 +279,49 @@ public sealed class CleanupPotentialIntermediateScan
                           + "Dateien mehr"
                         : "Dateianzahl unverändert";
 
+            const string measurementNotice =
+                "Zwischen den Messzeitpunkten können "
+                + "Dateien auch durch Windows oder "
+                + "andere Anwendungen verändert worden sein.";
+
+            // =====================================
+            // UNVERÄNDERTE DATENMENGE
+            // =====================================
+
+            if (difference == 0)
+            {
+                if (fileDifference == 0)
+                {
+                    return
+                        "Gemessene Datenmenge und "
+                        + "Dateianzahl sind unverändert. "
+                        + measurementNotice;
+                }
+
+                return
+                    "Die gemessene Datenmenge ist "
+                    + "unverändert. "
+                    + fileDescription
+                    + ". "
+                    + measurementNotice;
+            }
+
+            // =====================================
+            // VERRINGERUNG ODER VERGRÖSSERUNG
+            // =====================================
+
+            var direction =
+                HasSizeDecreased == true
+                    ? "verringert"
+                    : "erhöht";
+
             return
                 "Der gemessene Datenbestand hat sich "
                 + $"um {FormatBytes(difference)} "
                 + $"{direction}. "
-                + $"{fileDescription}. "
-                + "Zwischen den Messzeitpunkten können "
-                + "Dateien auch durch Windows oder "
-                + "andere Anwendungen verändert worden sein.";
+                + fileDescription
+                + ". "
+                + measurementNotice;
         }
     }
 
@@ -217,8 +336,16 @@ public sealed class CleanupPotentialIntermediateScan
         CleanupCategoryResult afterMeasurement,
         DateTime? afterMeasuredAt,
         CleanupActionCategoryExecutionResult?
-            recordedExecution = null)
+            recordedExecution = null,
+        Guid? recordedActionResultId = null,
+        Guid? recordedPlanId = null,
+        DateTimeOffset? recordedActionStartedAt = null,
+        DateTimeOffset? recordedActionFinishedAt = null)
     {
+        // =========================================
+        // KUNDENCHECKUP VALIDIEREN
+        // =========================================
+
         if (customerCheckupVisitId == Guid.Empty)
         {
             throw new ArgumentException(
@@ -232,6 +359,10 @@ public sealed class CleanupPotentialIntermediateScan
 
         ArgumentNullException.ThrowIfNull(
             afterMeasurement);
+
+        // =========================================
+        // KATEGORIEN PRÜFEN
+        // =========================================
 
         if (beforeMeasurement.Category
             != afterMeasurement.Category)
@@ -250,6 +381,56 @@ public sealed class CleanupPotentialIntermediateScan
                 "Die technische Aktion gehört nicht "
                 + "zur gemessenen Bereinigungskategorie.");
         }
+
+        // =========================================
+        // NACHWEISREFERENZ PRÜFEN
+        // =========================================
+
+        /*
+         * Historische Datensätze dürfen
+         * weiterhin ein Kategorieergebnis
+         * ohne Aktions- und Plan-ID enthalten.
+         *
+         * Sobald allerdings auch nur eine
+         * Referenzangabe übergeben wird,
+         * müssen sämtliche Angaben gültig
+         * und vollständig sein.
+         *
+         * Eine teilweise Referenz darf nicht
+         * als Nachweis gespeichert werden.
+         */
+        var hasReferenceData =
+            recordedActionResultId.HasValue
+            || recordedPlanId.HasValue
+            || recordedActionStartedAt.HasValue
+            || recordedActionFinishedAt.HasValue;
+
+        if (hasReferenceData)
+        {
+            if (recordedExecution is null
+                || !recordedExecution.WasStarted
+                || recordedActionResultId is not Guid actionId
+                || actionId == Guid.Empty
+                || recordedPlanId is not Guid planId
+                || planId == Guid.Empty
+                || recordedActionStartedAt
+                    is not DateTimeOffset startedAt
+                || recordedActionFinishedAt
+                    is not DateTimeOffset finishedAt
+                || finishedAt < startedAt)
+            {
+                throw new InvalidOperationException(
+                    "Der strukturierte Bereinigungsnachweis "
+                    + "besitzt keine vollständige und "
+                    + "widerspruchsfreie Referenz auf "
+                    + "Aktions-ID, Plan-ID und "
+                    + "Ausführungszeitraum.");
+            }
+        }
+
+        // =========================================
+        // UNABHÄNGIGEN DATENSATZ ERZEUGEN
+        // =========================================
 
         return new CleanupPotentialIntermediateScan
         {
@@ -283,7 +464,19 @@ public sealed class CleanupPotentialIntermediateScan
                 recordedExecution is null
                     ? null
                     : CopyExecution(
-                        recordedExecution)
+                        recordedExecution),
+
+            RecordedActionResultId =
+                recordedActionResultId,
+
+            RecordedPlanId =
+                recordedPlanId,
+
+            RecordedActionStartedAt =
+                recordedActionStartedAt,
+
+            RecordedActionFinishedAt =
+                recordedActionFinishedAt
         };
     }
 
@@ -326,7 +519,19 @@ public sealed class CleanupPotentialIntermediateScan
                 RecordedExecution is null
                     ? null
                     : CopyExecution(
-                        RecordedExecution)
+                        RecordedExecution),
+
+            RecordedActionResultId =
+                RecordedActionResultId,
+
+            RecordedPlanId =
+                RecordedPlanId,
+
+            RecordedActionStartedAt =
+                RecordedActionStartedAt,
+
+            RecordedActionFinishedAt =
+                RecordedActionFinishedAt
         };
     }
 

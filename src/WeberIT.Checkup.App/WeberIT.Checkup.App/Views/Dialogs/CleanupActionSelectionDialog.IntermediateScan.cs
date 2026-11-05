@@ -13,7 +13,7 @@ using WeberIT.Checkup.App.ViewModels;
 namespace WeberIT.Checkup.App.Views.Dialogs;
 
 /// <summary>
-/// Sprint 55.14.34f
+/// Sprint 55.14.34u
 ///
 /// Ergänzt den bestehenden Bereinigungsdialog
 /// um eine gezielte, lesende Zwischenprüfung.
@@ -28,8 +28,12 @@ namespace WeberIT.Checkup.App.Views.Dialogs;
 /// unverändert und wird als Vergleichsbasis
 /// verwendet.
 ///
-/// Technische Löschaktionen werden in diesem
-/// Schritt noch nicht automatisch zugeordnet.
+/// Eindeutig zugeordnete technische
+/// Bereinigungsprotokolle werden zusätzlich
+/// zum unabhängigen Messvergleich angezeigt.
+///
+/// Die Anzeige selbst führt keine
+/// Dateisystemänderungen aus.
 /// </summary>
 public partial class CleanupActionSelectionDialog
 {
@@ -151,9 +155,8 @@ public partial class CleanupActionSelectionDialog
 
         /*
          * Der geöffnete Dialog muss weiterhin
-         * zu genau der Aufgabenliste und der
-         * Bereinigungsanalyse gehören, aus
-         * denen er ursprünglich geöffnet wurde.
+         * zur ursprünglichen Aufgabenliste
+         * und Bereinigungsanalyse gehören.
          */
         if (!ReferenceEquals(
                 session.TaskList,
@@ -225,7 +228,7 @@ public partial class CleanupActionSelectionDialog
     }
 
     // =============================================
-    // AUSGEWÄHLTE KATEGORIE SICHER ERMITTELN
+    // AUSGEWÄHLTE KATEGORIE ERMITTELN
     // =============================================
 
     private bool TryGetSelectedIntermediateCategory(
@@ -240,18 +243,11 @@ public partial class CleanupActionSelectionDialog
         }
 
         /*
-         * SCHRITT 55.14.34f – KORREKTUR
-         *
          * CleanupActionCategory.Category
          * besitzt den Typ CleanupCategoryType?.
          *
-         * Ein fehlender Kategoriecode darf
-         * weder implizit umgewandelt noch
-         * als gültige Auswahl behandelt werden.
-         *
-         * Das Pattern liefert nur dann
-         * einen konkreten CleanupCategoryType,
-         * wenn tatsächlich ein Wert vorhanden ist.
+         * Fehlende Werte werden nicht
+         * als gültige Auswahl behandelt.
          */
         if (selectedCategory.Category
             is not CleanupCategoryType selectedType)
@@ -316,6 +312,9 @@ public partial class CleanupActionSelectionDialog
 
         _cleanupIntermediateRunning = true;
 
+        IntermediateScanStatusTextBlock.ToolTip =
+            null;
+
         IntermediateScanStatusTextBlock.Text =
             "Die ausgewählte Bereinigungskategorie "
             + "wird erneut gemessen."
@@ -352,13 +351,6 @@ public partial class CleanupActionSelectionDialog
              * Nach dem Speichern muss der aktuelle
              * Kundencheckup deshalb neu aufgelöst
              * werden.
-             *
-             * SCHRITT 55.14.34f – KORREKTUR
-             *
-             * Die Methode besitzt genau drei
-             * out-Parameter:
-             *
-             * Customer, CustomerDevice und Visit.
              */
             if (!TryResolveCleanupIntermediateContext(
                     out _,
@@ -408,6 +400,9 @@ public partial class CleanupActionSelectionDialog
         }
         catch (Exception exception)
         {
+            IntermediateScanStatusTextBlock.ToolTip =
+                null;
+
             IntermediateScanStatusTextBlock.Text =
                 "Die Zwischenprüfung konnte nicht "
                 + "erfolgreich abgeschlossen werden."
@@ -446,6 +441,9 @@ public partial class CleanupActionSelectionDialog
         {
             return;
         }
+
+        IntermediateScanStatusTextBlock.ToolTip =
+            null;
 
         if (!TryGetSelectedIntermediateCategory(
                 out var category))
@@ -506,7 +504,7 @@ public partial class CleanupActionSelectionDialog
     }
 
     // =============================================
-    // VORHER-/NACHHER-ERGEBNIS
+    // MESSUNG UND TECHNISCHEN NACHWEIS ANZEIGEN
     // =============================================
 
     private void ShowIntermediateResult(
@@ -524,7 +522,7 @@ public partial class CleanupActionSelectionDialog
         var header =
             categoryName
             + " – Zwischenprüfung vom "
-            + scan.RecordedAt.ToString(
+            + scan.RecordedAt.ToLocalTime().ToString(
                 "dd.MM.yyyy HH:mm")
             + " Uhr";
 
@@ -540,28 +538,77 @@ public partial class CleanupActionSelectionDialog
             + ", "
             + after.FileCountText;
 
-        if (!scan.IsComparisonReliable)
-        {
-            IntermediateScanStatusTextBlock.Text =
-                header
-                + Environment.NewLine
-                + Environment.NewLine
-                + beforeText
-                + Environment.NewLine
-                + afterText
-                + Environment.NewLine
-                + Environment.NewLine
-                + "Die Messwerte sind nicht vollständig "
-                + "vergleichbar. Eine bestätigte "
-                + "Größenänderung kann deshalb "
-                + "nicht ausgewiesen werden."
-                + Environment.NewLine
-                + Environment.NewLine
-                + "Messstatus: "
-                + after.MeasurementStatusText;
+        // =========================================
+        // MESSVERGLEICH
+        // =========================================
 
-            return;
+        /*
+         * Die Messung wird unabhängig
+         * vom technischen Löschprotokoll
+         * ausgewertet.
+         *
+         * Eine unvollständige Kontrollmessung
+         * darf auch bei einer erfolgreich
+         * dokumentierten Löschaktion keine
+         * bestätigte Bestandsänderung liefern.
+         */
+        var comparisonText =
+            scan.IsComparisonReliable
+                ? scan.ComparisonSummary
+                : "Die Messwerte sind nicht vollständig "
+                  + "vergleichbar. Eine bestätigte "
+                  + "Größenänderung kann deshalb "
+                  + "nicht ausgewiesen werden."
+                  + Environment.NewLine
+                  + "Messstatus: "
+                  + after.MeasurementStatusText;
+
+        // =========================================
+        // TECHNISCHER BEREINIGUNGSNACHWEIS
+        // =========================================
+
+        var executionText =
+            BuildRecordedExecutionText(
+                scan);
+
+        // =========================================
+        // VOLLSTÄNDIGE REFERENZEN ALS TOOLTIP
+        // =========================================
+
+        /*
+         * Die IDs bleiben vollständig erhalten.
+         *
+         * Für die normale Ergebnisanzeige
+         * sind sie zu lang und erschweren
+         * die Lesbarkeit.
+         *
+         * Bei einer vollständigen Referenz
+         * werden sie im Tooltip angezeigt.
+         */
+        if (scan.HasCompleteExecutionReference)
+        {
+            IntermediateScanStatusTextBlock.ToolTip =
+                "Dokumentierte Bereinigungsaktion"
+                + Environment.NewLine
+                + Environment.NewLine
+                + "Aktions-ID: "
+                + scan.RecordedActionResultId!.Value
+                + Environment.NewLine
+                + "Plan-ID: "
+                + scan.RecordedPlanId!.Value
+                + Environment.NewLine
+                + "Kundencheckup-ID: "
+                + scan.CustomerCheckupVisitId;
         }
+        else
+        {
+            IntermediateScanStatusTextBlock.ToolTip =
+                null;
+        }
+
+        // =========================================
+        // GESAMTANZEIGE
+        // =========================================
 
         IntermediateScanStatusTextBlock.Text =
             header
@@ -572,14 +619,122 @@ public partial class CleanupActionSelectionDialog
             + afterText
             + Environment.NewLine
             + Environment.NewLine
-            + scan.ComparisonSummary
+            + comparisonText
             + Environment.NewLine
             + Environment.NewLine
-            + "Hinweis: Die Zwischenprüfung "
-            + "ist eine eigenständige Messung. "
-            + "Eine technische Löschaktion "
-            + "wird hier noch nicht automatisch "
-            + "zugeordnet.";
+            + executionText;
+    }
+
+    // =============================================
+    // SCHRITT 55.14.34u
+    // TECHNISCHE AKTION VERSTÄNDLICH DARSTELLEN
+    // =============================================
+
+    private static string BuildRecordedExecutionText(
+        CleanupPotentialIntermediateScan scan)
+    {
+        // =========================================
+        // KEINE TECHNISCHE AKTION ZUGEORDNET
+        // =========================================
+
+        if (!scan.HasRecordedExecution)
+        {
+            return
+                "TECHNISCHER BEREINIGUNGSNACHWEIS"
+                + Environment.NewLine
+                + "Dieser Zwischenprüfung ist keine "
+                + "eindeutig dokumentierte Löschaktion "
+                + "zugeordnet.";
+        }
+
+        // =========================================
+        // HISTORISCHER ODER UNVOLLSTÄNDIGER
+        // NACHWEIS
+        // =========================================
+
+        /*
+         * Ältere Zwischenprüfungen können
+         * bereits ein Kategorieergebnis
+         * besitzen, aber noch keine
+         * vollständigen Aktionsreferenzen.
+         *
+         * Diese Daten dürfen nicht als
+         * vollständig nachvollziehbare
+         * Verknüpfung ausgegeben werden.
+         */
+        if (!scan.HasCompleteExecutionReference)
+        {
+            return
+                "TECHNISCHER BEREINIGUNGSNACHWEIS"
+                + Environment.NewLine
+                + "Ein technischer Bereinigungsdatensatz "
+                + "ist vorhanden. Die ursprüngliche "
+                + "Aktions- und Planreferenz ist jedoch "
+                + "nicht vollständig hinterlegt."
+                + Environment.NewLine
+                + "Eine eindeutige Verknüpfung mit "
+                + "dem Aufgabenprotokoll kann daher "
+                + "nicht bestätigt werden.";
+        }
+
+        // =========================================
+        // VOLLSTÄNDIG REFERENZIERTE AKTION
+        // =========================================
+
+        var execution =
+            scan.RecordedExecution!;
+
+        var technicalStatus =
+            execution.WasCancelled
+                ? "Abgebrochen"
+                : execution.IsSuccessful
+                    ? "Technisch erfolgreich"
+                    : execution.IsPartiallySuccessful
+                        ? "Teilweise erfolgreich"
+                        : "Mit technischen Fehlern beendet";
+
+        var startedAt =
+            scan.RecordedActionStartedAt!.Value
+                .ToLocalTime();
+
+        var finishedAt =
+            scan.RecordedActionFinishedAt!.Value
+                .ToLocalTime();
+
+        var durationText =
+            startedAt.ToString("dd.MM.yyyy HH:mm")
+            + " – "
+            + finishedAt.ToString("dd.MM.yyyy HH:mm")
+            + " Uhr";
+
+        var deletionText =
+            $"{execution.DeletedFileCount:N0} "
+            + "Dateien gelöscht, "
+            + $"{execution.DeletedDirectoryCount:N0} "
+            + "leere Unterordner entfernt, "
+            + execution.DeletedSizeText
+            + " als gelöschte Dateigröße protokolliert.";
+
+        var safetyText =
+            "Kontrolliert übersprungen: "
+            + $"{execution.SkippedEntryCount:N0}; "
+            + "technische Löschfehler: "
+            + $"{execution.FailedEntryCount:N0}.";
+
+        return
+            "TECHNISCHER BEREINIGUNGSNACHWEIS"
+            + Environment.NewLine
+            + technicalStatus
+            + " · Ausführung: "
+            + durationText
+            + Environment.NewLine
+            + deletionText
+            + Environment.NewLine
+            + safetyText
+            + Environment.NewLine
+            + "Die protokollierte Löschmenge und "
+            + "die gemessene Bestandsänderung "
+            + "sind unabhängig voneinander.";
     }
 
     // =============================================
@@ -641,9 +796,8 @@ public partial class CleanupActionSelectionDialog
             !_cleanupIntermediateRunning;
 
         /*
-         * Die bisherige Bereinigung und
-         * die neue Zwischenprüfung dürfen
-         * nicht gleichzeitig gestartet werden.
+         * Bereinigung und Zwischenprüfung
+         * dürfen nicht gleichzeitig starten.
          *
          * Die bestehende Planlogik und
          * die ursprüngliche Kategorieauswahl

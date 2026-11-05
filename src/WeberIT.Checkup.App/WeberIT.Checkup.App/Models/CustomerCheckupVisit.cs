@@ -15,7 +15,6 @@ public sealed class CustomerCheckupVisit
         _programUpdateIntermediateScans = new();
 
     // =============================================
-    // SPRINT 55.14.34b
     // BEREINIGUNGS-ZWISCHENPRÜFUNGEN
     // =============================================
 
@@ -77,7 +76,7 @@ public sealed class CustomerCheckupVisit
     }
 
     // =============================================
-    // WINGet-ZWISCHENPRÜFUNGEN
+    // WINGET-ZWISCHENPRÜFUNGEN
     // =============================================
 
     /// <summary>
@@ -90,9 +89,6 @@ public sealed class CustomerCheckupVisit
     /// Der ursprüngliche Eingangsscan,
     /// die Aktionsprotokolle und die spätere
     /// Abschlusskontrolle bleiben unverändert.
-    ///
-    /// Die Liste wird mit dem Kundencheckup
-    /// im bestehenden Datenbank-JSON gespeichert.
     ///
     /// Historische Vorgänge ohne diese Eigenschaft
     /// erhalten automatisch eine leere Liste.
@@ -128,15 +124,16 @@ public sealed class CustomerCheckupVisit
     /// - die Kennung dieses Kundencheckups,
     /// - die ursprüngliche Eingangsmessung,
     /// - eine eigenständige Nachmessung,
-    /// - optional das technische Löschresultat.
+    /// - optional das technische Löschresultat,
+    /// - optional eine vollständige Referenz
+    ///   auf die dokumentierte Löschaktion.
     ///
     /// Diese Daten ersetzen weder den
     /// Eingangsscan noch einen späteren
     /// vollständigen Abschlussscan.
     ///
     /// Die Speicherung erfolgt über die
-    /// bestehende JSON-Persistierung des
-    /// Kundencheckups.
+    /// bestehende JSON-Persistierung.
     ///
     /// Historische Vorgänge ohne dieses Feld
     /// erhalten eine leere Liste.
@@ -200,9 +197,6 @@ public sealed class CustomerCheckupVisit
     ///
     /// Die Prüfung verändert weder den archivierten
     /// Vorgang noch seine gespeicherten Prüfdaten.
-    ///
-    /// Die Eigenschaft wird nicht in der Datenbank
-    /// beziehungsweise im JSON gespeichert.
     /// </summary>
     [JsonIgnore]
     public bool CanRegenerateReport
@@ -436,7 +430,7 @@ public sealed class CustomerCheckupVisit
     }
 
     // =============================================
-    // WINGet-ZWISCHENPRÜFUNG ERFASSEN
+    // WINGET-ZWISCHENPRÜFUNG ERFASSEN
     // =============================================
 
     /// <summary>
@@ -482,6 +476,7 @@ public sealed class CustomerCheckupVisit
     }
 
     // =============================================
+    // SPRINT 55.14.34s
     // BEREINIGUNGS-ZWISCHENPRÜFUNG ERFASSEN
     // =============================================
 
@@ -497,8 +492,19 @@ public sealed class CustomerCheckupVisit
     /// keine beliebige Vorher-Messung
     /// als ursprünglichen Zustand ausgeben.
     ///
-    /// Die neue Zwischenprüfung enthält
-    /// unabhängige Kopien aller Messergebnisse.
+    /// Optional können mit dem technischen
+    /// Löschresultat folgende Referenzen
+    /// übergeben werden:
+    ///
+    /// - Aktions-ID aus dem Aufgabenprotokoll.
+    /// - Kennung des bestätigten Aktionsplans.
+    /// - Tatsächlicher Ausführungsbeginn.
+    /// - Tatsächliches Ausführungsende.
+    ///
+    /// Die Vollständigkeit der Referenzen
+    /// wird durch das Zwischenprüfungsmodell
+    /// validiert, bevor der Datensatz
+    /// in die Liste aufgenommen wird.
     ///
     /// Die eigentliche Datenbankspeicherung
     /// erfolgt anschließend durch den
@@ -509,7 +515,11 @@ public sealed class CustomerCheckupVisit
             CleanupCategoryResult afterMeasurement,
             DateTime? afterMeasuredAt,
             CleanupActionCategoryExecutionResult?
-                recordedExecution = null)
+                recordedExecution = null,
+            Guid? recordedActionResultId = null,
+            Guid? recordedPlanId = null,
+            DateTimeOffset? recordedActionStartedAt = null,
+            DateTimeOffset? recordedActionFinishedAt = null)
     {
         ArgumentNullException.ThrowIfNull(
             afterMeasurement);
@@ -582,9 +592,28 @@ public sealed class CustomerCheckupVisit
         }
 
         // =========================================
-        // UNABHÄNGIGEN MESSDATENSATZ ERSTELLEN
+        // NEUEN MESSDATENSATZ ERSTELLEN
         // =========================================
 
+        /*
+         * Die bisherige Methode akzeptiert
+         * weiterhin Aufrufe nur mit Nachmessung
+         * und Messzeitpunkt.
+         *
+         * Bei einer eindeutigen technischen
+         * Zuordnung werden zusätzlich
+         * sämtliche Nachweisreferenzen
+         * durchgereicht.
+         *
+         * Capture validiert:
+         * - Kategorieübereinstimmung.
+         * - Gültige Aktions-ID.
+         * - Gültige Plan-ID.
+         * - Vollständigen Ausführungszeitraum.
+         *
+         * Bei einem Validierungsfehler
+         * wird kein Eintrag hinzugefügt.
+         */
         var intermediateScan =
             CleanupPotentialIntermediateScan.Capture(
                 Id,
@@ -592,7 +621,11 @@ public sealed class CustomerCheckupVisit
                 beforeInformation.AnalysisDate,
                 afterMeasurement,
                 afterMeasuredAt,
-                recordedExecution);
+                recordedExecution,
+                recordedActionResultId,
+                recordedPlanId,
+                recordedActionStartedAt,
+                recordedActionFinishedAt);
 
         CleanupPotentialIntermediateScans.Add(
             intermediateScan);
@@ -652,10 +685,6 @@ public sealed class CustomerCheckupVisit
                 nameof(reason));
         }
 
-        // Eine erneute Freigabe desselben Updates
-        // ersetzt nur dessen vorherige Freigabe.
-        // Historische Entscheidungen zu anderen
-        // Paketversionen bleiben erhalten.
         var existingApproval =
             ProgramUpdateExceptions.FirstOrDefault(
                 approval =>
