@@ -140,7 +140,7 @@ public static class CleanupCategoryExecutionHistoryGuard
         }
     }
 
-    private static IEnumerable<CheckupTaskActionResult>
+    internal static IEnumerable<CheckupTaskActionResult>
         GetCleanupActions(
             CheckupTaskList taskList)
     {

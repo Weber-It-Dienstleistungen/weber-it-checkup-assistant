@@ -65,6 +65,8 @@ public partial class CleanupActionSelectionDialog :
             _planBuilder.GetSelectableCategories(
                 cleanupInformation);
 
+        RefreshCategoryProgress();
+
         if (AvailableCategories.Count == 0)
         {
             _selectionStatusText =
@@ -87,6 +89,29 @@ public partial class CleanupActionSelectionDialog :
 
     public bool HasSelectableCategories =>
         AvailableCategories.Count > 0;
+
+    // SPRINT 55.14.42: Lesender Bearbeitungsfortschritt.
+    public IReadOnlyList<CleanupCategoryProgressItem>
+        CategoryProgressItems
+    {
+        get;
+        private set;
+    } = new List<CleanupCategoryProgressItem>();
+
+    public string CategoryProgressSummaryText =>
+        "Protokollierter Arbeitsstand aus diesem Checkup. "
+        + "Keine Aussage über Restdateien oder Systempunkte.";
+
+    private void RefreshCategoryProgress()
+    {
+        CategoryProgressItems =
+            CleanupCategoryProgressService.Build(
+                AvailableCategories, _taskList,
+                _startedInThisDialog);
+
+        OnPropertyChanged(nameof(CategoryProgressItems));
+        OnPropertyChanged(nameof(SelectableCategoryCountText));
+    }
 
     // =============================================
     // SPRINT 55.14.40: VERLAUFSSCHUTZ
@@ -170,6 +195,8 @@ public partial class CleanupActionSelectionDialog :
 
     private void RefreshExecutionHistoryState()
     {
+        RefreshCategoryProgress();
+
         OnPropertyChanged(
             nameof(ExecutionHistoryNoticeText));
 
@@ -239,19 +266,23 @@ public partial class CleanupActionSelectionDialog :
      * mitzählen, obwohl seine produktive
      * Ausführung noch gesperrt ist.
      */
-    public string SelectableCategoryCountText =>
-        AvailableCategories.Count switch
+    public string SelectableCategoryCountText
+    {
+        get
         {
-            0 =>
-                "Keine Kategorie für die Planprüfung verfügbar",
+            var available =
+                AvailableCategories.Count(item =>
+                    item.Category.HasValue
+                    && !_startedInThisDialog.Contains(
+                        item.Category.Value)
+                    && CleanupCategoryExecutionHistoryGuard
+                        .CanStartCategory(
+                            _taskList, item.Category.Value));
 
-            1 =>
-                "1 Kategorie für die Planprüfung verfügbar",
-
-            _ =>
-                $"{AvailableCategories.Count} Kategorien "
-                + "für die Planprüfung verfügbar"
-        };
+            return $"{AvailableCategories.Count} gemessene Kategorien"
+                + $" · {available} für neue Planprüfungen verfügbar";
+        }
+    }
 
     public string SelectionStatusText
     {
