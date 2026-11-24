@@ -18,7 +18,7 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 /// <summary>
 /// Sprint 55.14.29d
 ///
-/// Zwölf Regressionstests für die direkte
+/// Dreizehn Regressionstests für die direkte
 /// C#-Ergebnisübertragung.
 ///
 /// Prüft insbesondere, dass gemeldete
@@ -103,6 +103,11 @@ public static class
         Run(
             "Teilweise aufgeschlüsselte Ausschlüsse bleiben gültig",
             TestPartialSkipBreakdown,
+            results);
+
+        Run(
+            "Erwartete von ungeklärten Sicherheitssperren unterscheiden",
+            TestSafetySkipClassification,
             results);
 
         Run(
@@ -323,6 +328,88 @@ public static class
             "Eine unvollständige "
             + "Ursachenaufschlüsselung wurde "
             + "als technischer Fehler bewertet.");
+    }
+
+    // =============================================
+    // SPRINT 55.14.37
+    // GEKLÄRTE UND UNGEKLÄRTE AUSSCHLÜSSE
+    // =============================================
+
+    private static void TestSafetySkipClassification()
+    {
+        var empty =
+            ConvertResult(CreateEngineResult());
+
+        Require(
+            empty.HasOnlyExpectedSafetySkips,
+            "Ohne Ausschlüsse darf keine Unklarheit entstehen.");
+
+        var known =
+            ConvertResult(
+                CreateEngineResult(
+                    skipped: 4,
+                    reasons:
+                    [
+                        Reason(
+                            CleanupSkippedEntryReason.LockedByProcess,
+                            1),
+                        Reason(
+                            CleanupSkippedEntryReason.ReadOnly,
+                            2),
+                        Reason(
+                            CleanupSkippedEntryReason.DirectoryNotEmpty,
+                            1)
+                    ]));
+
+        Require(
+            known.IsSuccessful
+            && known.HasOnlyExpectedSafetySkips,
+            "Vollständig dokumentierte Schutzgründe "
+            + "dürfen nicht als ungeklärt gelten.");
+
+        var other =
+            ConvertResult(
+                CreateEngineResult(
+                    skipped: 1,
+                    reasons:
+                    [
+                        Reason(
+                            CleanupSkippedEntryReason.OtherSafetySkip,
+                            1)
+                    ]));
+
+        Require(
+            other.IsSuccessful
+            && !other.HasOnlyExpectedSafetySkips,
+            "Sonstige Sicherheitsstopps dürfen "
+            + "keinen vollständigen Nachweis ergeben.");
+
+        var partial =
+            ConvertResult(
+                CreateEngineResult(
+                    skipped: 3,
+                    reasons:
+                    [
+                        Reason(
+                            CleanupSkippedEntryReason.ReadOnly,
+                            2)
+                    ]));
+
+        Require(
+            partial.IsSuccessful
+            && !partial.HasOnlyExpectedSafetySkips,
+            "Unvollständig aufgeschlüsselte Ausschlüsse "
+            + "müssen als ungeklärt gelten.");
+
+        var old =
+            ConvertResult(
+                CreateEngineResult(skipped: 2));
+
+        Require(
+            old.IsSuccessful
+            && !old.HasOnlyExpectedSafetySkips,
+            "Historische Ergebnisse ohne Ursachen "
+            + "dürfen nicht aufgewertet werden.");
     }
 
     // =============================================

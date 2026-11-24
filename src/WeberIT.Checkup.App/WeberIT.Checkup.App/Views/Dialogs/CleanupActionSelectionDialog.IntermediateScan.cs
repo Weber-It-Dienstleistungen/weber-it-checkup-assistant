@@ -708,7 +708,9 @@ public partial class CleanupActionSelectionDialog
             execution.WasCancelled
                 ? "Abgebrochen"
                 : execution.IsSuccessful
-                    ? "Technisch erfolgreich"
+                    ? execution.HasOnlyExpectedSafetySkips
+                        ? "Technisch erfolgreich"
+                        : "Technisch beendet – Sicherheitsausnahmen zu prüfen"
                     : execution.IsPartiallySuccessful
                         ? "Teilweise erfolgreich"
                         : "Mit technischen Fehlern beendet";
@@ -806,13 +808,20 @@ public partial class CleanupActionSelectionDialog
         if (execution.IsSuccessful)
         {
             executionNotice =
-                "Die dokumentierte Bereinigungsaktion "
-                + "wurde technisch erfolgreich "
-                + "abgeschlossen. "
-                + "Kontrolliert übersprungene "
-                + "Einträge sind dabei keine "
-                + "technischen Löschfehler und "
-                + "wurden nicht als gelöscht gezählt.";
+                execution.HasOnlyExpectedSafetySkips
+                    ? "Die Bereinigung wurde ohne "
+                      + "technische Löschfehler abgeschlossen. "
+                      + "Alle erfassten Sicherheitsausnahmen "
+                      + "sind durch erwartete Gründe erklärt; "
+                      + "ausgelassene Dateien wurden nicht "
+                      + "als gelöscht gezählt."
+                    : "Die Bereinigung meldet keine "
+                      + "technischen Löschfehler. Allerdings "
+                      + "sind Sicherheitsausnahmen nicht "
+                      + "vollständig oder nicht eindeutig "
+                      + "erklärt. Eine vollständige "
+                      + "Bearbeitung aller erreichbaren "
+                      + "Einträge ist nicht bestätigt.";
         }
         else if (execution.IsPartiallySuccessful)
         {

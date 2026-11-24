@@ -145,6 +145,64 @@ public sealed class CleanupActionCategoryExecutionResult
      * dadurch nicht automatisch geändert.
      */
 
+
+    // =============================================
+    // SPRINT 55.14.37
+    // KLASSIFIZIERTE SICHERHEITSAUSNAHMEN
+    // =============================================
+
+    /// <summary>
+    /// True ausschließlich, wenn sämtliche
+    /// Überspringvorgänge anhand bekannter,
+    /// konkreter Sicherheitsgründe erklärt sind.
+    ///
+    /// OtherSafetySkip, fehlende Detailursachen,
+    /// doppelte oder ungültige Einträge gelten
+    /// ausdrücklich als nicht vollständig geklärt.
+    ///
+    /// Die Bewertung betrifft nur das Protokoll:
+    /// Es wird weder ein Dateisystemzustand noch
+    /// eine Scoreverbesserung daraus abgeleitet.
+    /// </summary>
+    [JsonIgnore]
+    public bool HasOnlyExpectedSafetySkips
+    {
+        get
+        {
+            if (SkippedEntryCount < 0
+                || SkippedEntryReasons is null)
+            {
+                return false;
+            }
+
+            var knownReasons =
+                new HashSet<CleanupSkippedEntryReason>();
+
+            long documentedCount = 0;
+
+            foreach (var entry in SkippedEntryReasons)
+            {
+                if (entry is null
+                    || entry.Count <= 0
+                    || !Enum.IsDefined(
+                        typeof(CleanupSkippedEntryReason),
+                        entry.Reason)
+                    || entry.Reason ==
+                        CleanupSkippedEntryReason.OtherSafetySkip
+                    || !knownReasons.Add(entry.Reason)
+                    || entry.Count >
+                        SkippedEntryCount - documentedCount)
+                {
+                    return false;
+                }
+
+                documentedCount += entry.Count;
+            }
+
+            return documentedCount == SkippedEntryCount;
+        }
+    }
+
     // =============================================
     // VORHANDENE ANZEIGETEXTE
     // =============================================
