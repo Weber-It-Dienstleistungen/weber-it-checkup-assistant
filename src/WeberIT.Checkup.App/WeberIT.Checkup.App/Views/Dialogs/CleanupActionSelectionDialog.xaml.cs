@@ -25,6 +25,13 @@ public partial class CleanupActionSelectionDialog :
     private readonly ICleanupActionPlanBuilder
         _planBuilder;
 
+    // Kategorien, deren Ausführung in diesem
+    // Dialog bereits begonnen hat, bleiben
+    // auch bei fehlgeschlagener Speicherung
+    // gegen eine sofortige Wiederholung geschützt.
+    private readonly HashSet<CleanupCategoryType>
+        _startedInThisDialog = new();
+
     private string _selectionStatusText =
         "Noch keine Bereinigungskategorie ausgewählt.";
 
@@ -80,6 +87,139 @@ public partial class CleanupActionSelectionDialog :
 
     public bool HasSelectableCategories =>
         AvailableCategories.Count > 0;
+
+    // =============================================
+    // SPRINT 55.14.40: VERLAUFSSCHUTZ
+    // =============================================
+
+    public string ExecutionHistoryNoticeText
+    {
+        get
+        {
+            if (CleanupCategoryExecutionHistoryGuard
+                .HasUnattributedCleanupExecution(_taskList))
+            {
+                return "Achtung: Eine frühere Bereinigungsaktion "
+                    + "hat kein eindeutig zuordenbares "
+                    + "Kategorieprotokoll. Weitere "
+                    + "Löschaktionen aus diesem Eingangsscan "
+                    + "sind gesperrt. Lesende "
+                    + "Zwischenprüfungen bleiben möglich.";
+            }
+
+            var previousCategories =
+                CleanupCategoryExecutionHistoryGuard
+                    .GetPreviouslyStartedCategories(_taskList);
+
+            var titles =
+                AvailableCategories
+                    .Where(category =>
+                        category.Category.HasValue
+                        && (previousCategories.Contains(
+                                category.Category.Value)
+                            || _startedInThisDialog.Contains(
+                                category.Category.Value)))
+                    .Select(category => category.Title)
+                    .ToList();
+
+            if (titles.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            return "Bereits gestartete Kategorien: "
+                + string.Join(", ", titles)
+                + ". Eine weitere Löschung aus den "
+                + "alten Eingangswerten ist gesperrt. "
+                + "Die lesende Zwischenprüfung ist "
+                + "weiterhin möglich.";
+        }
+    }
+
+    private bool CanCreatePlanForSelectedCategory()
+    {
+        if (CategoriesListBox.SelectedItem
+            is not CleanupActionCategory category
+            || !category.Category.HasValue)
+        {
+            return false;
+        }
+
+        var type = category.Category.Value;
+
+        return !_startedInThisDialog.Contains(type)
+            && CleanupCategoryExecutionHistoryGuard
+                .CanStartCategory(_taskList, type);
+    }
+
+    private void EnsureCategoryMayBeExecuted(
+        CleanupCategoryType category)
+    {
+        if (_startedInThisDialog.Contains(category))
+        {
+            throw new InvalidOperationException(
+                "Diese Kategorie wurde bereits in der "
+                + "laufenden Dialogsitzung gestartet. "
+                + "Eine sofortige Wiederholung "
+                + "ist aus Sicherheitsgründen gesperrt.");
+        }
+
+        CleanupCategoryExecutionHistoryGuard
+            .EnsureCanStartCategory(_taskList, category);
+    }
+
+    private void RefreshExecutionHistoryState()
+    {
+        OnPropertyChanged(
+            nameof(ExecutionHistoryNoticeText));
+
+        UpdatePlanSelectionState();
+        UpdateIntermediateControls();
+    }
+
+    private void UpdatePlanSelectionState()
+    {
+        var selectedCount =
+            CategoriesListBox.SelectedItems.Count;
+
+        var canBuildPlan =
+            CanCreatePlanForSelectedCategory();
+
+        PreviewPlanButton.IsEnabled =
+            canBuildPlan;
+
+        if (selectedCount == 1 && !canBuildPlan)
+        {
+            SelectionStatusText =
+                "Diese Kategorie wurde bereits ausgeführt "
+                + "oder ihre Ausführungshistorie ist "
+                + "nicht eindeutig. Eine weitere Löschung "
+                + "aus dem alten Eingangsscan ist gesperrt. "
+                + "Die lesende Zwischenprüfung bleibt möglich.";
+
+            return;
+        }
+
+        SelectionStatusText =
+            selectedCount switch
+            {
+                0 when AvailableCategories.Count == 0 =>
+                    "Im gespeicherten Checkup ist keine "
+                    + "ausreichend gemessene und sicher "
+                    + "freigegebene Bereinigungskategorie enthalten.",
+
+                0 =>
+                    "Noch keine Bereinigungskategorie ausgewählt.",
+
+                1 =>
+                    "Eine Bereinigungskategorie ist für "
+                    + "die Planvorschau ausgewählt.",
+
+                _ =>
+                    $"{selectedCount} Bereinigungskategorien "
+                    + "sind für die Planvorschau ausgewählt."
+            };
+    }
 
     // =============================================
     // SCHRITT 55.14.30e
@@ -150,31 +290,7 @@ public partial class CleanupActionSelectionDialog :
         object sender,
         SelectionChangedEventArgs e)
     {
-        var selectedCount =
-            CategoriesListBox.SelectedItems.Count;
-
-        PreviewPlanButton.IsEnabled =
-            selectedCount > 0;
-
-        SelectionStatusText =
-            selectedCount switch
-            {
-                0 when AvailableCategories.Count == 0 =>
-                    "Im gespeicherten Checkup ist keine "
-                    + "ausreichend gemessene und sicher "
-                    + "freigegebene Bereinigungskategorie enthalten.",
-
-                0 =>
-                    "Noch keine Bereinigungskategorie ausgewählt.",
-
-                1 =>
-                    "Eine Bereinigungskategorie ist für "
-                    + "die Planvorschau ausgewählt.",
-
-                _ =>
-                    $"{selectedCount} Bereinigungskategorien "
-                    + "sind für die Planvorschau ausgewählt."
-            };
+        UpdatePlanSelectionState();
     }
 
     // =============================================
@@ -275,6 +391,15 @@ public partial class CleanupActionSelectionDialog :
                         })
                 .ToList();
 
+        foreach (var selection in selections)
+        {
+            if (selection.Category.HasValue)
+            {
+                EnsureCategoryMayBeExecuted(
+                    selection.Category.Value);
+            }
+        }
+
         return _planBuilder.Build(
             _task,
             _cleanupInformation,
@@ -289,6 +414,22 @@ public partial class CleanupActionSelectionDialog :
     private void ExecuteConfirmedPlan(
         CheckupTaskActionPlan confirmedPlan)
     {
+        // Unmittelbar vor der echten Ausführung
+        // noch einmal gegen die gespeicherte
+        // Historie prüfen. Eine offene Vorschau
+        // ist keine dauerhafte Freigabe.
+        if (confirmedPlan.CleanupCategories.Count != 1
+            || confirmedPlan.CleanupCategories[0].Category
+                is not CleanupCategoryType confirmedCategory)
+        {
+            throw new InvalidOperationException(
+                "Der bestätigte Plan enthält keine "
+                + "eindeutige Einzelkategorie.");
+        }
+
+        EnsureCategoryMayBeExecuted(
+            confirmedCategory);
+
         var executablePlan =
             CleanupActionPlanSnapshot
                 .CreateExecutableCopy(
@@ -364,6 +505,18 @@ public partial class CleanupActionSelectionDialog :
             || executionResult.WasBlocked)
         {
             return;
+        }
+
+        if (executionResult.WasStarted)
+        {
+            // Selbst bei einem nachfolgenden
+            // Persistierungsfehler darf dieser
+            // Dialog keinen zweiten Löschlauf
+            // aus derselben Messung starten.
+            _startedInThisDialog.Add(
+                confirmedCategory);
+
+            RefreshExecutionHistoryState();
         }
 
         if (executionResult.PlanId
@@ -530,6 +683,8 @@ public partial class CleanupActionSelectionDialog :
             _taskList.AddTaskActionResult(
                 _task,
                 actionResult);
+
+            RefreshExecutionHistoryState();
         }
         catch (Exception exception)
         {

@@ -961,7 +961,7 @@ public partial class CleanupActionSelectionDialog
         PreviewPlanButton.IsEnabled =
             !_cleanupIntermediateRunning
             && !otherExecutionRunning
-            && CategoriesListBox.SelectedItems.Count > 0;
+            && CanCreatePlanForSelectedCategory();
     }
 
     // =============================================
