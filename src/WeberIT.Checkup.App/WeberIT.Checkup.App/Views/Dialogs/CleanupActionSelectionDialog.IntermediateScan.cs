@@ -572,6 +572,23 @@ public partial class CleanupActionSelectionDialog
                 scan);
 
         // =========================================
+        // TECHNISCHE ARBEIT UND SYSTEMSCORE TRENNEN
+        // =========================================
+
+        /*
+         * Eine technisch erfolgreiche Bereinigung
+         * darf nicht als automatische Score-
+         * Verbesserung dargestellt werden.
+         *
+         * Die Zwischenprüfung misst nur eine
+         * einzelne Kategorie. Der Systemscore
+         * benötigt einen vollständigen Scan.
+         */
+        var outcomeText =
+            BuildCleanupOutcomeExplanation(
+                scan);
+
+        // =========================================
         // VOLLSTÄNDIGE REFERENZEN ALS TOOLTIP
         // =========================================
 
@@ -622,7 +639,10 @@ public partial class CleanupActionSelectionDialog
             + comparisonText
             + Environment.NewLine
             + Environment.NewLine
-            + executionText;
+            + executionText
+            + Environment.NewLine
+            + Environment.NewLine
+            + outcomeText;
     }
 
     // =============================================
@@ -735,6 +755,132 @@ public partial class CleanupActionSelectionDialog
             + "Die protokollierte Löschmenge und "
             + "die gemessene Bestandsänderung "
             + "sind unabhängig voneinander.";
+    }
+
+    // =============================================
+    // SPRINT 55.14.36
+    // TECHNISCHES ERGEBNIS VS. SCORE
+    // =============================================
+
+    /// <summary>
+    /// Erklärt für den Kunden nachvollziehbar:
+    ///
+    /// - Was durch die Aktion technisch belegt ist.
+    /// - Was aus der einzelnen Nachmessung folgt.
+    /// - Warum eine Score-Änderung erst nach einem
+    ///   vollständigen Kontrollscan feststeht.
+    ///
+    /// Die Methode ändert weder Punkte noch
+    /// Aufgabenstatus oder Messdaten.
+    /// </summary>
+    private static string BuildCleanupOutcomeExplanation(
+        CleanupPotentialIntermediateScan scan)
+    {
+        const string scoreNotice =
+            "Der Systemscore wird durch diese "
+            + "einzelne Zwischenprüfung nicht "
+            + "neu berechnet. Ob sich Punkte "
+            + "verbessern, zeigt erst der "
+            + "vollständige Kontroll- oder "
+            + "Abschlussscan anhand des dann "
+            + "gemessenen Systemzustands.";
+
+        if (!scan.HasCompleteExecutionReference)
+        {
+            return
+                "EINORDNUNG UND SCORE"
+                + Environment.NewLine
+                + "Für diese Messung ist kein "
+                + "vollständig zugeordneter "
+                + "technischer Bereinigungserfolg "
+                + "belegt."
+                + Environment.NewLine
+                + scoreNotice;
+        }
+
+        var execution =
+            scan.RecordedExecution!;
+
+        string executionNotice;
+
+        if (execution.IsSuccessful)
+        {
+            executionNotice =
+                "Die dokumentierte Bereinigungsaktion "
+                + "wurde technisch erfolgreich "
+                + "abgeschlossen. "
+                + "Kontrolliert übersprungene "
+                + "Einträge sind dabei keine "
+                + "technischen Löschfehler und "
+                + "wurden nicht als gelöscht gezählt.";
+        }
+        else if (execution.IsPartiallySuccessful)
+        {
+            executionNotice =
+                "Die Bereinigung hat Änderungen "
+                + "durchgeführt, aber auch "
+                + "technische Fehler gemeldet. "
+                + "Ein vollständig erfolgreicher "
+                + "Abschluss ist nicht bestätigt.";
+        }
+        else if (execution.WasCancelled)
+        {
+            executionNotice =
+                "Die Bereinigung wurde abgebrochen. "
+                + "Bereits dokumentierte Löschungen "
+                + "bleiben bestehen; ein vollständiger "
+                + "Bereinigungsabschluss ist nicht belegt.";
+        }
+        else
+        {
+            executionNotice =
+                "Für die Bereinigungsaktion ist "
+                + "kein technisch erfolgreicher "
+                + "Abschluss bestätigt.";
+        }
+
+        string measurementNotice;
+
+        if (!scan.IsComparisonReliable)
+        {
+            measurementNotice =
+                "Die Nachmessung ist nicht "
+                + "vollständig vergleichbar. "
+                + "Aus den verfügbaren Werten "
+                + "lässt sich kein gesicherter "
+                + "Restbestand ableiten.";
+        }
+        else if (scan.AfterMeasurement.SizeBytes == 0)
+        {
+            measurementNotice =
+                "Die vollständige Nachmessung "
+                + "hat in dieser Kategorie "
+                + "keinen verbleibenden "
+                + "Datenbestand festgestellt.";
+        }
+        else
+        {
+            measurementNotice =
+                "Die Nachmessung enthält noch "
+                + "einen Datenbestand. "
+                + "Das beweist weder einen "
+                + "technischen Löschfehler "
+                + "noch, dass sämtliche "
+                + "Restdateien geschützt oder "
+                + "gesperrt sind. "
+                + "Verbleibendes Potenzial kann "
+                + "beim vollständigen Kontrollscan "
+                + "erneut bewertet werden.";
+        }
+
+        return
+            "EINORDNUNG UND SCORE"
+            + Environment.NewLine
+            + executionNotice
+            + Environment.NewLine
+            + measurementNotice
+            + Environment.NewLine
+            + scoreNotice;
     }
 
     // =============================================
