@@ -357,6 +357,9 @@ internal static class
             WasCancelled =
                 engineResult.WasCancelled,
 
+            WasTraversalCompleted =
+                engineResult.WasTraversalCompleted,
+
             DeletedFileCount =
                 engineResult.DeletedFileCount,
 

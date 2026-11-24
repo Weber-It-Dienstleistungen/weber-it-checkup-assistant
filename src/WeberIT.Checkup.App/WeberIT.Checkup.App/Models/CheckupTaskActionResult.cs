@@ -273,6 +273,9 @@ public class CheckupTaskActionResult
             WasCancelled =
                 source.WasCancelled,
 
+            WasTraversalCompleted =
+                source.WasTraversalCompleted,
+
             DeletedFileCount =
                 source.DeletedFileCount,
 
@@ -376,6 +379,14 @@ public class CheckupTaskActionResult
         {
             return
                 "Bereinigung dokumentiert – Details prüfen";
+        }
+
+        if (execution.IsWorkCompleted
+            && execution.FailedEntryCount > 0)
+        {
+            return "Bereinigung abgeschlossen – "
+                + $"{execution.FailedEntryCount:N0} "
+                + "nicht löschbare Einträge dokumentiert";
         }
 
         if (execution.IsPartiallySuccessful)

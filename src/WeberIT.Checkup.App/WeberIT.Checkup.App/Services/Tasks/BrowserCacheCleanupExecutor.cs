@@ -367,6 +367,8 @@ public sealed class BrowserCacheCleanupExecutor
                     metrics);
             }
 
+            metrics.WasTraversalCompleted = !metrics.HadEnumerationFailure;
+
             return BrowserCacheExecutionOutcome.Completed(
                 CreateCategoryResult(
                     category,
@@ -544,6 +546,8 @@ public sealed class BrowserCacheCleanupExecutor
         {
             entries =
                 Array.Empty<string>();
+
+            metrics.HadEnumerationFailure = true;
 
             RecordIssue(
                 metrics,
@@ -1044,6 +1048,8 @@ public sealed class BrowserCacheCleanupExecutor
             WasCancelled =
                 wasCancelled,
 
+            WasTraversalCompleted = metrics.WasTraversalCompleted,
+
             DeletedFileCount =
                 metrics.DeletedFileCount,
 
@@ -1111,6 +1117,9 @@ public sealed class BrowserCacheCleanupExecutor
     private sealed class BrowserDeletionMetrics
     {
         public bool WasStarted { get; init; }
+
+        public bool HadEnumerationFailure { get; set; }
+        public bool WasTraversalCompleted { get; set; }
 
         public long DeletedFileCount { get; set; }
 

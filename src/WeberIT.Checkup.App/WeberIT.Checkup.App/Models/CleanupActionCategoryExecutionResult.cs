@@ -59,6 +59,15 @@ public sealed class CleanupActionCategoryExecutionResult
 
     public bool WasCancelled { get; init; }
 
+    // Nur neu bestätigte, regulär vollständig durchlaufene
+    // Bearbeitungen erhalten einen grünen Arbeitsabschluss.
+    // Frühere Datensätze haben diesen Nachweis nicht.
+    public bool WasTraversalCompleted { get; init; }
+
+    [JsonIgnore]
+    public bool IsWorkCompleted =>
+        WasStarted && !WasCancelled && WasTraversalCompleted;
+
     public long DeletedFileCount { get; init; }
 
     public long DeletedDirectoryCount { get; init; }

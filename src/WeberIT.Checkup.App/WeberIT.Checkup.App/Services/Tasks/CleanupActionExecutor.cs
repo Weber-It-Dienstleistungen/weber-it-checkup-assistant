@@ -246,6 +246,8 @@ public sealed class CleanupActionExecutor :
 
             if (!Directory.Exists(targetPath))
             {
+                metrics.WasTraversalCompleted = true;
+
                 return CreateCategoryResult(
                     category,
                     targetPath,
@@ -262,6 +264,8 @@ public sealed class CleanupActionExecutor :
                 targetPath,
                 cancellationToken,
                 metrics);
+
+            metrics.WasTraversalCompleted = !metrics.HadEnumerationFailure;
 
             return CreateCategoryResult(
                 category,
@@ -313,6 +317,8 @@ public sealed class CleanupActionExecutor :
 
             if (!Directory.Exists(targetPath))
             {
+                metrics.WasTraversalCompleted = true;
+
                 return CreateCategoryResult(
                     category,
                     targetPath,
@@ -331,6 +337,9 @@ public sealed class CleanupActionExecutor :
                     metrics,
                     out var files))
             {
+                metrics.WasTraversalCompleted =
+                    !metrics.HadEnumerationFailure;
+
                 return CreateCategoryResult(
                     category,
                     targetPath,
@@ -373,6 +382,8 @@ public sealed class CleanupActionExecutor :
                     metrics,
                     attributes);
             }
+
+            metrics.WasTraversalCompleted = !metrics.HadEnumerationFailure;
 
             return CreateCategoryResult(
                 category,
@@ -574,6 +585,8 @@ public sealed class CleanupActionExecutor :
         }
         catch (Exception exception)
         {
+            metrics.HadEnumerationFailure = true;
+
             RecordIssue(
                 metrics,
                 directoryPath,
@@ -613,6 +626,8 @@ public sealed class CleanupActionExecutor :
         }
         catch (Exception exception)
         {
+            metrics.HadEnumerationFailure = true;
+
             RecordIssue(
                 metrics,
                 directoryPath,
@@ -1284,6 +1299,8 @@ public sealed class CleanupActionExecutor :
 
             WasCancelled = wasCancelled,
 
+            WasTraversalCompleted = metrics.WasTraversalCompleted,
+
             DeletedFileCount = metrics.DeletedFileCount,
 
             DeletedDirectoryCount =
@@ -1384,6 +1401,9 @@ public sealed class CleanupActionExecutor :
     private sealed class DeletionMetrics
     {
         public bool WasStarted { get; set; }
+
+        public bool HadEnumerationFailure { get; set; }
+        public bool WasTraversalCompleted { get; set; }
 
         public long DeletedFileCount { get; set; }
 

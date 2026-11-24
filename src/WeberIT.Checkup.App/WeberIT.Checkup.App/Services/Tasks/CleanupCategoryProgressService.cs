@@ -81,6 +81,8 @@ public static class CleanupCategoryProgressService
             var details =
                 $"{result.DeletedFileCount:N0} Dateien gelöscht, "
                 + $"{result.SkippedEntryCount:N0} übersprungen. "
+                + $"{result.FailedEntryCount:N0} nicht löschbar. "
+                + "Die technische Ursache bleibt dokumentiert. "
                 + "Restbestand und Systemscore sind damit "
                 + "nicht automatisch bewertet.";
 
@@ -92,6 +94,17 @@ public static class CleanupCategoryProgressService
             {
                 state = CleanupCategoryProgressState.Cancelled;
                 status = "Abgebrochen – Änderungen prüfen";
+            }
+            else if (action.Status == CheckupTaskActionStatus.Successful
+                && execution.IsWorkCompleted && result.IsWorkCompleted)
+            {
+                state = CleanupCategoryProgressState.Successful;
+                status = result.FailedEntryCount > 0
+                    ? $"Bereinigung abgeschlossen – {result.FailedEntryCount:N0} "
+                      + "nicht löschbare Einträge"
+                    : result.SkippedEntryCount > 0
+                        ? "Bereinigung abgeschlossen – Ausnahmen dokumentiert"
+                        : "Bereinigung abgeschlossen";
             }
             else if (action.Status == CheckupTaskActionStatus.Successful
                 && execution.IsPartiallySuccessful)

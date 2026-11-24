@@ -72,6 +72,8 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
         public bool WasCancelled { get; init; }
 
+        public bool WasTraversalCompleted { get; init; }
+
         public long DeletedFileCount { get; init; }
 
         public long DeletedDirectoryCount { get; init; }
@@ -248,7 +250,7 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
         try
         {
-            ProcessDirectory(
+            var traversalFinished = ProcessDirectory(
                 approvedRootDirectory,
                 depth: 0,
                 state,
@@ -260,6 +262,9 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
              * angeforderten Abbruch erfassen.
              */
             cancellationToken.ThrowIfCancellationRequested();
+
+            state.WasTraversalCompleted =
+                traversalFinished && !state.HadTraversalFailure;
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
@@ -331,6 +336,7 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
         }
         catch (Exception exception)
         {
+            state.HadTraversalFailure = true;
             state.RecordEntryException(
                 exception,
                 allowDirectoryNotEmpty: false);
@@ -649,6 +655,7 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
         }
         catch (Exception exception)
         {
+            state.HadTraversalFailure = true;
             state.RecordEntryException(
                 exception,
                 allowDirectoryNotEmpty: false);
@@ -662,6 +669,8 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
         if (!completed)
         {
+            state.HadTraversalFailure = true;
+
             /*
              * Der Unterordner darf nicht
              * als vollständig bereinigt
@@ -734,6 +743,10 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
         public bool WasStarted { get; set; }
 
         public bool WasCancelled { get; set; }
+
+        public bool HadTraversalFailure { get; set; }
+
+        public bool WasTraversalCompleted { get; set; }
 
         public long DeletedFileCount { get; private set; }
 
@@ -934,6 +947,9 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
                 WasCancelled =
                     WasCancelled,
+
+                WasTraversalCompleted =
+                    WasTraversalCompleted,
 
                 DeletedFileCount =
                     DeletedFileCount,

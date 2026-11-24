@@ -31,6 +31,12 @@ public sealed class CleanupActionExecutionResult
                 result.WasStarted);
 
     [JsonIgnore]
+    public bool IsWorkCompleted =>
+        !WasBlocked && !WasCancelled
+        && CategoryResults.Count == 1
+        && CategoryResults.All(result => result.IsWorkCompleted);
+
+    [JsonIgnore]
     public bool IsSuccessful =>
         !WasBlocked
         && !WasCancelled

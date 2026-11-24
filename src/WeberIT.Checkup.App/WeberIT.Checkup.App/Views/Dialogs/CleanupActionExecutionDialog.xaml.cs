@@ -387,6 +387,17 @@ public partial class CleanupActionExecutionDialog :
             return;
         }
 
+        if (executionResult.IsWorkCompleted
+            && executionResult.IsPartiallySuccessful)
+        {
+            ExecutionStatusText =
+                "Bereinigung abgeschlossen – Ausnahmen dokumentiert";
+            ExecutionDetailText = BuildPartialCompletionText(executionResult);
+            FooterStatusText =
+                "Bereinigung durchgeführt – Abschlusskontrolle ausstehend";
+            return;
+        }
+
         if (executionResult.IsPartiallySuccessful)
         {
             ExecutionStatusText =
@@ -667,6 +678,12 @@ public partial class CleanupActionExecutionDialog :
             if (result.IsSuccessful)
             {
                 return "Technisch erfolgreich";
+            }
+
+            if (result.IsWorkCompleted
+                && result.IsPartiallySuccessful)
+            {
+                return "Bereinigung abgeschlossen – Ausnahmen dokumentiert";
             }
 
             if (result.IsPartiallySuccessful)
