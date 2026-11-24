@@ -120,6 +120,7 @@ public static class
                 "Bereinigung erfolgreich gestartet und beendet",
                 result.WasStarted
                 && !result.WasCancelled
+                && result.WasTraversalCompleted
                 && string.IsNullOrWhiteSpace(
                     result.ErrorMessage),
                 results);
@@ -318,6 +319,7 @@ public static class
 
             cancellationBeforeStartIsSafe =
                 cancelledResult.WasCancelled
+                && !cancelledResult.WasTraversalCompleted
                 && !cancelledResult.WasStarted
                 && cancelledResult.DeletedFileCount == 0
                 && cancelledResult.DeletedDirectoryCount == 0
@@ -538,6 +540,7 @@ public static class
                 && cancellation.IsCancellationRequested
                 && result.WasStarted
                 && result.WasCancelled
+                && !result.WasTraversalCompleted
                 && result.DeletedFileCount == 1
                 && result.DeletedSizeBytes
                     == expectedDeletedBytes
@@ -763,6 +766,7 @@ public static class
         var failureIsDocumented =
             result.WasStarted
             && !result.WasCancelled
+            && !result.WasTraversalCompleted
             && result.FailedEntryCount == 1
             && result.ErrorMessage.Contains(
                 "Simulierter schwerwiegender Fehler",

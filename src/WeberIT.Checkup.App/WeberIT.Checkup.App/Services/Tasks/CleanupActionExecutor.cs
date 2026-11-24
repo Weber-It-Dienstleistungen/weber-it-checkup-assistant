@@ -246,7 +246,10 @@ public sealed class CleanupActionExecutor :
 
             if (!Directory.Exists(targetPath))
             {
-                metrics.WasTraversalCompleted = true;
+                // Directory.Exists kann auch bei fehlenden
+                // Zugriffsrechten false liefern. Ohne eine
+                // belegte Untersuchung kein grüner Abschluss.
+                metrics.WasTraversalCompleted = false;
 
                 return CreateCategoryResult(
                     category,
@@ -317,7 +320,10 @@ public sealed class CleanupActionExecutor :
 
             if (!Directory.Exists(targetPath))
             {
-                metrics.WasTraversalCompleted = true;
+                // Directory.Exists kann auch bei fehlenden
+                // Zugriffsrechten false liefern. Ohne eine
+                // belegte Untersuchung kein grüner Abschluss.
+                metrics.WasTraversalCompleted = false;
 
                 return CreateCategoryResult(
                     category,
