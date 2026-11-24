@@ -602,6 +602,50 @@
 
                         </Border>
 
+                        <!-- SPRINT 55.14.38
+                             Bereinigungsaktion, Befund und
+                             gemessenen Gesamtscore trennen. -->
+                        <Border
+                            Margin="0,12,0,0"
+                            Padding="14"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter
+                                        Property="Visibility"
+                                        Value="Visible" />
+
+                                    <Style.Triggers>
+                                        <DataTrigger
+                                            Binding="{Binding HasCleanupOutcomeSummary, Mode=OneWay}"
+                                            Value="False">
+                                            <Setter
+                                                Property="Visibility"
+                                                Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+
+                            <StackPanel>
+                                <TextBlock
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Text="Bereinigung und Systembewertung" />
+
+                                <TextBlock
+                                    Margin="0,6,0,0"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    Text="{Binding CleanupOutcomeSummaryText, Mode=OneWay}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+
+                        </Border>
+
                     </StackPanel>
 
                 </Border>

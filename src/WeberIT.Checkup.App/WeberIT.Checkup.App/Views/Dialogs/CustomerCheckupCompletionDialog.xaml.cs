@@ -270,6 +270,28 @@ public partial class CustomerCheckupCompletionDialog :
         BuildActionSummaryText(
             _comparison);
 
+    // =============================================
+    // SPRINT 55.14.38
+    // BEREINIGUNG IM ABSCHLUSSVERGLEICH
+    // =============================================
+
+    /// <summary>
+    /// Nur anzeigen, wenn tatsächlich eine
+    /// technische Bereinigungsaktion dokumentiert ist.
+    /// </summary>
+    public bool HasCleanupOutcomeSummary =>
+        (_comparison.Actions
+         ?? new List<CustomerCheckupActionSummary>())
+            .Any(action =>
+                string.Equals(
+                    action.ActionCode,
+                    "action.cleanup.selected-safe-categories",
+                    StringComparison.Ordinal));
+
+    public string CleanupOutcomeSummaryText =>
+        BuildCleanupOutcomeSummaryText(
+            _comparison);
+
     public string RestartRequirementText =>
         _comparison.HasRestartRequirement
             ? "Mindestens eine technische Aktion meldet "
@@ -733,6 +755,175 @@ public partial class CustomerCheckupCompletionDialog :
             + "der Vorher-/Nachher-Vergleich bewertet davon "
             + "unabhängig, ob ein technischer Befund im "
             + "Kontrollscan weiterhin vorhanden ist.";
+    }
+
+    // =============================================
+    // SPRINT 55.14.38
+    // TECHNISCHE AKTION UND SCORE EINORDNEN
+    // =============================================
+
+    /// <summary>
+    /// Die technische Aktion ist nicht mit einem
+    /// beseitigten Bereinigungsbefund gleichzusetzen.
+    ///
+    /// Auch ein veränderter Systemscore kann nicht
+    /// allein der Bereinigung zugeschrieben werden:
+    /// Die Bewertung umfasst mehrere Systembereiche.
+    ///
+    /// Es werden nur vorhandene, bereits verglichene
+    /// Daten ausgewertet. Kein erneuter Scan und
+    /// keine Veränderung der gespeicherten Punkte.
+    /// </summary>
+    private static string BuildCleanupOutcomeSummaryText(
+        CustomerCheckupComparison comparison)
+    {
+        var cleanupActions =
+            (comparison.Actions
+             ?? new List<CustomerCheckupActionSummary>())
+                .Where(action =>
+                    string.Equals(
+                        action.ActionCode,
+                        "action.cleanup.selected-safe-categories",
+                        StringComparison.Ordinal))
+                .ToList();
+
+        if (cleanupActions.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var successfulActions =
+            cleanupActions.Count(action =>
+                action.Status ==
+                    CheckupTaskActionStatus.Successful);
+
+        var failedActions =
+            cleanupActions.Count(action =>
+                action.Status ==
+                    CheckupTaskActionStatus.Failed);
+
+        var cancelledActions =
+            cleanupActions.Count(action =>
+                action.Status ==
+                    CheckupTaskActionStatus.Cancelled);
+
+        /*
+         * Der fachliche Status Successful kann
+         * auch einen dokumentierten Teilerfolg
+         * umfassen. Hier deshalb keine Aussage
+         * über Fehlerfreiheit oder Restdateien.
+         */
+        var actionText =
+            "Dokumentierte Bereinigungsaktionen: "
+            + $"{successfulActions} als erfolgreich erfasst, "
+            + $"{failedActions} fehlgeschlagen, "
+            + $"{cancelledActions} abgebrochen. "
+            + "Ob Dateien geschützt oder gesperrt "
+            + "waren, steht im technischen "
+            + "Bereinigungsprotokoll.";
+
+        /*
+         * Nur bereinigungsbezogene und tatsächlich
+         * systembewertungsrelevante Befunde prüfen.
+         *
+         * Andere Speicherplatzbefunde besitzen
+         * system.storage.*-Codes und werden nicht
+         * stillschweigend als behoben ausgegeben.
+         */
+        var cleanupFindings =
+            (comparison.Findings
+             ?? new List<CustomerCheckupFindingComparison>())
+                .Where(finding =>
+                    finding.AssessmentTarget ==
+                        FindingAssessmentTarget.SystemCondition
+                    && (finding.Code?.StartsWith(
+                            "system.cleanup.",
+                            StringComparison.OrdinalIgnoreCase)
+                        ?? false))
+                .ToList();
+
+        string findingText;
+
+        if (cleanupFindings.Count == 0)
+        {
+            findingText =
+                "Der Vorher-/Nachher-Vergleich enthält "
+                + "keinen eigenständigen bewertungsrelevanten "
+                + "Bereinigungsbefund.";
+        }
+        else
+        {
+            var resolvedCount =
+                cleanupFindings.Count(finding =>
+                    finding.Status ==
+                        CustomerCheckupFindingComparisonStatus.Resolved);
+
+            var remainingCount =
+                cleanupFindings.Count(finding =>
+                    finding.Status is
+                        CustomerCheckupFindingComparisonStatus.StillOpen
+                        or CustomerCheckupFindingComparisonStatus.NewlyDetected);
+
+            var uncertainCount =
+                cleanupFindings.Count(finding =>
+                    finding.Status ==
+                        CustomerCheckupFindingComparisonStatus.NotReevaluatable);
+
+            findingText =
+                "Bereinigungsbefunde im erneuten Scan: "
+                + $"{resolvedCount} nicht mehr festgestellt, "
+                + $"{remainingCount} weiterhin oder neu vorhanden, "
+                + $"{uncertainCount} nicht zuverlässig "
+                + "erneut auswertbar.";
+        }
+
+        var score =
+            comparison.SystemScore;
+
+        string scoreText;
+
+        if (!score.IsComparable
+            || !score.Difference.HasValue)
+        {
+            scoreText =
+                "Für den Systemscore liegt kein belastbarer "
+                + "direkter Punktevergleich vor. "
+                + "Aus der technischen Bereinigung werden "
+                + "keine Ersatzpunkte abgeleitet.";
+        }
+        else if (score.Difference.Value > 0)
+        {
+            scoreText =
+                "Der Systemscore hat sich insgesamt "
+                + $"um {score.Difference.Value} "
+                + "Punkte verbessert.";
+        }
+        else if (score.Difference.Value < 0)
+        {
+            scoreText =
+                "Der Systemscore hat sich insgesamt "
+                + $"um {Math.Abs(score.Difference.Value)} "
+                + "Punkte verschlechtert.";
+        }
+        else
+        {
+            scoreText =
+                "Der Systemscore ist im vollständigen "
+                + "Kontrollscan unverändert geblieben.";
+        }
+
+        return
+            actionText
+            + Environment.NewLine
+            + Environment.NewLine
+            + findingText
+            + Environment.NewLine
+            + Environment.NewLine
+            + scoreText
+            + " Der Systemscore bewertet mehrere "
+            + "Bereiche; eine Punkteänderung kann "
+            + "nicht allein einer Bereinigungsaktion "
+            + "zugeordnet werden.";
     }
 
     private static string BuildAreaEvaluationText(
