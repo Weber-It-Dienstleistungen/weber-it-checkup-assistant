@@ -107,11 +107,13 @@ public class CheckupTaskList : INotifyPropertyChanged
      * Kontrollscan:
      *   vorläufig aus der Arbeitsliste ausgeblendet.
      *
-     * Ausnahme:
-     *   Die Sammelaufgabe für Programmaktualisierungen
-     *   bleibt sichtbar, solange ihr Status Open ist.
-     *   Ein erfolgreich aktualisiertes Paket bedeutet
-     *   nicht, dass alle anderen Updates erledigt sind.
+     * Ausnahmen:
+     *   Sammelaufgaben für Programmaktualisierungen
+     *   und kontrollierte Bereinigungen bleiben
+     *   sichtbar, solange ihr Status Open ist.
+     *   Eine erfolgreiche Einzelaktion bedeutet
+     *   nicht, dass alle Pakete beziehungsweise
+     *   Bereinigungskategorien bearbeitet sind.
      *
      * Die bereits erfolgreichen Aktionen bleiben
      *   weiterhin als kontrollbedürftig dokumentiert.
@@ -863,7 +865,7 @@ public class CheckupTaskList : INotifyPropertyChanged
     }
 
     // =====================================================
-    // V1.1 – SAMMELAUFGABE FÜR PROGRAMMUPDATES
+    // SPRINT 55.14.39 – SAMMELAUFGABEN SICHTBAR HALTEN
     // =====================================================
 
     private bool IsTaskVisibleInWorkList(
@@ -875,31 +877,45 @@ public class CheckupTaskList : INotifyPropertyChanged
         }
 
         /*
-         * Eine Programmupdate-Aufgabe steht für eine
-         * möglicherweise große Anzahl von Paketen.
+         * Eine Sammelaufgabe kann mehrere unabhängige
+         * Aktionen enthalten:
          *
-         * Ein erfolgreiches Update darf die gesamte
-         * Sammelaufgabe nicht ausblenden.
+         * - Einzelne Programmupdates.
+         * - Einzelne sichere Bereinigungskategorien.
          *
-         * Solange die Aufgabe Open ist, muss sie
-         * weiterhin bearbeitbar bleiben.
+         * Eine bereits protokollierte erfolgreiche
+         * Aktion darf die übrigen Auswahlmöglichkeiten
+         * nicht aus der Arbeitsliste entfernen.
          *
-         * Das bereits erfolgreiche Aktionsergebnis
-         * bleibt unabhängig davon für die spätere
-         * Abschlusskontrolle gespeichert.
+         * Die erfolgreiche Aktion bleibt weiterhin
+         * unabhängig von der Sichtbarkeit für die
+         * spätere Abschlusskontrolle vorgemerkt.
+         *
+         * Nur der tatsächliche Aufgabenstatus
+         * (Open/Completed/Skipped/NotFeasible)
+         * entscheidet über die Sichtbarkeit dieser
+         * drei Sammelaufgaben.
          */
         if (string.Equals(
                 task.TaskCode,
                 "task.program-updates.available",
+                StringComparison.Ordinal)
+            || string.Equals(
+                task.TaskCode,
+                "task.storage.controlled-cleanup",
+                StringComparison.Ordinal)
+            || string.Equals(
+                task.TaskCode,
+                "task.storage.restore-system-volume-capacity",
                 StringComparison.Ordinal))
         {
             return true;
         }
 
         /*
-         * Alle anderen Aufgaben behalten das bisherige
-         * Verhalten: Nach einer erfolgreichen Aktion
-         * wird zunächst die Abschlusskontrolle abgewartet.
+         * Für gewöhnliche Einzelaufgaben bleibt
+         * die bestehende Verifikation vor erneuter
+         * Bearbeitung unverändert erforderlich.
          */
         return !IsTaskAwaitingVerificationCore(task);
     }

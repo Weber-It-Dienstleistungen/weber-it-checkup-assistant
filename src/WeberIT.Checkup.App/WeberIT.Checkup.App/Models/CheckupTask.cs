@@ -217,6 +217,29 @@ public class CheckupTask : INotifyPropertyChanged
 
             if (HasSuccessfulActionAwaitingVerification)
             {
+                /*
+                 * Bereinigungsaufgaben können weitere,
+                 * noch nicht bearbeitete Kategorien
+                 * besitzen. Deshalb nicht den Eindruck
+                 * vermitteln, die gesamte Sammelaufgabe
+                 * sei schon fertig.
+                 */
+                if (string.Equals(
+                        TaskCode,
+                        "task.storage.controlled-cleanup",
+                        StringComparison.Ordinal)
+                    || string.Equals(
+                        TaskCode,
+                        "task.storage.restore-system-volume-capacity",
+                        StringComparison.Ordinal))
+                {
+                    return
+                        "Bereinigungsaktion dokumentiert – "
+                        + "weitere Kategorien können "
+                        + "bearbeitet werden. "
+                        + "Abschlusskontrolle steht aus.";
+                }
+
                 return
                     "Aktion ausgeführt – Abschlusskontrolle "
                     + "ausstehend.";

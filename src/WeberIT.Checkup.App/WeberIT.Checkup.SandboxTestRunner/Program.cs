@@ -11,11 +11,12 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 ///
 /// Eigenständiger C#-Sandbox-TestRunner.
 ///
-/// 73 aktive Sicherheits- und Regressionstests:
+/// 79 aktive Sicherheits- und Regressionstests:
 ///
 /// - 52 Windows-Temp-Sicherheitstests.
 /// - 13 Bereinigungs-Zwischenprüfungstests.
 /// - 8 Protokoll-Zuordnungsprüfungen.
+/// - 6 Arbeitslisten-Regressionstests.
 ///
 /// Die vier veralteten PowerShell-Sandbox-
 /// Testblöcke werden nicht mehr ausgeführt.
@@ -245,6 +246,19 @@ internal static class Program
                     .RunAll);
 
             // =================================
+            // TESTBLOCK 10: BEREINIGUNG IN DER ARBEITSLISTE
+            // =================================
+
+            /*
+             * Reine Modelltests. Keine Dateien
+             * und keine Bereinigung ausgeführt.
+             */
+            RunTestBlock(
+                "TESTBLOCK 10 - BEREINIGUNGS-AUFGABENLISTE",
+                CleanupTaskWorkListRegressionTests
+                    .RunAll);
+
+            // =================================
             // GESAMTERGEBNIS
             // =================================
 
@@ -252,7 +266,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 73 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 79 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");
