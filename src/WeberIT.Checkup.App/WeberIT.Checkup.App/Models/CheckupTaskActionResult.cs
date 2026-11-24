@@ -320,10 +320,30 @@ public class CheckupTaskActionResult
     public bool WasCancelled =>
         Status == CheckupTaskActionStatus.Cancelled;
 
+    // =============================================
+    // SPRINT 55.14.41
+    // TECHNISCHEN BEREINIGUNGSSTATUS SICHTBAR MACHEN
+    // =============================================
+
+    /*
+     * Der fachliche Workflow-Status Successful
+     * umfasst bei Bereinigungsaktionen auch einen
+     * technisch dokumentierten Teilerfolg.
+     *
+     * Die sichtbare Aussage darf deshalb nicht
+     * allein aus diesem Workflow-Status entstehen.
+     *
+     * Gespeicherte Aktionen werden nicht umbewertet
+     * oder nachträglich verändert.
+     */
     [JsonIgnore]
     public string StatusText =>
         Status switch
         {
+            CheckupTaskActionStatus.Successful
+                when IsCleanupAction =>
+                    GetCleanupTechnicalStatusText(),
+
             CheckupTaskActionStatus.Successful =>
                 "Technisch erfolgreich ausgeführt",
 
@@ -336,6 +356,58 @@ public class CheckupTaskActionResult
             _ =>
                 "Ergebnis nicht eindeutig"
         };
+
+    [JsonIgnore]
+    private bool IsCleanupAction =>
+        string.Equals(
+            ActionCode,
+            "action.cleanup.selected-safe-categories",
+            StringComparison.Ordinal);
+
+    private string GetCleanupTechnicalStatusText()
+    {
+        var execution =
+            CleanupExecutionResult;
+
+        // Historische Aktionen ohne strukturierten
+        // Löschdatensatz nicht nachträglich
+        // als fehlerfrei behaupten.
+        if (execution is null)
+        {
+            return
+                "Bereinigung dokumentiert – Details prüfen";
+        }
+
+        if (execution.IsPartiallySuccessful)
+        {
+            var failures =
+                execution.FailedEntryCount;
+
+            return failures switch
+            {
+                > 1 =>
+                    $"Teilweise erfolgreich – {failures:N0} Löschfehler",
+
+                1 =>
+                    "Teilweise erfolgreich – 1 Löschfehler",
+
+                _ =>
+                    "Teilweise erfolgreich – technische Fehler"
+            };
+        }
+
+        if (execution.IsSuccessful)
+        {
+            return execution.CategoryResults.All(
+                    category =>
+                        category.HasOnlyExpectedSafetySkips)
+                ? "Technisch erfolgreich ausgeführt"
+                : "Technisch beendet – Ausschlüsse ungeklärt";
+        }
+
+        return
+            "Bereinigung dokumentiert – Status prüfen";
+    }
 
     [JsonIgnore]
     public string RestartRequirementText
