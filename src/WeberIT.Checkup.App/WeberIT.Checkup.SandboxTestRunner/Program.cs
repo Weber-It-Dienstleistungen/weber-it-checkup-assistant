@@ -1,4 +1,4 @@
-﻿
+
 using System;
 using System.Security.Principal;
 using WeberIT.Checkup.App.Services.Cleanup;
@@ -11,10 +11,11 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 ///
 /// Eigenständiger C#-Sandbox-TestRunner.
 ///
-/// 64 aktive Sicherheits- und Regressionstests:
+/// 72 aktive Sicherheits- und Regressionstests:
 ///
 /// - 51 bestehende Windows-Temp-Sicherheitstests.
 /// - 13 Bereinigungs-Zwischenprüfungstests.
+/// - 8 Protokoll-Zuordnungsprüfungen.
 ///
 /// Die vier veralteten PowerShell-Sandbox-
 /// Testblöcke werden nicht mehr ausgeführt.
@@ -230,6 +231,20 @@ internal static class Program
                     .RunAll);
 
             // =================================
+            // TESTBLOCK 9: BEREINIGUNGSPROTOKOLL-ZUORDNUNG
+            // =================================
+
+            /*
+             * Ausschließlich künstliche Modelle.
+             * Keine Dateisystemoperationen und
+             * keine Änderung der Produktivfreigabe.
+             */
+            RunTestBlock(
+                "TESTBLOCK 9 - BEREINIGUNGSPROTOKOLL-ZUORDNUNG",
+                CleanupExecutionCorrelationResolverRegressionTests
+                    .RunAll);
+
+            // =================================
             // GESAMTERGEBNIS
             // =================================
 
@@ -237,7 +252,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 64 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 72 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");
