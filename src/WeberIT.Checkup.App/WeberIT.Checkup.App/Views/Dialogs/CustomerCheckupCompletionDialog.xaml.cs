@@ -686,8 +686,9 @@ public partial class CustomerCheckupCompletionDialog :
         var openTaskCount =
             tasks.Count(
                 task =>
-                    task.WorkStatus
-                    == CheckupTaskStatus.Open);
+                    task.IsStillOpenForWork);
+
+        var controlScanClosedCount = tasks.Count(task => task.IsClosedByControlScan);
 
         var skippedTaskCount =
             tasks.Count(
@@ -705,8 +706,12 @@ public partial class CustomerCheckupCompletionDialog :
             new List<string>
             {
                 completedTaskCount == 1
-                    ? "1 Aufgabe abgeschlossen"
-                    : $"{completedTaskCount} Aufgaben abgeschlossen",
+                    ? "1 Aufgabe als erledigt dokumentiert"
+                    : $"{completedTaskCount} Aufgaben als erledigt dokumentiert",
+
+                controlScanClosedCount == 1
+                    ? "1 Aufgabe durch Kontrollscan abgeschlossen"
+                    : $"{controlScanClosedCount} Aufgaben durch Kontrollscan abgeschlossen",
 
                 openTaskCount == 1
                     ? "1 Aufgabe offen"
