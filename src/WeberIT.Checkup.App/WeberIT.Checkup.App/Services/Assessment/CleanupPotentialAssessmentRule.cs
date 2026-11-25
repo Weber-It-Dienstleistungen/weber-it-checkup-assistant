@@ -15,6 +15,14 @@ public class CleanupPotentialAssessmentRule :
     public IEnumerable<CheckupFinding> Evaluate(
         CheckupSession checkupSession)
     {
+        return Evaluate(checkupSession,
+            checkupSession.CleanupPotentialInformation.SafePotentialBytes);
+    }
+
+    internal IEnumerable<CheckupFinding> Evaluate(
+        CheckupSession checkupSession,
+        ulong scoreRelevantSafePotentialBytes)
+    {
         var findings =
             new List<CheckupFinding>();
 
@@ -30,10 +38,33 @@ public class CleanupPotentialAssessmentRule :
             cleanupInformation,
             findings);
 
+        var effectiveBytes = Math.Min(
+            scoreRelevantSafePotentialBytes,
+            cleanupInformation.SafePotentialBytes);
+
         AddSafePotentialFinding(
             checkupSession,
-            cleanupInformation,
+            effectiveBytes,
             findings);
+
+        if (effectiveBytes < cleanupInformation.SafePotentialBytes)
+        {
+            findings.Add(new CheckupFinding
+            {
+                Code = "system.cleanup.work-completed",
+                Title = "Bereinigung nachvollziehbar abgeschlossen",
+                Description =
+                    $"Gemessener Restbestand: {FormatBytes(cleanupInformation.SafePotentialBytes)}. "
+                    + $"Davon weiterhin bewertungsrelevant: {FormatBytes(effectiveBytes)}. "
+                    + "Vollstaendig bearbeitete Kategorien werden in diesem "
+                    + "Kundencheckup nicht erneut als Bereinigungsbedarf gewertet. "
+                    + "Dateigroessen und freier Speicher bleiben unveraendert dokumentiert.",
+                Category = FindingCategory.Storage,
+                Severity = FindingSeverity.Information,
+                AssessmentTarget = FindingAssessmentTarget.InformationOnly,
+                CauseGroup = "system.cleanup.work-completed"
+            });
+        }
 
         AddManualReviewFinding(
             cleanupInformation,
@@ -83,11 +114,9 @@ public class CleanupPotentialAssessmentRule :
 
     private static void AddSafePotentialFinding(
         CheckupSession checkupSession,
-        CleanupPotentialInformation cleanupInformation,
+        ulong safePotentialBytes,
         ICollection<CheckupFinding> findings)
     {
-        var safePotentialBytes =
-            cleanupInformation.SafePotentialBytes;
 
         if (safePotentialBytes
             < FiveHundredMegabytes)
@@ -118,10 +147,10 @@ public class CleanupPotentialAssessmentRule :
                         "Bereinigungspotenzial bei knappem Systemlaufwerk",
 
                     Description =
-                        $"Auf dem Systemlaufwerk wurden "
+                        $"Auf dem Systemlaufwerk sind weiterhin "
                         + $"{FormatBytes(safePotentialBytes)} "
                         + "voraussichtlich unkritisches "
-                        + "Bereinigungspotenzial vollständig gemessen. "
+                        + "Bereinigungspotenzial bewertungsrelevant. "
                         + "Da der freie Speicher knapp ist, sollte "
                         + "eine kontrollierte Bereinigung geprüft werden.",
 
@@ -159,8 +188,8 @@ public class CleanupPotentialAssessmentRule :
                 Description =
                     $"{FormatBytes(safePotentialBytes)} "
                     + "voraussichtlich unkritisches "
-                    + "Bereinigungspotenzial wurden vollständig "
-                    + "gemessen. Die Kategorien sollten vor einer "
+                    + "Bereinigungspotenzial sind bewertungsrelevant. "
+                    + "Die Kategorien sollten vor einer "
                     + "späteren Bereinigung einzeln geprüft werden.",
 
                 Category =
