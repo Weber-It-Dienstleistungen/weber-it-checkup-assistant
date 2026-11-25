@@ -9,12 +9,8 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 /// Erstellt geprüfte Kopien kontrollierter
 /// Bereinigungspläne.
 ///
-/// Windows-Temp bleibt grundsätzlich für
-/// die produktive Ausführung gesperrt.
-///
-/// Ausschließlich ein beaufsichtigter
-/// Debug-Echt-Test kann vorübergehend
-/// die Planbestätigung ermöglichen.
+/// Windows-Temp verwendet die gemeinsame
+/// Freigabeentscheidung des Executors.
 ///
 /// Die eigentliche Ausführung wird
 /// unabhängig davon zusätzlich im
@@ -144,8 +140,8 @@ internal static class CleanupActionPlanSnapshot
          * ihre grundsätzliche Ausführbarkeit
          * geprüft.
          *
-         * Windows-Temp erhält diese nur
-         * für den beaufsichtigten Debug-Test.
+         * Windows-Temp verwendet die gemeinsame
+         * Freigabeentscheidung.
          *
          * Alle bestehenden zusätzlichen
          * Bedingungen bleiben erhalten.
@@ -395,8 +391,7 @@ internal static class CleanupActionPlanSnapshot
     {
         /*
          * Windows-Temp darf die Planprüfung
-         * nur während des beaufsichtigten
-         * Debug-Echt-Tests passieren.
+         * nur bei gemeinsamer Ausführungsfreigabe passieren.
          *
          * Der Executor besitzt zusätzlich
          * seine eigene Ausführungssperre.
