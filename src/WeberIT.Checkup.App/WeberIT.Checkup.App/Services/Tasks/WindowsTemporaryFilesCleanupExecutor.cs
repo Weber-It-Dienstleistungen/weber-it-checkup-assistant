@@ -98,7 +98,7 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
     /// Diese Testfreigabe ersetzt ausdrücklich
     /// keine allgemeine Produktivfreigabe.
     /// </summary>
-    private static bool IsAttendedDebugTrialAllowed()
+    internal static bool IsAttendedDebugTrialAllowed()
     {
 #if DEBUG
 
@@ -113,6 +113,22 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
 
 #endif
     }
+
+    // Gemeinsame Freigabe fuer Planvorschau und Executor.
+    // Auch nach einer spaeteren Produktivfreigabe bleibt der
+    // eigenstaendige SandboxTestRunner zwingend ausgeschlossen.
+    internal static bool IsExecutionApproved() =>
+        EvaluateExecutionApproval(
+            HandleCleanupReleaseApproved,
+            System.Windows.Application.Current is global::WeberIT.Checkup.App.App,
+            IsAttendedDebugTrialAllowed());
+
+    internal static bool EvaluateExecutionApproval(
+        bool productionApproved, bool isActualApplication, bool attendedDebugTrial) =>
+        isActualApplication && (productionApproved || attendedDebugTrial);
+
+    internal static bool IsProductionReleaseApproved =>
+        HandleCleanupReleaseApproved;
 
     // =============================================
     // AUSFÜHRUNGSKOORDINATION
@@ -237,9 +253,7 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
          * Diese erfolgen weiterhin im
          * Handle-Adapter.
          */
-        var executionApproved =
-            HandleCleanupReleaseApproved
-            || IsAttendedDebugTrialAllowed();
+        var executionApproved = IsExecutionApproved();
 
         if (!executionApproved)
         {
