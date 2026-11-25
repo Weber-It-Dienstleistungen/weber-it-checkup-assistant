@@ -569,6 +569,11 @@ public static class
             && unexpectedFailureIsSafe,
             results);
 
+        Verify("Tiefenbegrenzung verhindert falschen Arbeitsabschluss",
+            VerifyDepthLimit(), results);
+        Verify("Nicht durchsuchbarer Unterordner verhindert Arbeitsabschluss",
+            VerifyLockedDirectory(), results);
+
         return
             $"Alle {results.Count} Engine-Integrationstests "
             + "erfolgreich."
@@ -582,6 +587,72 @@ public static class
     // =============================================
     // SZENARIO C: FEHLER NACH ERSTER LÖSCHUNG
     // =============================================
+
+    private static bool VerifyDepthLimit()
+    {
+        using var sandbox = new TestSandbox();
+        var directories = new List<string>();
+        var current = sandbox.EmptyDirectory;
+        string? sentinel = null;
+        const string content = "WEBER_IT_DEPTH_LIMIT";
+        try
+        {
+            // Empty liegt auf Tiefe 1; die letzte Ebene liegt jenseits 64.
+            for (int i = 0; i < 64; i++)
+            {
+                current = Path.Combine(current, "d");
+                Directory.CreateDirectory(current);
+                directories.Add(current);
+            }
+            sentinel = Path.Combine(current, "keep.txt");
+            File.WriteAllText(sentinel, content);
+            using var root = WindowsTemporaryFilesHandleAccess.OpenRootDirectory(
+                sandbox.TargetDirectory);
+            var result = WindowsTemporaryFilesHandleCleanupEngine.Execute(root);
+            return result.WasStarted && !result.WasCancelled
+                && !result.WasTraversalCompleted
+                && result.SkippedEntryReasons.Any(reason =>
+                    reason.Reason == CleanupSkippedEntryReason.OtherSafetySkip)
+                && File.Exists(sentinel) && File.ReadAllText(sentinel) == content;
+        }
+        finally
+        {
+            if (sentinel is not null && File.Exists(sentinel)
+                && (File.GetAttributes(sentinel) & FileAttributes.ReparsePoint) == 0
+                && File.ReadAllText(sentinel) == content)
+                File.Delete(sentinel);
+            foreach (var directory in directories.AsEnumerable().Reverse())
+                if (Directory.Exists(directory)
+                    && (File.GetAttributes(directory) & FileAttributes.ReparsePoint) == 0
+                    && !Directory.EnumerateFileSystemEntries(directory).Any())
+                    Directory.Delete(directory, recursive: false);
+        }
+    }
+
+    private static bool VerifyLockedDirectory()
+    {
+        using var sandbox = new TestSandbox();
+        // Exklusiver nativer Handle auf einen eigenen Sandbox-Unterordner.
+        using var locked = OpenExclusiveDirectory(
+            sandbox.NestedDirectory, 1, 0, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
+        if (locked.IsInvalid)
+            throw new InvalidOperationException("Sandbox-Unterordner konnte nicht gesperrt werden.");
+
+        using var root = WindowsTemporaryFilesHandleAccess.OpenRootDirectory(
+            sandbox.TargetDirectory);
+        var result = WindowsTemporaryFilesHandleCleanupEngine.Execute(root);
+
+        return result.WasStarted && !result.WasCancelled
+            && !result.WasTraversalCompleted
+            && File.Exists(sandbox.NestedNormalFile);
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll",
+        EntryPoint = "CreateFileW", CharSet = System.Runtime.InteropServices.CharSet.Unicode,
+        SetLastError = true)]
+    private static extern Microsoft.Win32.SafeHandles.SafeFileHandle OpenExclusiveDirectory(
+        string path, uint desiredAccess, uint shareMode, IntPtr securityAttributes,
+        uint creationDisposition, uint flags, IntPtr templateFile);
 
     private static bool
         VerifyUnexpectedFailureAfterFirstDeletion()
