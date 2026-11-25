@@ -163,7 +163,7 @@
                     Margin="0,6,0,0"
                     FontSize="11"
                     Foreground="{StaticResource WarningBrush}"
-                    Text="Pro Bereinigungsplan kann genau eine Kategorie ausgewählt werden. Freigegebene Aktionen werden einzeln geprüft, ausdrücklich bestätigt, ausgeführt und dokumentiert. Browsercache erfordert vollständig beendete Browser. Die produktive Windows-Temp-Ausführung ist weiterhin gesperrt; ein beaufsichtigter Debug-Test kann unter besonderen Bedingungen freigegeben sein."
+                    Text="Pro Bereinigungsplan kann genau eine Kategorie ausgewählt werden. Freigegebene Aktionen werden einzeln geprüft, ausdrücklich bestätigt, ausgeführt und dokumentiert. Browsercache erfordert vollständig beendete Browser. Windows-Temp nur bei inaktiven Windows-Updates und Installationen sowie mit geeigneter Systemsicherung ausführen; Administratorrechte erforderlich."
                     TextWrapping="Wrap" />
 
             </StackPanel>
