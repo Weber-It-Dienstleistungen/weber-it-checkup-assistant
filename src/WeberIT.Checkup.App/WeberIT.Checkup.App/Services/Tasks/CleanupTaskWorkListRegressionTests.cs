@@ -42,6 +42,10 @@ public static class CleanupTaskWorkListRegressionTests
             TestOrdinaryTaskWaitsForVerification,
             results);
 
+        Run("Nachgewiesener Neustart mit weiterem Neustartbedarf bleibt bearbeitbar",
+            TestVerifiedRestartWithFurtherRequirement, results);
+        Run("Unvollstaendiger Neustartnachweis bleibt unter bisheriger Sperre",
+            TestIncompleteRestartEvidence, results);
         Run(
             "Abgeschlossene oder dokumentiert ausgelassene Aufgabe bleibt verborgen",
             TestTerminalStatusesRemainHidden,
@@ -126,6 +130,66 @@ public static class CleanupTaskWorkListRegressionTests
             && list.AwaitingVerificationTaskCount == 1,
             "Die bisherige Sperre für "
             + "Einzelaufgaben wurde verändert.");
+    }
+
+    private static CheckupTask CreateVerifiedRestartTask()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var visitId = Guid.NewGuid();
+        var request = new CheckupTaskActionResult
+        {
+            ActionCode = ControlledRestartEvidencePolicy.RequestCode,
+            Status = CheckupTaskActionStatus.Unknown,
+            ControlledRestartVisitId = visitId,
+            ControlledRestartBootTimeUtc = now.AddHours(-2),
+            StartedAt = now.AddMinutes(-20),
+            FinishedAt = now.AddMinutes(-20)
+        };
+        var verification = new CheckupTaskActionResult
+        {
+            ActionCode = ControlledRestartEvidencePolicy.VerificationCode,
+            Status = CheckupTaskActionStatus.Successful,
+            ControlledRestartVisitId = visitId,
+            ControlledRestartRequestId = request.Id,
+            ControlledRestartBootTimeUtc = now.AddMinutes(-19),
+            StartedAt = now.AddMinutes(-15),
+            FinishedAt = now.AddMinutes(-15),
+            RestartRequired = true,
+            RestartStatusWasConclusive = true
+        };
+        return new CheckupTask
+        {
+            TaskCode = ControlledRestartEvidencePolicy.TaskCode,
+            Status = CheckupTaskStatus.Open,
+            ActionResults = new List<CheckupTaskActionResult> { request, verification }
+        };
+    }
+
+    private static void TestVerifiedRestartWithFurtherRequirement()
+    {
+        var task = CreateVerifiedRestartTask();
+        var list = CreateList(task);
+        Require(list.ActiveTaskCount == 1 && list.AwaitingVerificationTaskCount == 0,
+            "Ein bereits verifizierter Neustart mit weiterem Bedarf muss erneut bearbeitbar bleiben.");
+
+        task.ActionResults.Add(CreateSuccessfulAction());
+        Require(list.ActiveTaskCount == 0 && list.AwaitingVerificationTaskCount == 1,
+            "Ein anderer ungepruefter Erfolg darf nicht durch den Neustartnachweis freigegeben werden.");
+    }
+
+    private static void TestIncompleteRestartEvidence()
+    {
+        var task = CreateVerifiedRestartTask();
+        var list = CreateList(task);
+        var verification = task.ActionResults[1];
+        verification.ControlledRestartVisitId = Guid.NewGuid();
+        Require(list.ActiveTaskCount == 0 && list.AwaitingVerificationTaskCount == 1,
+            "Ein fremder Neustartnachweis darf die allgemeine Sperre nicht aufheben.");
+
+        verification.ControlledRestartVisitId = task.ActionResults[0].ControlledRestartVisitId;
+        verification.ControlledRestartBootTimeUtc = task.ActionResults[0].ControlledRestartBootTimeUtc;
+        Require(list.ActiveTaskCount == 0 && list.AwaitingVerificationTaskCount == 1,
+            "Ein unveraenderter Bootzeitpunkt ist kein gueltiger Neustartnachweis.");
     }
 
     private static void TestTerminalStatusesRemainHidden()

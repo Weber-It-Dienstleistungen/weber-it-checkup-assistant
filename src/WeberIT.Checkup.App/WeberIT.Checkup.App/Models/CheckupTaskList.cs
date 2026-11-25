@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using WeberIT.Checkup.App.Services.Tasks;
 
 namespace WeberIT.Checkup.App.Models;
 
@@ -918,8 +919,6 @@ public class CheckupTaskList : INotifyPropertyChanged
             || string.Equals(
                 task.TaskCode,
                 "task.storage.restore-system-volume-capacity",
-                StringComparison.Ordinal)
-            || string.Equals(task.TaskCode, "task.restart.perform-controlled-restart",
                 StringComparison.Ordinal))
         {
             return true;
@@ -936,10 +935,6 @@ public class CheckupTaskList : INotifyPropertyChanged
     private bool IsTaskAwaitingVerificationCore(
         CheckupTask task)
     {
-        // Der Neustart besitzt eine eigene Bootzeit- und Bedarfspruefung.
-        if (task.TaskCode == "task.restart.perform-controlled-restart")
-            return false;
-
         if (task.Status
             != CheckupTaskStatus.Open)
         {
@@ -951,7 +946,8 @@ public class CheckupTaskList : INotifyPropertyChanged
                 .Where(
                     result =>
                         result.Status
-                        == CheckupTaskActionStatus.Successful)
+                        == CheckupTaskActionStatus.Successful
+                        && !ControlledRestartEvidencePolicy.IsVerifiedFurtherRestart(task, result))
                 .ToList();
 
         if (successfulActions.Count == 0)
