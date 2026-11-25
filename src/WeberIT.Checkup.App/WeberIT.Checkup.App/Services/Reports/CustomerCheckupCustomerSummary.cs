@@ -37,6 +37,8 @@ public sealed class CustomerCheckupCustomerSummary
 
     public int CompletedTaskCount { get; private set; }
 
+    public int ControlScanClosedTaskCount { get; private set; }
+
     public int SuccessfulActionCount { get; private set; }
 
     public int FailedActionCount { get; private set; }
@@ -81,6 +83,8 @@ public sealed class CustomerCheckupCustomerSummary
 
             CompletedTaskCount = tasks.Count(task =>
                 task.WorkStatus == CheckupTaskStatus.Completed),
+
+            ControlScanClosedTaskCount = tasks.Count(task => task.IsClosedByControlScan),
 
             SuccessfulActionCount = actions.Count(action =>
                 action.Status == CheckupTaskActionStatus.Successful),
@@ -343,11 +347,17 @@ public sealed class CustomerCheckupCustomerSummary
                     : $"{summary.CompletedTaskCount} Aufgaben wurden "
                       + "als erledigt dokumentiert.");
         }
-        else
+        else if (summary.ControlScanClosedTaskCount == 0
+                 && summary.SuccessfulActionCount == 0)
         {
-            parts.Add(
-                "Es wurden keine Aufgaben als erledigt "
-                + "dokumentiert.");
+            parts.Add("Es wurden keine Aufgaben als erledigt dokumentiert.");
+        }
+
+        if (summary.ControlScanClosedTaskCount > 0)
+        {
+            parts.Add(summary.ControlScanClosedTaskCount == 1
+                ? "Eine Aufgabe wurde durch die Abschlusskontrolle abgeschlossen."
+                : $"{summary.ControlScanClosedTaskCount} Aufgaben wurden durch die Abschlusskontrolle abgeschlossen.");
         }
 
         if (summary.SuccessfulActionCount > 0)
@@ -385,6 +395,10 @@ public sealed class CustomerCheckupCustomerSummary
          * dürfen nicht durch positive Ergebnisse
          * verdeckt werden.
          */
+
+        var cleanupText = BuildCleanupQuantityText(actions);
+        if (!string.IsNullOrWhiteSpace(cleanupText))
+            parts.Add(cleanupText);
 
         if (summary.FailedActionCount > 0)
         {
@@ -466,6 +480,44 @@ public sealed class CustomerCheckupCustomerSummary
     /// Weitere Aktionen bleiben im technischen
     /// Anhang vollständig dokumentiert.
     /// </summary>
+    private static string BuildCleanupQuantityText(
+        IReadOnlyCollection<CustomerCheckupActionSummary> actions)
+    {
+        var cleanup = actions.Where(action =>
+            action.ActionCode == "action.cleanup.selected-safe-categories"
+            && action.Status == CheckupTaskActionStatus.Successful).ToList();
+
+        if (cleanup.Count == 0 || cleanup.Any(action =>
+                action.ActionResultId == Guid.Empty
+                || action.CleanupDeletedFileCount is null or < 0
+                || !action.CleanupDeletedSizeBytes.HasValue
+                || action.CleanupWorkCompleted != true
+                || !action.CleanupHasExceptions.HasValue)
+            || cleanup.Select(action => action.ActionResultId).Distinct().Count() != cleanup.Count)
+            return string.Empty;
+
+        long files = 0;
+        ulong bytes = 0;
+        foreach (var action in cleanup)
+        {
+            var count = action.CleanupDeletedFileCount!.Value;
+            var size = action.CleanupDeletedSizeBytes!.Value;
+            if (long.MaxValue - files < count || ulong.MaxValue - bytes < size)
+                return string.Empty;
+            files += count;
+            bytes += size;
+        }
+
+        const double mb = 1024d * 1024d;
+        const double gb = mb * 1024d;
+        var sizeText = bytes >= gb ? $"{bytes / gb:0.##} GB"
+            : bytes >= mb ? $"{bytes / mb:0.##} MB" : $"{bytes:N0} Byte";
+        var fileText = files == 1 ? "1 Datei" : $"{files:N0} Dateien";
+        return $"Dabei wurden {fileText} mit einer protokollierten Dateigröße von {sizeText} gelöscht."
+            + (cleanup.Any(action => action.CleanupHasExceptions == true)
+                ? " Nicht entfernte Einträge sind im technischen Anhang dokumentiert." : string.Empty);
+    }
+
     private static string BuildSuccessfulActionOverview(
         IReadOnlyCollection<CustomerCheckupActionSummary> actions)
     {
