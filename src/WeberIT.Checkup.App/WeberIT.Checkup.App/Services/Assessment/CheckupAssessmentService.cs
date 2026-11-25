@@ -42,8 +42,9 @@ public class CheckupAssessmentService :
      * Fehlerdiagnosen begründen dagegen nicht
      * automatisch eine neue Scoring-Version.
      */
-    private const int CurrentScoringVersion =
-        2;
+    // Version 3 beruecksichtigt nachgewiesenen Cleanup-Arbeitsabschluss.
+    // Laufende V2-Vorgaenge behalten die unveraenderte V2-Bewertung.
+    private const int CurrentScoringVersion = 3;
 
     private readonly IEnumerable<ICheckupAssessmentRule>
         _assessmentRules;
@@ -74,11 +75,64 @@ public class CheckupAssessmentService :
     public CheckupAssessment Assess(
         CheckupSession checkupSession)
     {
+        return AssessCore(checkupSession, CurrentScoringVersion, null);
+    }
+
+    public CheckupAssessment AssessCompletion(
+        CheckupSession afterCheckup,
+        CheckupSession workingCheckup,
+        CustomerCheckupVisit visit,
+        DateTimeOffset scanStartedAt)
+    {
+        ArgumentNullException.ThrowIfNull(afterCheckup);
+        ArgumentNullException.ThrowIfNull(workingCheckup);
+        ArgumentNullException.ThrowIfNull(visit);
+
+        if (ReferenceEquals(afterCheckup, workingCheckup)
+            || !ReferenceEquals(workingCheckup.CurrentCustomerCheckupVisit, visit)
+            || visit.Id == Guid.Empty
+            || !visit.IsInProgress
+            || visit.IsCompletionPrepared
+            || visit.BeforeCheckup?.ScanDate is not DateTime entranceDate
+            || afterCheckup.ScanDate is not DateTime afterDate
+            || ToOffset(entranceDate) >= scanStartedAt
+            || ToOffset(afterDate) < scanStartedAt)
+        {
+            throw new InvalidOperationException(
+                "Die Abschlussbewertung besitzt keinen gueltigen Kundencheckup-Kontext.");
+        }
+
+        var beforeVersion = visit.BeforeCheckup.Assessment.ScoringVersion;
+        if (beforeVersion == 2)
+            return AssessCore(afterCheckup, 2, null);
+
+        ulong? relevantBytes = beforeVersion == CurrentScoringVersion
+            ? CleanupScorePotentialService.GetScoreRelevantSafePotentialBytes(
+                afterCheckup.CleanupPotentialInformation,
+                workingCheckup.TaskList,
+                visit.Id,
+                ToOffset(entranceDate),
+                scanStartedAt)
+            : null;
+
+        return AssessCore(afterCheckup, CurrentScoringVersion, relevantBytes);
+    }
+
+    private static DateTimeOffset ToOffset(DateTime value) =>
+        new(value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(value, DateTimeKind.Local)
+            : value);
+
+    private CheckupAssessment AssessCore(
+        CheckupSession checkupSession,
+        int scoringVersion,
+        ulong? relevantCleanupBytes)
+    {
         var assessment =
             new CheckupAssessment
             {
                 ScoringVersion =
-                    CurrentScoringVersion,
+                    scoringVersion,
 
                 AssessmentCreatedAt =
                     DateTime.Now
@@ -87,8 +141,10 @@ public class CheckupAssessmentService :
         foreach (var assessmentRule in _assessmentRules)
         {
             assessment.Findings.AddRange(
-                assessmentRule.Evaluate(
-                    checkupSession));
+                relevantCleanupBytes.HasValue
+                && assessmentRule is CleanupPotentialAssessmentRule cleanupRule
+                    ? cleanupRule.Evaluate(checkupSession, relevantCleanupBytes.Value)
+                    : assessmentRule.Evaluate(checkupSession));
         }
 
         assessment.SystemCondition =
