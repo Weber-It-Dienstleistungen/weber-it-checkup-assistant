@@ -200,6 +200,16 @@ internal static class CleanupActionPlanSnapshot
              */
             if (CanExecute(plan))
             {
+                if (WindowsTemporaryFilesCleanupExecutor.IsProductionReleaseApproved)
+                {
+                    return "Die Windows-Temp-Bereinigung ist zur kontrollierten "
+                        + "Ausführung freigegeben. Nach ausdrücklicher Bestätigung "
+                        + "werden zulässige Inhalte des lokalen Windows-Temp-Ordners "
+                        + "gelöscht. Der Stammordner, Schutzattribute und "
+                        + "Berechtigungen bleiben unverändert. Die Anwendung "
+                        + "benötigt Administratorrechte.";
+                }
+
                 return
                     "BEAUFSICHTIGTER DEBUG-ECHT-TEST: "
                     + "Die Windows-Temp-Bereinigung ist "
@@ -397,7 +407,7 @@ internal static class CleanupActionPlanSnapshot
         if (category.Category
             == CleanupCategoryType.WindowsTemporaryFiles)
         {
-            return IsAttendedDebugTrialAllowed();
+            return WindowsTemporaryFilesCleanupExecutor.IsExecutionApproved();
         }
 
         return category.Category
@@ -405,36 +415,6 @@ internal static class CleanupActionPlanSnapshot
             or CleanupCategoryType.DirectXShaderCache
             or CleanupCategoryType.ThumbnailCache
             or CleanupCategoryType.BrowserCache;
-    }
-
-    // =============================================
-    // BEAUFSICHTIGTEN DEBUG-TEST PRÜFEN
-    // =============================================
-
-    private static bool IsAttendedDebugTrialAllowed()
-    {
-#if DEBUG
-
-        /*
-         * Dieselben Bedingungen wie im
-         * WindowsTemporaryFilesCleanupExecutor:
-         *
-         * - Aktiver Debugger.
-         * - Tatsächliche WPF-Anwendung.
-         *
-         * Ein gewöhnlicher Release-Build
-         * erhält damit keine Freigabe.
-         */
-        return
-            System.Diagnostics.Debugger.IsAttached
-            && System.Windows.Application.Current
-                is global::WeberIT.Checkup.App.App;
-
-#else
-
-        return false;
-
-#endif
     }
 
     // =============================================
