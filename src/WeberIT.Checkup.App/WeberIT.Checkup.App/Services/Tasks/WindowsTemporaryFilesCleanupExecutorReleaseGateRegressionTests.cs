@@ -53,7 +53,7 @@ public static class
             results);
 
         Run(
-            "Freigabematrix verlangt echte WPF-Anwendung",
+            "Produktivfreigabe aktiv; Freigabematrix verlangt echte WPF-Anwendung",
             VerifyApprovalMatrix,
             results);
 
@@ -123,8 +123,8 @@ public static class
 
         /*
          * Niemals einen gültigen Plan testen,
-         * solange die produktive Freigabe
-         * nicht nachweislich gesperrt ist.
+         * solange die Sperre für diese Testumgebung
+         * nicht nachweislich aktiv ist.
          */
         VerifyReleaseGate();
     }
@@ -143,6 +143,8 @@ public static class
 
     private static void VerifyApprovalMatrix()
     {
+        Require(WindowsTemporaryFilesCleanupExecutor.IsProductionReleaseApproved,
+            "Die geplante Produktivfreigabe ist nicht aktiviert.");
         foreach (var approved in new[] { false, true })
         foreach (var app in new[] { false, true })
         foreach (var debug in new[] { false, true })
