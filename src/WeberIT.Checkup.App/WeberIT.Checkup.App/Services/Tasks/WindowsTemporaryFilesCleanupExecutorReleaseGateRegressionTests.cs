@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
@@ -49,8 +48,18 @@ public static class
         var results = new List<string>();
 
         Run(
-            "Produktive Freigabesperre ist geschlossen",
+            "Sandbox bleibt unabhängig von der Produktivfreigabe gesperrt",
             VerifyReleaseGate,
+            results);
+
+        Run(
+            "Freigabematrix verlangt echte WPF-Anwendung",
+            VerifyApprovalMatrix,
+            results);
+
+        Run(
+            "Planvorschau und Executor teilen die Sandbox-Sperre",
+            VerifyPreviewGate,
             results);
 
         Run(
@@ -126,24 +135,33 @@ public static class
 
     private static void VerifyReleaseGate()
     {
-        var gateField =
-            typeof(WindowsTemporaryFilesCleanupExecutor)
-                .GetField(
-                    "HandleCleanupReleaseApproved",
-                    BindingFlags.NonPublic
-                    | BindingFlags.Static);
+        Require(System.Windows.Application.Current is not global::WeberIT.Checkup.App.App,
+            "SICHERHEITSSTOPP: Tests niemals in der echten WPF-Anwendung ausführen.");
+        Require(!WindowsTemporaryFilesCleanupExecutor.IsExecutionApproved(),
+            "SICHERHEITSSTOPP: Der SandboxTestRunner darf nie produktiv bereinigen.");
+    }
 
-        if (gateField is null
-            || gateField.FieldType != typeof(bool)
-            || !Equals(
-                gateField.GetValue(null),
-                false))
+    private static void VerifyApprovalMatrix()
+    {
+        foreach (var approved in new[] { false, true })
+        foreach (var app in new[] { false, true })
+        foreach (var debug in new[] { false, true })
         {
-            throw new InvalidOperationException(
-                "SICHERHEITSSTOPP: Die produktive "
-                + "Windows-Temp-Bereinigung "
-                + "ist nicht eindeutig gesperrt.");
+            Require(WindowsTemporaryFilesCleanupExecutor.EvaluateExecutionApproval(
+                approved, app, debug) == (app && (approved || debug)),
+                "Freigabematrix verletzt Anwendungssperre.");
         }
+    }
+
+    private static void VerifyPreviewGate()
+    {
+        var plan = CreatePlan();
+        Require(!CleanupActionPlanSnapshot.CanExecute(plan),
+            "Sandbox-Plan darf nicht ausführbar sein.");
+        bool rejected = false;
+        try { CleanupActionPlanSnapshot.CreateExecutableCopy(plan); }
+        catch (InvalidOperationException) { rejected = true; }
+        Require(rejected, "Ausführbare Sandbox-Plankopie wurde zugelassen.");
     }
 
     // =============================================
