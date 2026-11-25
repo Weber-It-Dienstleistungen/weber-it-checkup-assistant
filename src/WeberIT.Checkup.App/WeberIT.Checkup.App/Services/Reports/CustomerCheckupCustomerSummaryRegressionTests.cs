@@ -87,6 +87,15 @@ public static class CustomerCheckupCustomerSummaryRegressionTests
             TestInformationalFinding,
             results);
 
+        Execute("Kontrollscan schließt Aufgabe ohne manuelle Statusänderung",
+            TestControlScanClosed, results);
+        Execute("Strukturierte Bereinigungsmenge und Ausnahmen verständlich darstellen",
+            TestCleanupQuantities, results);
+        Execute("Alte, doppelte oder unvollständige Protokolle nicht aufsummieren",
+            TestUnreliableCleanupQuantities, results);
+        Execute("Offene Aufgaben und manuell erledigte Aufgaben getrennt halten",
+            TestTaskStatusSeparation, results);
+
         return
             $"Alle {results.Count} Tests zur "
             + "Kundenzusammenfassung erfolgreich."
@@ -469,6 +478,90 @@ public static class CustomerCheckupCustomerSummaryRegressionTests
         RequireContains(
             summary.WorkResultText,
             "nicht eindeutig bestätigt");
+    }
+
+    private static void TestControlScanClosed()
+    {
+        var comparison = CreateComparison();
+        var task = new CustomerCheckupTaskComparison
+        {
+            WorkStatus = CheckupTaskStatus.Open,
+            Status = CustomerCheckupTaskComparisonStatus.NoLongerDetected
+        };
+        comparison.Tasks.Add(task);
+        var summary = CustomerCheckupCustomerSummary.Create(comparison);
+        Require(summary.CompletedTaskCount == 0, "Kein manueller Abschluss.");
+        Require(summary.ControlScanClosedTaskCount == 1, "Kontrollabschluss fehlt.");
+        Require(task.IsClosedByControlScan && !task.IsStillOpenForWork, "Aufgabe bleibt fälschlich offen.");
+        RequireContains(summary.WorkResultText, "Eine Aufgabe wurde durch die Abschlusskontrolle abgeschlossen");
+        RequireNotContains(summary.WorkResultText, "Es wurden keine Aufgaben als erledigt");
+        Require(task.WorkStatus == CheckupTaskStatus.Open, "Originalstatus wurde verändert.");
+    }
+
+    private static CustomerCheckupActionSummary StructuredCleanup(long files, ulong bytes)
+    {
+        var action = Successful(Cleanup);
+        action.CleanupDeletedFileCount = files;
+        action.CleanupDeletedSizeBytes = bytes;
+        action.CleanupWorkCompleted = true;
+        action.CleanupHasExceptions = false;
+        return action;
+    }
+
+    private static void TestCleanupQuantities()
+    {
+        var comparison = CreateComparison();
+        var first = StructuredCleanup(20, 1024UL * 1024 * 1024);
+        first.CleanupHasExceptions = true;
+        comparison.Actions.Add(first);
+        comparison.Actions.Add(StructuredCleanup(22, 1024UL * 1024 * 1024));
+        comparison.Actions.Add(CreateAction(Cleanup, CheckupTaskActionStatus.Failed));
+        var summary = CustomerCheckupCustomerSummary.Create(comparison);
+        RequireContains(summary.WorkResultText, "42 Dateien");
+        RequireContains(summary.WorkResultText, "2 GB");
+        RequireContains(summary.WorkResultText, "Nicht entfernte Einträge");
+        RequireContains(summary.WorkResultText, "fehlgeschlagen");
+        RequireNotContains(summary.WorkResultText, "Es wurden keine Aufgaben als erledigt");
+    }
+
+    private static void TestUnreliableCleanupQuantities()
+    {
+        var comparison = CreateComparison();
+        var first = StructuredCleanup(42, 1024);
+        comparison.Actions.Add(first);
+        comparison.Actions.Add(Successful(Cleanup));
+        RequireNotContains(CustomerCheckupCustomerSummary.Create(comparison).WorkResultText, "42 Dateien");
+        comparison.Actions[1] = first;
+        RequireNotContains(CustomerCheckupCustomerSummary.Create(comparison).WorkResultText, "84 Dateien");
+        comparison.Actions.RemoveAt(1);
+        first.CleanupWorkCompleted = false;
+        RequireNotContains(CustomerCheckupCustomerSummary.Create(comparison).WorkResultText, "42 Dateien");
+    }
+
+    private static void TestTaskStatusSeparation()
+    {
+        var comparison = CreateComparison();
+        comparison.Tasks.Add(CompletedTask());
+        comparison.Tasks.Add(new CustomerCheckupTaskComparison
+        {
+            WorkStatus = CheckupTaskStatus.Open,
+            Status = CustomerCheckupTaskComparisonStatus.StillOpen
+        });
+        comparison.Tasks.Add(new CustomerCheckupTaskComparison
+        {
+            WorkStatus = CheckupTaskStatus.Open,
+            Status = CustomerCheckupTaskComparisonStatus.NotReevaluatable
+        });
+        comparison.Tasks.Add(new CustomerCheckupTaskComparison
+        {
+            WorkStatus = CheckupTaskStatus.Open,
+            Status = CustomerCheckupTaskComparisonStatus.NoLongerDetected
+        });
+        var summary = CustomerCheckupCustomerSummary.Create(comparison);
+        Require(summary.CompletedTaskCount == 1, "Manueller Abschluss fehlt.");
+        Require(summary.ControlScanClosedTaskCount == 1, "Kontrollabschluss fehlt.");
+        Require(comparison.Tasks.Count(task => task.IsStillOpenForWork) == 2,
+            "Offene oder nicht erneut prüfbare Aufgaben wurden geschlossen.");
     }
 
     private static CustomerCheckupComparison CreateComparison()
