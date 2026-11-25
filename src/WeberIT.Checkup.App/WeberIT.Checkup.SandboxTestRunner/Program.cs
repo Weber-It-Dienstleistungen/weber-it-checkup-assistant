@@ -2,6 +2,7 @@
 using System;
 using System.Security.Principal;
 using WeberIT.Checkup.App.Services.Cleanup;
+using WeberIT.Checkup.App.Services.Reports;
 using WeberIT.Checkup.App.Services.Tasks;
 
 namespace WeberIT.Checkup.SandboxTestRunner;
@@ -11,7 +12,7 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 ///
 /// Eigenständiger C#-Sandbox-TestRunner.
 ///
-/// 116 aktive Sicherheits- und Regressionstests:
+/// 130 aktive Sicherheits- und Regressionstests:
 ///
 /// - 52 Windows-Temp-Sicherheitstests.
 /// - 13 Bereinigungs-Zwischenprüfungstests.
@@ -23,6 +24,7 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 /// - 4 Arbeitsabschluss-Regressionstests.
 /// - 7 Bewertungsgrundlagen-Regressionstests.
 /// - 6 Abschlussbewertungs-Regressionstests.
+/// - 14 Kundenzusammenfassungs-Regressionstests.
 ///
 /// Die vier veralteten PowerShell-Sandbox-
 /// Testblöcke werden nicht mehr ausgeführt.
@@ -311,6 +313,10 @@ internal static class Program
                 "TESTBLOCK 16 - CLEANUP-ABSCHLUSSBEWERTUNG",
                 CleanupCompletionScoringRegressionTests.RunAll);
 
+            RunTestBlock(
+                "TESTBLOCK 17 - KUNDENZUSAMMENFASSUNG",
+                CustomerCheckupCustomerSummaryRegressionTests.RunAll);
+
             // =================================
             // GESAMTERGEBNIS
             // =================================
@@ -319,7 +325,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 116 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 130 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");
