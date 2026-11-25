@@ -108,7 +108,8 @@ public sealed class CustomerCheckupCustomerSummary
         summary.WorkResultText =
             BuildWorkResultText(
                 summary,
-                actions);
+                actions,
+                findings);
 
         summary.RecommendationText =
             BuildRecommendationText(findings);
@@ -320,7 +321,8 @@ public sealed class CustomerCheckupCustomerSummary
 
     private static string BuildWorkResultText(
         CustomerCheckupCustomerSummary summary,
-        IReadOnlyCollection<CustomerCheckupActionSummary> actions)
+        IReadOnlyCollection<CustomerCheckupActionSummary> actions,
+        IReadOnlyCollection<CustomerCheckupFindingComparison> findings)
     {
         var parts = new List<string>();
 
@@ -443,22 +445,18 @@ public sealed class CustomerCheckupCustomerSummary
         }
         else if (summary.SuccessfulActionCount > 0)
         {
-            parts.Add(
-                "Ob dadurch auch zuvor festgestellte "
-                + "Probleme behoben wurden, konnte "
-                + "bei der Abschlusskontrolle nicht "
-                + "eindeutig bestätigt werden. "
-                + "Die erfolgreich ausgeführten "
-                + "Wartungsarbeiten sind unabhängig "
-                + "davon dokumentiert.");
+            // Keine Reparatur suggerieren, aber auch keinen nicht
+            // vorhandenen Reparaturbedarf unterstellen.
+            if (findings.Any(finding => finding.Status == CustomerCheckupFindingComparisonStatus.NotReevaluatable))
+                parts.Add("Einzelne technische Befunde konnten bei der Abschlusskontrolle nicht zuverlässig überprüft werden.");
+            else if (findings.Any(IsConfirmedOpen))
+                parts.Add("Verbleibende technische Hinweise sind unter den Empfehlungen dokumentiert.");
+            else
+                parts.Add("Die erfolgreich ausgeführten Wartungsarbeiten dienen der Pflege des Rechners; daraus wird keine technische Reparatur abgeleitet.");
         }
-        else
+        else if (findings.Any(finding => finding.Status == CustomerCheckupFindingComparisonStatus.NotReevaluatable))
         {
-            parts.Add(
-                "Bei der Abschlusskontrolle ließ sich "
-                + "keine zuvor festgestellte technische "
-                + "Auffälligkeit eindeutig als behoben "
-                + "bestätigen.");
+            parts.Add("Einzelne technische Befunde konnten bei der Abschlusskontrolle nicht zuverlässig überprüft werden.");
         }
 
         return string.Join(" ", parts);

@@ -291,6 +291,24 @@ public partial class CheckupTaskListCard : UserControl
         contentPanel.Children.Add(
             _completionCheckButton);
 
+        // Die abgeschlossene Sammelaufgabe verschwindet aus der Arbeitsliste,
+        // der bestehende Dialog bleibt für freiwillige lesende Kontrollen zugänglich.
+        var cleanupReviewButton = new Button
+        {
+            Content = "Bereinigungsprotokoll / Zwischenprüfung öffnen",
+            Margin = new Thickness(0, 8, 0, 0),
+            Padding = new Thickness(12, 8, 12, 8),
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        cleanupReviewButton.SetResourceReference(FrameworkElement.StyleProperty, "AccentButtonStyle");
+        cleanupReviewButton.SetBinding(Button.CommandParameterProperty,
+            new Binding(nameof(CheckupTaskList.CleanupTaskAwaitingVerification)));
+        cleanupReviewButton.SetBinding(VisibilityProperty,
+            new Binding(nameof(CheckupTaskList.HasCleanupTaskAwaitingVerification))
+            { Converter = new BooleanToVisibilityConverter() });
+        cleanupReviewButton.Click += CleanupSelectionButton_OnClick;
+        contentPanel.Children.Add(cleanupReviewButton);
+
         panel.Child =
             contentPanel;
 

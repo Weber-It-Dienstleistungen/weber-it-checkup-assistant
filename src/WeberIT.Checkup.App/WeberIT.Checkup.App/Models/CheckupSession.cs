@@ -64,8 +64,23 @@ public class CheckupSession
     public CheckupAssessment Assessment { get; set; } =
         new();
 
-    public CheckupTaskList TaskList { get; set; } =
-        new();
+    private CheckupTaskList _taskList = new();
+
+    public CheckupTaskList TaskList
+    {
+        get
+        {
+            // Nur Laufzeitkontext für die Arbeitslistenprojektion.
+            // Bei Wiederherstellung aus JSON wird er neu verknüpft.
+            _taskList.OwnerSession = this;
+            return _taskList;
+        }
+        set
+        {
+            _taskList = value ?? new CheckupTaskList();
+            _taskList.OwnerSession = this;
+        }
+    }
 
     public List<CustomerCheckupVisit> CustomerCheckupVisits
     {

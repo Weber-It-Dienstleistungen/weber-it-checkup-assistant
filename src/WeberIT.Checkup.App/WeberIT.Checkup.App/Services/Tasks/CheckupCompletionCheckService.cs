@@ -129,6 +129,24 @@ public sealed class CheckupCompletionCheckService
                 .ToHashSet(
                     StringComparer.Ordinal);
 
+        // Routineaufgaben werden in der direkten Diagnose auch ohne
+        // tatsächlichen Befund erzeugt. Nur vollständig nachgewiesene
+        // Bereinigungsarbeit darf dort durch einen belastbaren Scan schließen.
+        bool FindingStillPresent(CheckupTask task)
+        {
+            if (!CleanupWorkListCompletionPolicy.IsCleanupTask(task))
+                return currentTaskCodes.Contains(task.TaskCode);
+
+            if (!sourceCheckup.TaskList.HasCompletedCleanupWorkAwaitingVerification()
+                || verificationCheckup.CleanupPotentialInformation.AnalysisStatus != CleanupMeasurementStatus.Measured)
+                return true;
+
+            return verificationCheckup.TaskList.Tasks.Any(current =>
+                current.TaskCode == task.TaskCode
+                && (current.TaskCode != "task.storage.controlled-cleanup"
+                    || current.SourceFindingCodes.Count > 0));
+        }
+
         var taskResults =
             tasksAwaitingVerification
                 .Select(
@@ -145,8 +163,7 @@ public sealed class CheckupCompletionCheckService
                                 task.Title,
 
                             FindingStillPresent =
-                                currentTaskCodes.Contains(
-                                    task.TaskCode)
+                                FindingStillPresent(task)
                         })
                 .ToList();
 

@@ -61,6 +61,11 @@ public static class CleanupTaskWorkListRegressionTests
             TestOpenCleanupAfterVerification,
             results);
 
+        Run("Vollständig bearbeitete Kategorien warten verborgen auf Kontrolle", TestAllCategoriesCompleted, results);
+        Run("Gesperrte Dateien und einzelne Löschfehler verhindern Arbeitsabschluss nicht", TestCompletedWithExceptions, results);
+        Run("Unvollständige, fremde und mehrdeutige Nachweise bleiben offen", TestIncompleteCategoryEvidence, results);
+        Run("Kontrollierter Restbefund bleibt erneut sichtbar; JSON erhält Arbeitsnachweis", TestCompletedWorkRestored, results);
+
         return
             $"Alle {results.Count} Arbeitslisten-"
             + "Regressionstests erfolgreich."
@@ -240,6 +245,151 @@ public static class CleanupTaskWorkListRegressionTests
             "Eine weiterhin offene Bereinigungsaufgabe "
             + "muss nach einer Kontrolle erneut "
             + "bearbeitbar bleiben.");
+    }
+
+    private static readonly DateTimeOffset Entrance = DateTimeOffset.Now.AddHours(-1);
+
+    private static CheckupSession MakeCleanupSession(bool customer = false, string taskCode = CleanupCode)
+    {
+        var session = new CheckupSession
+        {
+            ScanDate = Entrance.LocalDateTime,
+            CleanupPotentialInformation = new CleanupPotentialInformation
+            {
+                AnalysisDate = Entrance.LocalDateTime,
+                AnalysisStatus = CleanupMeasurementStatus.Measured,
+                TargetVolume = "C:",
+                Categories = new()
+                {
+                    Measurement(CleanupCategoryType.UserTemporaryFiles),
+                    Measurement(CleanupCategoryType.BrowserCache)
+                }
+            },
+            TaskList = new CheckupTaskList
+            {
+                TaskListVersion = 3,
+                Tasks = new() { new CheckupTask { TaskCode = taskCode, Status = CheckupTaskStatus.Open } }
+            }
+        };
+        if (customer)
+            session.CustomerCheckupVisits.Add(CustomerCheckupVisit.Start(session));
+        return session;
+    }
+
+    private static CleanupCategoryResult Measurement(CleanupCategoryType category) => new()
+    {
+        Category = category, Classification = CleanupCategoryClassification.SafePotential,
+        MeasurementStatus = CleanupMeasurementStatus.Measured, FileCount = 10, SizeBytes = 1024
+    };
+
+    private static CheckupTaskActionResult Evidence(CleanupCategoryType category,
+        Guid? visit = null, bool traversal = true, bool cancelled = false, bool exceptions = false,
+        bool unknownSkip = false)
+    {
+        var started = Entrance.AddMinutes(10);
+        var finished = started.AddMinutes(1);
+        return new CheckupTaskActionResult
+        {
+            ActionCode = "action.cleanup.selected-safe-categories",
+            Status = cancelled ? CheckupTaskActionStatus.Cancelled : CheckupTaskActionStatus.Successful,
+            CleanupCustomerCheckupVisitId = visit,
+            StartedAt = started, FinishedAt = finished,
+            CleanupExecutionResult = new()
+            {
+                PlanId = Guid.NewGuid(), StartedAt = started, FinishedAt = finished,
+                WasCancelled = cancelled,
+                CategoryResults = new()
+                {
+                    new()
+                    {
+                        Category = category, WasStarted = true, WasTraversalCompleted = traversal,
+                        WasCancelled = cancelled, DeletedFileCount = 5,
+                        FailedEntryCount = exceptions ? 1 : 0,
+                        SkippedEntryCount = exceptions || unknownSkip ? 1 : 0,
+                        SkippedEntryReasons = exceptions || unknownSkip
+                            ? new() { new() { Reason = unknownSkip
+                                ? CleanupSkippedEntryReason.OtherSafetySkip
+                                : CleanupSkippedEntryReason.LockedByProcess, Count = 1 } }
+                            : new()
+                    }
+                }
+            }
+        };
+    }
+
+    private static void TestAllCategoriesCompleted()
+    {
+        foreach (var customer in new[] { false, true })
+        foreach (var code in new[] { CleanupCode, CapacityCode })
+        {
+            var session = MakeCleanupSession(customer, code);
+            var list = session.TaskList;
+            var task = list.Tasks[0];
+            var visit = session.CurrentCustomerCheckupVisit?.Id;
+            task.ActionResults.Add(Evidence(CleanupCategoryType.UserTemporaryFiles, visit));
+            Require(list.ActiveTaskCount == 1, "Eine verbleibende Kategorie darf nicht verschwinden.");
+            task.ActionResults.Add(Evidence(CleanupCategoryType.BrowserCache, visit));
+            Require(list.ActiveTaskCount == 0 && list.AwaitingVerificationTaskCount == 1
+                && ReferenceEquals(list.CleanupTaskAwaitingVerification, task)
+                && task.Status == CheckupTaskStatus.Open,
+                "Alle Kategorien bearbeitet: nur noch Kontrolle, kein vorzeitiger Statusabschluss.");
+        }
+    }
+
+    private static void TestCompletedWithExceptions()
+    {
+        var session = MakeCleanupSession();
+        var list = session.TaskList;
+        var task = list.Tasks[0];
+        task.ActionResults.Add(Evidence(CleanupCategoryType.UserTemporaryFiles, exceptions: true));
+        task.ActionResults.Add(Evidence(CleanupCategoryType.BrowserCache));
+        Require(list.ActiveTaskCount == 0 && list.HasCleanupTaskAwaitingVerification,
+            "Dokumentierte Schutzsperren und einzelne Löschfehler dürfen den Arbeitsabschluss nicht verhindern.");
+    }
+
+    private static void TestIncompleteCategoryEvidence()
+    {
+        var session = MakeCleanupSession(true);
+        var list = session.TaskList;
+        var task = list.Tasks[0];
+        var visit = session.CurrentCustomerCheckupVisit!.Id;
+        task.ActionResults.Add(Evidence(CleanupCategoryType.UserTemporaryFiles, visit));
+        foreach (var invalid in new[]
+        {
+            Evidence(CleanupCategoryType.BrowserCache, visit, traversal: false),
+            Evidence(CleanupCategoryType.BrowserCache, visit, cancelled: true),
+            Evidence(CleanupCategoryType.BrowserCache, Guid.NewGuid()),
+            Evidence(CleanupCategoryType.BrowserCache, visit, unknownSkip: true),
+            CreateSuccessfulAction()
+        })
+        {
+            task.ActionResults.Add(invalid);
+            Require(list.ActiveTaskCount == 1 && !list.HasCleanupTaskAwaitingVerification,
+                "Nicht abgeschlossener oder unklarer Kategorienachweis darf die Aufgabe nicht verstecken.");
+            task.ActionResults.Remove(invalid);
+        }
+        task.ActionResults.Add(Evidence(CleanupCategoryType.BrowserCache, visit));
+        task.ActionResults.Add(Evidence(CleanupCategoryType.BrowserCache, visit));
+        Require(list.ActiveTaskCount == 1, "Mehrfache Ausführungen sind nicht eindeutig.");
+        task.ActionResults.RemoveAt(2);
+        session.CleanupPotentialInformation.Categories.Add(Measurement(CleanupCategoryType.BrowserCache));
+        Require(list.ActiveTaskCount == 1, "Mehrdeutige Eingangsmessung darf nicht verschwinden.");
+    }
+
+    private static void TestCompletedWorkRestored()
+    {
+        var session = MakeCleanupSession();
+        var task = session.TaskList.Tasks[0];
+        task.ActionResults.Add(Evidence(CleanupCategoryType.UserTemporaryFiles));
+        task.ActionResults.Add(Evidence(CleanupCategoryType.BrowserCache));
+        var restored = CheckupSnapshot.Capture(session).RestoreAsSession();
+        var list = restored.TaskList;
+        Require(list.ActiveTaskCount == 0 && list.HasCleanupTaskAwaitingVerification,
+            "Der Laufzeitkontext muss nach Wiederherstellung erneut verfügbar sein.");
+        list.LastCompletionCheckAt = Entrance.AddMinutes(20);
+        Require(list.ActiveTaskCount == 1 && !list.HasCleanupTaskAwaitingVerification
+            && list.AwaitingVerificationTaskCount == 0,
+            "Ein nach der Kontrolle weiterhin offener Befund muss sichtbar bleiben.");
     }
 
     private static CheckupTask CreateTask(string taskCode)

@@ -12,6 +12,25 @@ public class CheckupTaskList : INotifyPropertyChanged
 
     public event EventHandler? PersistenceRequested;
 
+    [JsonIgnore]
+    internal CheckupSession? OwnerSession { get; set; }
+
+    [JsonIgnore]
+    public CheckupTask? CleanupTaskAwaitingVerification =>
+        Tasks.FirstOrDefault(task => task.Status == CheckupTaskStatus.Open
+            && CleanupWorkListCompletionPolicy.IsCleanupTask(task)
+            && HasCompletedCleanupWorkAwaitingVerification());
+
+    [JsonIgnore]
+    public bool HasCleanupTaskAwaitingVerification => CleanupTaskAwaitingVerification is not null;
+
+    internal bool HasCompletedCleanupWorkAwaitingVerification()
+    {
+        var completedAt = CleanupWorkListCompletionPolicy.GetCompletedWorkAt(OwnerSession, this);
+        return completedAt.HasValue
+            && (!LastCompletionCheckAt.HasValue || completedAt.Value > LastCompletionCheckAt.Value);
+    }
+
     public int TaskListVersion { get; set; }
 
     public DateTime? CreatedAt { get; set; }
@@ -912,26 +931,21 @@ public class CheckupTaskList : INotifyPropertyChanged
          * unabhängig von der Sichtbarkeit für die
          * spätere Abschlusskontrolle vorgemerkt.
          *
-         * Nur der tatsächliche Aufgabenstatus
-         * (Open/Completed/Skipped/NotFeasible)
-         * entscheidet über die Sichtbarkeit dieser
-         * drei Sammelaufgaben.
+         * Bereinigungen wechseln erst mit einem vollständigen,
+         * eindeutig zugeordneten Kategorienachweis in die
+         * Warteschlange zur Kontrolle. Unvollständige Aktionen
+         * bleiben sichtbar. Programmupdates bleiben unverändert.
          */
         if (string.Equals(
                 task.TaskCode,
                 "task.program-updates.available",
-                StringComparison.Ordinal)
-            || string.Equals(
-                task.TaskCode,
-                "task.storage.controlled-cleanup",
-                StringComparison.Ordinal)
-            || string.Equals(
-                task.TaskCode,
-                "task.storage.restore-system-volume-capacity",
                 StringComparison.Ordinal))
         {
             return true;
         }
+
+        if (CleanupWorkListCompletionPolicy.IsCleanupTask(task))
+            return !HasCompletedCleanupWorkAwaitingVerification();
 
         /*
          * Für gewöhnliche Einzelaufgaben bleibt
@@ -949,6 +963,10 @@ public class CheckupTaskList : INotifyPropertyChanged
         {
             return false;
         }
+
+        if (CleanupWorkListCompletionPolicy.IsCleanupTask(task)
+            && HasCompletedCleanupWorkAwaitingVerification())
+            return true;
 
         var successfulActions =
             task.ActionResults
@@ -1545,6 +1563,9 @@ public class CheckupTaskList : INotifyPropertyChanged
 
     private void NotifyWorkListChanged()
     {
+        OnPropertyChanged(nameof(CleanupTaskAwaitingVerification));
+        OnPropertyChanged(nameof(HasCleanupTaskAwaitingVerification));
+
         OnPropertyChanged(
             nameof(ActiveTasks));
 

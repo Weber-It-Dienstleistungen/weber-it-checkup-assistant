@@ -103,6 +103,11 @@ public static class CustomerCheckupCustomerSummaryRegressionTests
         Execute("Nur eindeutig erfolgreiche WinGet-Protokolle komprimieren",
             TestCompactProgramActions, results);
 
+        Execute("Vorbeugende Wartung mit akzeptierten Empfehlungen suggeriert keinen Reparaturbedarf",
+            TestPreventiveMaintenance, results);
+        Execute("Nicht erneut auswertbare Befunde bleiben ausdrücklich dokumentiert",
+            TestUncertainMaintenance, results);
+
         return
             $"Alle {results.Count} Tests zur "
             + "Kundenzusammenfassung erfolgreich."
@@ -111,6 +116,38 @@ public static class CustomerCheckupCustomerSummaryRegressionTests
             + string.Join(
                 Environment.NewLine,
                 results);
+    }
+
+    private static void TestPreventiveMaintenance()
+    {
+        var comparison = CreateComparison();
+        comparison.Actions.Add(Successful(Cleanup));
+        comparison.Actions.Add(Successful(SystemFileCheck));
+        comparison.Findings.Add(new CustomerCheckupFindingComparison
+        {
+            Status = CustomerCheckupFindingComparisonStatus.StillOpen,
+            BeforeSeverity = FindingSeverity.Recommendation,
+            AfterSeverity = FindingSeverity.Recommendation,
+            IsCustomerRiskAccepted = true
+        });
+        var summary = CustomerCheckupCustomerSummary.Create(comparison);
+        RequireContains(summary.WorkResultText, "Pflege des Rechners");
+        RequireNotContains(summary.WorkResultText, "zuvor festgestellte");
+        Require(summary.ResolvedFindingCount == 0, "Keine Reparatur behaupten.");
+    }
+
+    private static void TestUncertainMaintenance()
+    {
+        var comparison = CreateComparison();
+        comparison.Actions.Add(Successful(Cleanup));
+        comparison.Findings.Add(new CustomerCheckupFindingComparison
+        {
+            Status = CustomerCheckupFindingComparisonStatus.NotReevaluatable,
+            BeforeSeverity = FindingSeverity.Warning
+        });
+        var summary = CustomerCheckupCustomerSummary.Create(comparison);
+        RequireContains(summary.WorkResultText, "nicht zuverlässig überprüft");
+        Require(summary.ResolvedFindingCount == 0, "Nicht überprüfbar ist nicht behoben.");
     }
 
     private static void TestRiskAcceptedSummary()
@@ -219,7 +256,7 @@ public static class CustomerCheckupCustomerSummaryRegressionTests
 
         RequireContains(
             summary.WorkResultText,
-            "nicht eindeutig bestätigt");
+            "keine technische Reparatur abgeleitet");
 
         Require(
             summary.ResolvedFindingCount == 0,
@@ -546,7 +583,7 @@ public static class CustomerCheckupCustomerSummaryRegressionTests
 
         RequireContains(
             summary.WorkResultText,
-            "nicht eindeutig bestätigt");
+            "keine technische Reparatur abgeleitet");
     }
 
     private static void TestControlScanClosed()
