@@ -224,7 +224,7 @@ public class WindowsUpdateAssessmentRule :
                         + "Die Updates wurden durch den Checkup "
                         + "nicht automatisch installiert. "
                         + "Die endgültige Dringlichkeit wird "
-                        + "erst im Bewertungsmodell V2 anhand "
+                        + "im Bewertungsmodell anhand "
                         + "zusätzlicher Kriterien bestimmt.",
 
                     Category =
