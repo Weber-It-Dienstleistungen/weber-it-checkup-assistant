@@ -122,6 +122,12 @@ public class CheckupAssessmentService :
                 ? finding => CheckupRiskAcceptancePolicy.IsAcceptedForFinding(
                     finding, workingCheckup.TaskList, visit.BeforeCheckup.TaskList,
                     ToOffset(entranceDate), scanStartedAt)
+                : null,
+            confirmOptimization: beforeVersion == 4
+                ? finding => CheckupRiskAcceptancePolicy.IsStartupReviewConfirmed(
+                    finding, workingCheckup.TaskList, visit.BeforeCheckup.TaskList,
+                    visit.BeforeCheckup.StartupInformation, afterCheckup.StartupInformation,
+                    ToOffset(entranceDate), scanStartedAt)
                 : null);
     }
 
@@ -135,7 +141,8 @@ public class CheckupAssessmentService :
         int scoringVersion,
         ulong? relevantCleanupBytes,
         bool includeRoutineCleanup = false,
-        Func<CheckupFinding, bool>? acceptRisk = null)
+        Func<CheckupFinding, bool>? acceptRisk = null,
+        Func<CheckupFinding, bool>? confirmOptimization = null)
     {
         var assessment =
             new CheckupAssessment
@@ -157,11 +164,16 @@ public class CheckupAssessmentService :
         }
 
         foreach (var finding in assessment.Findings)
+        {
             finding.IsCustomerRiskAccepted = scoringVersion == 4
                 && acceptRisk is not null && acceptRisk(finding);
+            finding.IsOptimizationReviewConfirmed = scoringVersion == 4
+                && confirmOptimization is not null && confirmOptimization(finding);
+        }
 
         var scoreFindings = assessment.Findings
-            .Where(finding => !finding.IsCustomerRiskAccepted).ToList();
+            .Where(finding => !finding.IsCustomerRiskAccepted
+                && !finding.IsOptimizationReviewConfirmed).ToList();
 
         assessment.SystemCondition =
             _systemConditionAssessmentService.Assess(

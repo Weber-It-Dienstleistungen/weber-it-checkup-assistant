@@ -72,6 +72,10 @@ public class CheckupTaskList : INotifyPropertyChanged
                 == CheckupTaskStatus.Skipped);
 
     [JsonIgnore]
+    public int NoOptimizationRequiredTaskCount =>
+        Tasks.Count(task => task.Status == CheckupTaskStatus.NoOptimizationRequired);
+
+    [JsonIgnore]
     public int RiskAcceptedTaskCount =>
         Tasks.Count(task => task.Status == CheckupTaskStatus.RiskAccepted);
 
@@ -185,7 +189,8 @@ public class CheckupTaskList : INotifyPropertyChanged
                         task.Status
                             is CheckupTaskStatus.Skipped
                             or CheckupTaskStatus.NotFeasible
-                            or CheckupTaskStatus.RiskAccepted)
+                            or CheckupTaskStatus.RiskAccepted
+                            or CheckupTaskStatus.NoOptimizationRequired)
                 .ToList();
 
     [JsonIgnore]
@@ -199,7 +204,8 @@ public class CheckupTaskList : INotifyPropertyChanged
                 task.Status
                     is CheckupTaskStatus.Skipped
                     or CheckupTaskStatus.NotFeasible
-                            or CheckupTaskStatus.RiskAccepted);
+                            or CheckupTaskStatus.RiskAccepted
+                            or CheckupTaskStatus.NoOptimizationRequired);
 
     [JsonIgnore]
     public int ProcessedTaskCount =>
@@ -278,6 +284,9 @@ public class CheckupTaskList : INotifyPropertyChanged
                         : $"{NotFeasibleTaskCount} "
                           + "nicht durchführbar");
             }
+
+            if (NoOptimizationRequiredTaskCount > 0)
+                parts.Add($"{NoOptimizationRequiredTaskCount} geprüft – kein Optimierungsbedarf");
 
             if (RiskAcceptedTaskCount > 0)
             {
@@ -1429,6 +1438,7 @@ public class CheckupTaskList : INotifyPropertyChanged
             nameof(SkippedTaskCount));
 
         OnPropertyChanged(nameof(RiskAcceptedTaskCount));
+        OnPropertyChanged(nameof(NoOptimizationRequiredTaskCount));
 
         OnPropertyChanged(
             nameof(NotFeasibleTaskCount));

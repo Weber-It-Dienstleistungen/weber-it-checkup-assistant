@@ -465,7 +465,10 @@ public sealed class CustomerCheckupPdfReportService :
         var explanation = section.AddParagraph(
             "Äußerer Bogen: aktueller Zustand. "
             + "Innerer Bogen: Eingangswert, sofern "
-            + "zuverlässig vergleichbar.");
+            + "zuverlässig vergleichbar."
+            + (comparison.AfterScoringVersion >= 4
+                ? " Bewertet wird der vereinbarte Sollzustand; 100 Punkte bedeuten keine vollständige Risikofreiheit."
+                : string.Empty));
 
         explanation.Format.Font.Size =
             Unit.FromPoint(7.5);
@@ -637,9 +640,11 @@ public sealed class CustomerCheckupPdfReportService :
                 CustomerCheckupReportWording
                     .GetFindingPriorityText(severity),
                 SafeText(finding.Title),
-                finding.IsCustomerRiskAccepted
-                    ? "Risiko akzeptiert"
-                    : CustomerCheckupReportWording.GetFindingStatusText(finding.Status));
+                finding.IsOptimizationReviewConfirmed
+                    ? "Geprüft – kein Optimierungsbedarf"
+                    : finding.IsCustomerRiskAccepted
+                        ? "Risiko akzeptiert"
+                        : CustomerCheckupReportWording.GetFindingStatusText(finding.Status));
 
             row.Cells[0].Format.Font.Color =
                 GetSeverityColor(severity);
@@ -982,7 +987,10 @@ public sealed class CustomerCheckupPdfReportService :
             + "zu verstehen, wenn beide Scans ausreichend "
             + "vergleichbar sind. Andernfalls sind die "
             + "einzelnen Punktwerte lediglich "
-            + "Momentaufnahmen.",
+            + "Momentaufnahmen."
+            + (comparison.AfterScoringVersion >= 4
+                ? " Ab Version 4 fließen dokumentierte Kundenentscheidungen und fachlich bestätigte Empfehlungen in die Sollzustandsbewertung ein. Ein Punktgewinn ist deshalb nicht immer eine technische Reparatur."
+                : string.Empty),
             MutedTextColor);
     }
 
@@ -1547,8 +1555,22 @@ public sealed class CustomerCheckupPdfReportService :
                     : GetActionStatusColor(
                         action.Status);
 
-            AddTechnicalActionDetail(
-                section,
+            // Header, Ergebniszeile und erste Beschreibung bleiben zusammen.
+            table.Rows[0].KeepWith = 2;
+            row.KeepWith = 1;
+            var detailRow = table.AddRow();
+            var detailCell = detailRow.Cells[0];
+            detailCell.MergeRight = 2;
+            void AddDetail(string title, string content)
+            {
+                var paragraph = detailCell.AddParagraph();
+                paragraph.AddFormattedText(title + ": ", TextFormat.Bold);
+                paragraph.AddText(SafeText(content));
+                paragraph.Format.Font.Size = Unit.FromPoint(8.5);
+                paragraph.Format.SpaceAfter = Unit.FromPoint(2);
+            }
+
+            AddDetail(
                 "Protokolliertes Ergebnis",
                 PrepareCompletedActionReportText(
                     action.Summary,
@@ -1569,8 +1591,7 @@ public sealed class CustomerCheckupPdfReportService :
             if (isProgramUpdate
                 && programUpdateOverview.HasEntries)
             {
-                AddTechnicalActionDetail(
-                    section,
+                AddDetail(
                     "Ziel und Umfang",
                     "Kontrollierte Ausführung ausgewählter "
                     + "Programmupdates. Die ausgewählten "
@@ -1581,9 +1602,8 @@ public sealed class CustomerCheckupPdfReportService :
                 if (individualOverview is not null
                     && individualOverview.HasEntries)
                 {
-                    AddTechnicalActionDetail(
-                        section,
-                        "Einzelergebnisse dieses Durchlaufs",
+                    AddDetail(
+                    "Einzelergebnisse dieses Durchlaufs",
                         individualOverview
                             .TechnicallySuccessfulPackageCount
                         + " Pakete technisch erfolgreich · "
@@ -1603,8 +1623,7 @@ public sealed class CustomerCheckupPdfReportService :
             else if (!string.IsNullOrWhiteSpace(
                          action.TargetDescription))
             {
-                AddTechnicalActionDetail(
-                    section,
+                AddDetail(
                     "Ziel und Umfang",
                     PrepareCompletedActionReportText(
                         action.TargetDescription));
@@ -1627,15 +1646,14 @@ public sealed class CustomerCheckupPdfReportService :
 
             if (executionDetails.Count > 0)
             {
-                AddTechnicalActionDetail(
-                    section,
+                AddDetail(
                     "Weitere technische Angaben",
                     string.Join(
                         " · ",
                         executionDetails));
             }
 
-            AddSpacer(section, 9);
+            AddSpacer(section, 3);
         }
     }
 
@@ -1765,9 +1783,11 @@ public sealed class CustomerCheckupPdfReportService :
                 table,
                 SafeText(finding.Title),
                 GetSeverityText(severity),
-                finding.IsCustomerRiskAccepted
-                    ? "Risiko akzeptiert – Befund besteht"
-                    : GetFindingStatusText(finding.Status),
+                finding.IsOptimizationReviewConfirmed
+                    ? "Geprüft – Befund besteht"
+                    : finding.IsCustomerRiskAccepted
+                        ? "Risiko akzeptiert – Befund besteht"
+                        : GetFindingStatusText(finding.Status),
                 SafeText(
                     finding.AfterDescription,
                     finding.BeforeDescription));
@@ -2620,6 +2640,9 @@ public sealed class CustomerCheckupPdfReportService :
             CustomerCheckupTaskComparisonStatus.NoLongerDetected =>
                 "Abgeschlossen – Befund nicht mehr erkannt",
 
+            CustomerCheckupTaskComparisonStatus.NoOptimizationRequired =>
+                "Geprüft – keine Optimierung erforderlich",
+
             CustomerCheckupTaskComparisonStatus.RiskAccepted =>
                 "Risiko bewusst akzeptiert",
 
@@ -2651,6 +2674,8 @@ public sealed class CustomerCheckupPdfReportService :
             CustomerCheckupTaskComparisonStatus
                 .CompletedButStillDetected =>
                     SuccessColor,
+
+            CustomerCheckupTaskComparisonStatus.NoOptimizationRequired => SuccessColor,
 
             CustomerCheckupTaskComparisonStatus.StillOpen =>
                 WarningColor,

@@ -515,6 +515,9 @@ public sealed class CustomerCheckupComparisonService :
             IsCustomerRiskAccepted = afterEvaluation.IsEvaluable
                 && afterFindings.Count > 0
                 && afterFindings.All(item => item.IsCustomerRiskAccepted),
+            IsOptimizationReviewConfirmed = afterEvaluation.IsEvaluable
+                && afterFindings.Count > 0
+                && afterFindings.All(item => item.IsOptimizationReviewConfirmed),
             Category = representative.Category,
             AssessmentTarget = representative.AssessmentTarget,
             BeforeSeverity = beforeRepresentative?.Severity,
@@ -639,6 +642,19 @@ public sealed class CustomerCheckupComparisonService :
             afterTasks.Count > 0,
             isRecurringMaintenanceTask,
             isAfterEvaluable);
+
+        if (sourceTask?.Status == CheckupTaskStatus.NoOptimizationRequired)
+        {
+            var related = afterCheckup.Assessment.Findings.Where(f =>
+                sourceFindingCodes.Contains(f.Code, StringComparer.Ordinal)).ToList();
+            status = !isAfterEvaluable ? CustomerCheckupTaskComparisonStatus.NotReevaluatable
+                : !afterTasks.Any() ? CustomerCheckupTaskComparisonStatus.NoLongerDetected
+                : related.Count > 0 && related.All(f => f.IsOptimizationReviewConfirmed)
+                    && afterTasks.All(t => t.SourceFindingCodes.All(code =>
+                        related.Any(f => f.Code == code && f.IsOptimizationReviewConfirmed)))
+                    ? CustomerCheckupTaskComparisonStatus.NoOptimizationRequired
+                    : CustomerCheckupTaskComparisonStatus.StillOpen;
+        }
 
         return new CustomerCheckupTaskComparison
         {

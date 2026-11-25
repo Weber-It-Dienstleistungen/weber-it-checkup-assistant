@@ -98,6 +98,8 @@ public static class CustomerCheckupCustomerSummaryRegressionTests
 
         Execute("Akzeptiertes Risiko bleibt Befund und wird nicht als behoben gezählt",
             TestRiskAcceptedSummary, results);
+        Execute("Fachlicher Autostartabschluss bleibt technischer Befund",
+            TestReviewedStartupSummary, results);
         Execute("Nur eindeutig erfolgreiche WinGet-Protokolle komprimieren",
             TestCompactProgramActions, results);
 
@@ -130,6 +132,24 @@ public static class CustomerCheckupCustomerSummaryRegressionTests
         RequireContains(summary.RecommendationText, "ohne Punktabzug");
         Require(comparison.StillOpenFindingCount == 1,
             "Der technische Befund muss weiterhin gezählt werden.");
+    }
+
+    private static void TestReviewedStartupSummary()
+    {
+        var comparison = CreateComparison();
+        comparison.Findings.Add(new CustomerCheckupFindingComparison
+        {
+            Code = "system.startup.extensive",
+            Title = "Autostart",
+            Status = CustomerCheckupFindingComparisonStatus.StillOpen,
+            AfterSeverity = FindingSeverity.Recommendation,
+            IsOptimizationReviewConfirmed = true
+        });
+        var summary = CustomerCheckupCustomerSummary.Create(comparison);
+        Require(summary.OpenFindingCount == 0 && summary.ResolvedFindingCount == 0,
+            "Gepruefter Autostart darf nicht als technisch repariert erscheinen.");
+        RequireContains(summary.RecommendationText, "keine weitere Optimierung erforderlich");
+        RequireNotContains(summary.RecommendationText, "Risiko");
     }
 
     private static void TestCompactProgramActions()

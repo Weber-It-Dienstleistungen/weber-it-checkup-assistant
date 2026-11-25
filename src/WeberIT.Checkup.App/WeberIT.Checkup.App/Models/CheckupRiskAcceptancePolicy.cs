@@ -30,14 +30,57 @@ public static class CheckupRiskAcceptancePolicy
         && task.SourceFindingCodes is { Count: > 0 }
         && task.SourceFindingCodes.All(code => IsAllowedFinding(task.TaskCode, code));
 
+    public static bool CanConfirmStartupReview(CheckupTask task) =>
+        task.TaskCode == "task.performance.startup-background-load" && CanAccept(task);
+
+    // Verglichen wird die vollständige gespeicherte Darstellung der aktiven
+    // Einträge, nicht allein die Anzahl. Neue oder geänderte Einträge benötigen
+    // eine erneute Prüfung. Die unterstützten Quellen bleiben begrenzt.
+    public static bool IsStartupReviewConfirmed(
+        CheckupFinding finding, CheckupTaskList workingTasks,
+        CheckupTaskList entranceTasks, StartupInformation entrance,
+        StartupInformation after, DateTimeOffset entranceAt,
+        DateTimeOffset scanStartedAt)
+    {
+        if (finding.Code is not ("system.startup.optional-entries" or "system.startup.extensive")
+            || !IsAcceptedForFinding(finding, workingTasks, entranceTasks, entranceAt,
+                scanStartedAt, CheckupTaskStatus.NoOptimizationRequired)
+            || entrance.AnalysisStatus != StartupAnalysisStatus.Analyzed
+            || after.AnalysisStatus != StartupAnalysisStatus.Analyzed
+            || !entrance.AnalysisDate.HasValue || !after.AnalysisDate.HasValue
+            || new DateTimeOffset(after.AnalysisDate.Value) < scanStartedAt
+            || entrance.Entries is null || after.Entries is null
+            || after.ConspicuousEntryCount != 0
+            || after.ActiveNotEvaluableEntryCount != 0
+            || after.UnknownStateEntryCount != 0)
+            return false;
+
+        var previous = entrance.Entries.Where(e => e.State == StartupEntryState.Enabled)
+            .Select(e => System.Text.Json.JsonSerializer.Serialize(e))
+            .GroupBy(value => value, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        foreach (var entry in after.Entries.Where(e => e.State == StartupEntryState.Enabled))
+        {
+            if (string.IsNullOrWhiteSpace(entry.SourceIdentifier))
+                return false;
+            var key = System.Text.Json.JsonSerializer.Serialize(entry);
+            if (!previous.TryGetValue(key, out var count) || count == 0)
+                return false;
+            previous[key] = count - 1;
+        }
+        return after.EnabledEntryCount > 0;
+    }
+
     public static bool IsAcceptedForFinding(
         CheckupFinding finding,
         CheckupTaskList workingTasks,
         CheckupTaskList entranceTasks,
         DateTimeOffset entranceAt,
-        DateTimeOffset scanStartedAt)
+        DateTimeOffset scanStartedAt,
+        CheckupTaskStatus requiredStatus = CheckupTaskStatus.RiskAccepted)
     {
-        if (finding.Severity != FindingSeverity.Recommendation
+        if (requiredStatus is not (CheckupTaskStatus.RiskAccepted or CheckupTaskStatus.NoOptimizationRequired)
+            || finding.Severity != FindingSeverity.Recommendation
             || entranceAt >= scanStartedAt)
             return false;
 
@@ -50,8 +93,9 @@ public static class CheckupRiskAcceptancePolicy
             return false;
 
         var task = matches[0];
-        if (task.Id == Guid.Empty || task.Status != CheckupTaskStatus.RiskAccepted
+        if (task.Id == Guid.Empty || task.Status != requiredStatus
             || !CanAccept(task) || !IsAllowedFinding(task.TaskCode, finding.Code)
+            || (requiredStatus == CheckupTaskStatus.NoOptimizationRequired && !CanConfirmStartupReview(task))
             || string.IsNullOrWhiteSpace(task.StatusReason)
             || !task.StatusChangedAt.HasValue)
             return false;

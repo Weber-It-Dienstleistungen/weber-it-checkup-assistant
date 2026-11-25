@@ -13,7 +13,7 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 ///
 /// Eigenständiger C#-Sandbox-TestRunner.
 ///
-/// 170 aktive Sicherheits- und Regressionstests:
+/// 179 aktive Sicherheits- und Regressionstests:
 ///
 /// - 56 Windows-Temp-Sicherheitstests.
 /// - 13 Bereinigungs-Zwischenprüfungstests.
@@ -326,6 +326,10 @@ internal static class Program
                 "TESTBLOCK 19 - WINGET-SCAN-AUSGABE",
                 ProgramUpdateScanOutputRegressionTests.RunAll);
 
+            RunTestBlock(
+                "TESTBLOCK 20 - MANUELLE VERSIONSPRUEFUNG",
+                ManualProgramUpdateVerificationRegressionTests.RunAll);
+
             // =================================
             // GESAMTERGEBNIS
             // =================================
@@ -334,7 +338,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 170 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 179 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");

@@ -31,7 +31,8 @@ public partial class TaskActionDetailsDialog : Window
     public TaskActionDetailsDialog(
         CheckupTaskActionDefinition definition,
         bool allowStatusDecision,
-        bool allowRiskAcceptance = false)
+        bool allowRiskAcceptance = false,
+        bool allowStartupReview = false)
     {
         ArgumentNullException.ThrowIfNull(
             definition);
@@ -54,6 +55,8 @@ public partial class TaskActionDetailsDialog : Window
         RiskAcceptedOption.Visibility = allowRiskAcceptance
             && CheckupRiskAcceptancePolicy.SupportsTaskCode(definition.TaskCode)
                 ? Visibility.Visible : Visibility.Collapsed;
+        NoOptimizationRequiredOption.Visibility = allowStartupReview
+            ? Visibility.Visible : Visibility.Collapsed;
 
         DataContext =
             definition;

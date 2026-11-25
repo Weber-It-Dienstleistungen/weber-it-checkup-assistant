@@ -4,6 +4,18 @@ public class ProgramUpdateInformation
 {
     public bool? IsWingetAvailable { get; set; }
 
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string WingetAvailabilityText => IsWingetAvailable switch
+    {
+        true => "Ja", false => "Nein", null => "Nicht zuverlässig ermittelt"
+    };
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string EmptyUpdateListText => IsWingetAvailable == true && IsAnalysisPerformed
+        && IsAnalysisSuccessful && AvailableUpdateCount == 0 && !IsResultTruncated
+        ? "Keine ausstehenden Programmaktualisierungen erkannt."
+        : "Keine auswertbare Programmliste verfügbar.";
+
     public string WingetVersion { get; set; } =
         string.Empty;
 

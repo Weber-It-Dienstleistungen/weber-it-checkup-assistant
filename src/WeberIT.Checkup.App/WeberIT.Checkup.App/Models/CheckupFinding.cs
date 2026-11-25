@@ -18,6 +18,8 @@ public class CheckupFinding
     // V4: Tatsächlicher Befund bleibt erhalten; nur der Sollzustand wird entlastet.
     public bool IsCustomerRiskAccepted { get; set; }
 
+    public bool IsOptimizationReviewConfirmed { get; set; }
+
     public FindingAssessmentTarget AssessmentTarget
     {
         get;

@@ -722,6 +722,7 @@ public partial class CustomerCheckupCompletionDialog :
                     : $"{skippedTaskCount} Aufgaben übersprungen",
 
                 $"{tasks.Count(task => task.WorkStatus == CheckupTaskStatus.RiskAccepted)} Risiken bewusst akzeptiert",
+                $"{tasks.Count(task => task.Status == CustomerCheckupTaskComparisonStatus.NoOptimizationRequired)} geprüft – kein Optimierungsbedarf",
 
                 notFeasibleTaskCount == 1
                     ? "1 Aufgabe nicht durchführbar"

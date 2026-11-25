@@ -337,6 +337,16 @@
                                     Visibility="Collapsed"
                                     Tag="{x:Static models:CheckupTaskStatus.RiskAccepted}" />
 
+                                <RadioButton
+                                    x:Name="NoOptimizationRequiredOption"
+                                    Margin="0,10,0,0"
+                                    Padding="5"
+                                    Content="Geprüft – keine Optimierung erforderlich"
+                                    GroupName="ResolutionStatus"
+                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Visibility="Collapsed"
+                                    Tag="{x:Static models:CheckupTaskStatus.NoOptimizationRequired}" />
+
                             </StackPanel>
 
                         </Border>

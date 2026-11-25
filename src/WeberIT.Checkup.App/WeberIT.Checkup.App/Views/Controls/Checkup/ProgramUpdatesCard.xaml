@@ -64,7 +64,7 @@
                     <TextBlock
                         Grid.Row="0"
                         Grid.Column="1"
-                        Text="{Binding IsWingetAvailable}" />
+                        Text="{Binding WingetAvailabilityText}" />
 
                     <TextBlock
                         Grid.Row="1"
@@ -118,7 +118,7 @@
 
                 <TextBlock
                     Foreground="{StaticResource TextMutedBrush}"
-                    Text="Keine Programmliste verfügbar."
+                    Text="{Binding EmptyUpdateListText}"
                     TextWrapping="Wrap">
 
                     <TextBlock.Style>

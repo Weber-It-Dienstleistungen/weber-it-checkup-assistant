@@ -146,7 +146,12 @@ public partial class CheckupTaskListCard
                     CheckupSession.CurrentCustomerCheckupVisit is { IsInProgress: true,
                         IsCompletionPrepared: false } currentVisit
                     && currentVisit.BeforeCheckup.Assessment.ScoringVersion == 4
-                    && CheckupRiskAcceptancePolicy.CanAccept(task))
+                    && CheckupRiskAcceptancePolicy.CanAccept(task),
+                allowStartupReview:
+                    CheckupSession.CurrentCustomerCheckupVisit is { IsInProgress: true,
+                        IsCompletionPrepared: false } reviewVisit
+                    && reviewVisit.BeforeCheckup.Assessment.ScoringVersion == 4
+                    && CheckupRiskAcceptancePolicy.CanConfirmStartupReview(task))
             {
                 Owner =
                     Window.GetWindow(this)

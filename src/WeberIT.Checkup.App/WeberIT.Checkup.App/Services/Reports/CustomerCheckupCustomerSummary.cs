@@ -182,8 +182,8 @@ public sealed class CustomerCheckupCustomerSummary
                    + "abgeschlossen werden.";
         }
 
-        if (findings.Any(finding => finding.IsCustomerRiskAccepted))
-            return "In den überprüfbaren Bereichen wurden keine weiteren offenen Empfehlungen festgestellt. Bewusst akzeptierte Risiken bleiben technisch bestehen.";
+        if (findings.Any(finding => finding.IsCustomerRiskAccepted || finding.IsOptimizationReviewConfirmed))
+            return "In den überprüfbaren Bereichen wurden keine weiteren offenen Empfehlungen festgestellt. Dokumentierte Entscheidungen und verbleibende technische Befunde sind berücksichtigt.";
 
         return "Bei der Abschlusskontrolle wurden "
                + "keine offenen technischen Probleme festgestellt.";
@@ -657,8 +657,17 @@ public sealed class CustomerCheckupCustomerSummary
             .ToList();
 
         var acceptedCount = findings.Count(finding => finding.IsCustomerRiskAccepted);
-        var acceptedText = acceptedCount == 0 ? string.Empty
-            : $"{acceptedCount} bewusst akzeptierte Empfehlung(en) bleiben technisch bestehen und sind in der Sollzustandsbewertung ohne Punktabzug berücksichtigt.";
+        var acceptedText = acceptedCount switch
+        {
+            0 => string.Empty,
+            1 => "Eine bewusst akzeptierte Empfehlung bleibt technisch bestehen und wird ohne Punktabzug berücksichtigt.",
+            _ => $"{acceptedCount} bewusst akzeptierte Empfehlungen bleiben technisch bestehen und werden ohne Punktabzug berücksichtigt."
+        };
+        var reviewedCount = findings.Count(finding => finding.IsOptimizationReviewConfirmed);
+        var reviewedText = reviewedCount == 0 ? string.Empty
+            : "Der Autostart wurde fachlich geprüft; bei den unverändert erkannten Einträgen ist keine weitere Optimierung erforderlich. Die technischen Befunde bleiben dokumentiert.";
+        var decisionText = string.Join(" ", new[] { acceptedText, reviewedText }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
 
         var uncertainCount = findings.Count(finding =>
             finding.Status ==
@@ -667,7 +676,7 @@ public sealed class CustomerCheckupCustomerSummary
         if (openFindings.Count == 0
             && uncertainCount == 0)
         {
-            return acceptedCount > 0 ? acceptedText
+            return decisionText.Length > 0 ? decisionText
                 : "Aus der Abschlusskontrolle ergeben "
                    + "sich derzeit keine offenen "
                    + "technischen Befundempfehlungen.";
@@ -750,8 +759,8 @@ public sealed class CustomerCheckupCustomerSummary
                       + "nicht zuverlässig überprüft werden.");
         }
 
-        if (acceptedCount > 0)
-            parts.Add(acceptedText);
+        if (decisionText.Length > 0)
+            parts.Add(decisionText);
 
         return string.Join(" ", parts);
     }
@@ -823,7 +832,7 @@ public sealed class CustomerCheckupCustomerSummary
     private static bool IsConfirmedOpen(
         CustomerCheckupFindingComparison finding)
     {
-        return !finding.IsCustomerRiskAccepted && (finding.Status is
+        return !finding.IsCustomerRiskAccepted && !finding.IsOptimizationReviewConfirmed && (finding.Status is
             CustomerCheckupFindingComparisonStatus.StillOpen
             or CustomerCheckupFindingComparisonStatus.NewlyDetected);
     }

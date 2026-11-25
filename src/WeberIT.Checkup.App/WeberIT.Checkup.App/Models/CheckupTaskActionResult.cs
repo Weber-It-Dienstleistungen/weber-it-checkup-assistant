@@ -29,6 +29,8 @@ public class CheckupTaskActionResult
     public string Details { get; set; } =
         string.Empty;
 
+    public ManualProgramUpdateVerification? ManualProgramUpdateVerification { get; set; }
+
     public int? ExitCode { get; set; }
 
     public bool RestartRequired { get; set; }

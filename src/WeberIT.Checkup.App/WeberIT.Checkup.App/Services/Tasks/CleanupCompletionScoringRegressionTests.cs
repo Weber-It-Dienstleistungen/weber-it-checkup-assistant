@@ -186,6 +186,48 @@ public static class CleanupCompletionScoringRegressionTests
             Require(ControlledRestartEvidencePolicy.GetPendingRequest(task, visitId) is null);
         }, results);
 
+        Run("Gepruefter unveraenderter Autostart erhaelt Punkte ohne Befundverlust", () =>
+        {
+            var (service, working, visit, after) = Scenario(version: 4, includeStartup: true);
+            var task = working.TaskList.Tasks.Single(t => t.TaskCode == "task.performance.startup-background-load");
+            task.ApplyStatus(CheckupTaskStatus.NoOptimizationRequired, "Eintraege einzeln geprueft", "");
+            task.StatusChangedAt = Entrance.AddMinutes(30).LocalDateTime;
+            var assessment = service.AssessCompletion(after, working, visit, ScanStart);
+            Require(assessment.SystemCondition.Score == 100);
+            Require(assessment.Findings.Any(f => f.Code == "system.startup.extensive"
+                && f.IsOptimizationReviewConfirmed && !f.IsCustomerRiskAccepted));
+            Require(visit.BeforeCheckup.Assessment.Findings.All(f => !f.IsOptimizationReviewConfirmed));
+        }, results);
+
+        Run("Neue oder veraenderte Autostarteintraege verhindern Entlastung", () =>
+        {
+            var (service, working, visit, after) = Scenario(version: 4, includeStartup: true);
+            var task = working.TaskList.Tasks.Single(t => t.TaskCode == "task.performance.startup-background-load");
+            task.ApplyStatus(CheckupTaskStatus.NoOptimizationRequired, "Geprueft", "");
+            task.StatusChangedAt = Entrance.AddMinutes(30).LocalDateTime;
+            after.StartupInformation.Entries[0].SourceIdentifier = "NewEntry";
+            Require(service.AssessCompletion(after, working, visit, ScanStart)
+                .Findings.All(f => !f.IsOptimizationReviewConfirmed));
+            after.StartupInformation = MakeStartup(ScanStart.AddMinutes(1));
+            after.StartupInformation.AnalysisStatus = StartupAnalysisStatus.PartiallyAnalyzed;
+            Require(service.AssessCompletion(after, working, visit, ScanStart)
+                .Findings.All(f => !f.IsOptimizationReviewConfirmed));
+            after.StartupInformation = MakeStartup(ScanStart.AddMinutes(1));
+            after.StartupInformation.Entries[0].Classification = StartupClassification.Conspicuous;
+            Require(service.AssessCompletion(after, working, visit, ScanStart)
+                .Findings.All(f => !f.IsOptimizationReviewConfirmed));
+        }, results);
+
+        Run("Fachlicher Autostartabschluss gilt nicht fuer andere Empfehlungen", () =>
+        {
+            var (service, working, visit, after) = Scenario(version: 4, includeRiskRule: true);
+            var task = working.TaskList.Tasks.Single(t => t.TaskCode == "task.security.drive-encryption");
+            bool rejected = false;
+            try { task.ApplyStatus(CheckupTaskStatus.NoOptimizationRequired, "Geprueft", ""); }
+            catch (InvalidOperationException) { rejected = true; }
+            Require(rejected);
+        }, results);
+
         return $"Alle {results.Count} Abschlussbewertungs-Regressionstests erfolgreich."
             + Environment.NewLine + string.Join(Environment.NewLine, results);
     }
@@ -193,7 +235,7 @@ public static class CleanupCompletionScoringRegressionTests
     private static (CheckupAssessmentService Service, CheckupSession Working,
         CustomerCheckupVisit Visit, CheckupSession After) Scenario(
         bool traversal = true, bool lowSpace = false,
-        int version = 3, bool includeRiskRule = false)
+        int version = 3, bool includeRiskRule = false, bool includeStartup = false)
     {
         var rules = new List<ICheckupAssessmentRule>
         {
@@ -201,11 +243,15 @@ public static class CleanupCompletionScoringRegressionTests
         };
         if (includeRiskRule)
             rules.Add(new SyntheticRiskRule());
+        if (includeStartup)
+            rules.Add(new StartupAssessmentRule());
         var service = new CheckupAssessmentService(
             rules,
             new SystemConditionAssessmentService(),
             new HardwareConditionAssessmentService());
         var working = MakeSession(Entrance, lowSpace);
+        if (includeStartup)
+            working.StartupInformation = MakeStartup(Entrance);
         working.Assessment = service.Assess(working);
         working.Assessment.ScoringVersion = version;
         var visit = new CustomerCheckupVisit
@@ -249,8 +295,23 @@ public static class CleanupCompletionScoringRegressionTests
                 }
             }
         });
-        return (service, working, visit, MakeSession(ScanStart.AddMinutes(5), lowSpace));
+        var after = MakeSession(ScanStart.AddMinutes(5), lowSpace);
+        if (includeStartup)
+            after.StartupInformation = MakeStartup(ScanStart.AddMinutes(1));
+        return (service, working, visit, after);
     }
+
+    private static StartupInformation MakeStartup(DateTimeOffset date) => new()
+    {
+        AnalysisStatus = StartupAnalysisStatus.Analyzed,
+        AnalysisDate = date.LocalDateTime,
+        Entries = Enumerable.Range(1, 21).Select(index => new StartupEntryInformation
+        {
+            DisplayName = $"Test {index}", SourceIdentifier = $"TestSource{index}",
+            State = StartupEntryState.Enabled, Classification = StartupClassification.ProbablyUseful,
+            TargetExists = true
+        }).ToList()
+    };
 
     private sealed class SyntheticRiskRule : ICheckupAssessmentRule
     {

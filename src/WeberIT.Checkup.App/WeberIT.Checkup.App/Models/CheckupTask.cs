@@ -282,6 +282,9 @@ public class CheckupTask : INotifyPropertyChanged
             CheckupTaskStatus.RiskAccepted =>
                 "Risiko bewusst akzeptiert",
 
+            CheckupTaskStatus.NoOptimizationRequired =>
+                "Geprüft – keine Optimierung erforderlich",
+
             _ =>
                 "Offen"
         };
@@ -349,6 +352,11 @@ public class CheckupTask : INotifyPropertyChanged
             throw new InvalidOperationException(
                 "Dieser Befund ist nicht zur bewussten Risikoakzeptanz freigegeben.");
         }
+
+        if (status == CheckupTaskStatus.NoOptimizationRequired
+            && !CheckupRiskAcceptancePolicy.CanConfirmStartupReview(this))
+            throw new InvalidOperationException(
+                "Dieser Befund ist nicht für den fachlichen Autostartabschluss freigegeben.");
 
         Status =
             status;

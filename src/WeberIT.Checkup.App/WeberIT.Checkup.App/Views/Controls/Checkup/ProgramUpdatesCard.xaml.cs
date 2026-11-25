@@ -8,6 +8,7 @@ using System.Windows.Threading;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Assessment;
 using WeberIT.Checkup.App.Services.Interfaces;
+using WeberIT.Checkup.App.Services.Updates;
 using WeberIT.Checkup.App.ViewModels;
 using WeberIT.Checkup.App.Views.Dialogs;
 
@@ -25,6 +26,7 @@ public partial class ProgramUpdatesCard : UserControl
         "WeberIT.ProgramUpdateExceptionExtendedGrid";
 
     private Button? _exceptionButton;
+    private Button? _manualVerificationButton;
 
     private TextBlock? _exceptionStatusText;
 
@@ -179,6 +181,18 @@ public partial class ProgramUpdatesCard : UserControl
         exceptionPanel.Children.Add(
             _exceptionButton);
 
+        _manualVerificationButton = new Button
+        {
+            Content = "Manuell installierte Version bestätigen",
+            Margin = new Thickness(0, 8, 0, 0),
+            Padding = new Thickness(18, 10, 18, 10),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Visibility = Visibility.Collapsed
+        };
+        _manualVerificationButton.SetResourceReference(FrameworkElement.StyleProperty, "AccentButtonStyle");
+        _manualVerificationButton.Click += ManualVerificationButton_OnClick;
+        exceptionPanel.Children.Add(_manualVerificationButton);
+
         // =============================================
         // AUSFÜHRLICHE STATUSBESCHREIBUNG
         // =============================================
@@ -252,9 +266,12 @@ public partial class ProgramUpdatesCard : UserControl
             return;
         }
 
+        if (_manualVerificationButton is not null)
+            _manualVerificationButton.Visibility = Visibility.Collapsed;
+
         if (!TryResolveCustomerContext(
                 out var viewModel,
-                out _,
+                out var activeSession,
                 out var visit)
             || DataContext
                 is not ProgramUpdateInformation information)
@@ -356,6 +373,11 @@ public partial class ProgramUpdatesCard : UserControl
             canEditExceptions
                 ? Visibility.Visible
                 : Visibility.Collapsed;
+
+        if (_manualVerificationButton is not null)
+            _manualVerificationButton.Visibility = !viewModel.IsScanRunning
+                && ManualProgramUpdateVerificationService.GetCandidates(activeSession, visit).Count > 0
+                ? Visibility.Visible : Visibility.Collapsed;
 
         // =============================================
         // PROGRAMMZEILEN AKTUALISIEREN
@@ -742,6 +764,45 @@ public partial class ProgramUpdatesCard : UserControl
     // =====================================================
     // TECHNIKER-AUSNAHMEN: DIALOG
     // =====================================================
+
+    private void ManualVerificationButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!TryResolveCustomerContext(out var vm, out var session, out var visit)
+            || vm.IsScanRunning)
+            return;
+
+        try
+        {
+            var candidates = ManualProgramUpdateVerificationService.GetCandidates(session, visit);
+            if (candidates.Count == 0)
+                throw new InvalidOperationException("Keine eindeutig zuordenbare Aktualisierung aus dem Eingangsscan verfügbar.");
+
+            var dialog = new ManualProgramUpdateVerificationDialog(candidates)
+            {
+                Owner = Window.GetWindow(this)
+            };
+            if (dialog.ShowDialog() != true || dialog.SelectedUpdate is not { } update)
+                return;
+
+            if (!TryResolveCustomerContext(out var currentVm, out var currentSession, out var currentVisit)
+                || !ReferenceEquals(vm, currentVm) || !ReferenceEquals(session, currentSession)
+                || !ReferenceEquals(visit, currentVisit) || currentVm.IsScanRunning)
+                throw new InvalidOperationException("Der Kundencheckup-Kontext hat sich geändert.");
+
+            var result = ManualProgramUpdateVerificationService.CreateResult(session, visit,
+                update, dialog.ObservedVersion, dialog.Evidence, DateTimeOffset.Now);
+            var task = session.TaskList.Tasks.Single(t => t.TaskCode == ManualProgramUpdateVerificationService.TaskCode);
+            session.TaskList.AddTaskActionResult(task, result);
+            UpdateExceptionControls();
+            MessageBox.Show(Window.GetWindow(this),
+                "Die manuell bestätigte Version wurde gespeichert. Ein weiterhin gemeldeter Updatebedarf bleibt bis zur zuverlässigen Kontrolle sichtbar.",
+                "Versionsprüfung gespeichert", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            ShowError("Versionsprüfung konnte nicht gespeichert werden", exception.Message);
+        }
+    }
 
     private void ProgramUpdateExceptionsButton_OnClick(
         object sender,
