@@ -785,7 +785,9 @@ public partial class CleanupActionSelectionDialog
             + "verbessern, zeigt erst der "
             + "vollständige Kontroll- oder "
             + "Abschlussscan anhand des dann "
-            + "gemessenen Systemzustands.";
+            + "gemessenen Systemzustands und der "
+            + "eindeutig zugeordneten Bereinigungsnachweise "
+            + "(Bewertungsmodell ab Version 3).";
 
         if (!scan.HasCompleteExecutionReference)
         {
@@ -805,7 +807,14 @@ public partial class CleanupActionSelectionDialog
 
         string executionNotice;
 
-        if (execution.IsSuccessful)
+        if (execution.IsWorkCompleted && execution.HasOnlyExpectedSafetySkips)
+        {
+            executionNotice = "Die Kategorie wurde vollständig bearbeitet. "
+                + "Nicht löschbare oder bewusst übersprungene Einträge "
+                + "bleiben dokumentiert. Ein vollständiger Arbeitsabschluss "
+                + "setzt nicht voraus, dass alle Dateien entfernt wurden.";
+        }
+        else if (execution.IsSuccessful)
         {
             executionNotice =
                 execution.HasOnlyExpectedSafetySkips
@@ -877,9 +886,9 @@ public partial class CleanupActionSelectionDialog
                 + "noch, dass sämtliche "
                 + "Restdateien geschützt oder "
                 + "gesperrt sind. "
-                + "Verbleibendes Potenzial kann "
-                + "beim vollständigen Kontrollscan "
-                + "erneut bewertet werden.";
+                + "Der vollständige Kontrollscan berücksichtigt "
+                + "den gemessenen Bestand und bei Version 3 "
+                + "den eindeutig nachgewiesenen Arbeitsabschluss.";
         }
 
         return
