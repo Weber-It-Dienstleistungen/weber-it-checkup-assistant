@@ -726,6 +726,12 @@ public sealed class CustomerCheckupComparisonService :
                     ActionCode = result.ActionCode,
                     ActionTitle = result.ActionTitle,
                     TargetDescription = result.TargetDescription,
+                    CleanupDeletedFileCount = result.CleanupExecutionResult?.DeletedFileCount,
+                    CleanupDeletedSizeBytes = result.CleanupExecutionResult?.DeletedSizeBytes,
+                    CleanupWorkCompleted = result.CleanupExecutionResult?.IsWorkCompleted,
+                    CleanupHasExceptions = result.CleanupExecutionResult is { } cleanup
+                        ? cleanup.FailedEntryCount > 0 || cleanup.SkippedEntryCount > 0
+                        : null,
                     Status = result.Status,
                     Summary = result.Summary,
                     Details = result.Details,
