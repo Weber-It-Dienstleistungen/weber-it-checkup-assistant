@@ -151,6 +151,15 @@ public sealed class CustomerCheckupTaskComparison
 
     public bool IsPresentAfterCheckup { get; set; }
 
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsClosedByControlScan =>
+        Status == CustomerCheckupTaskComparisonStatus.NoLongerDetected
+        && WorkStatus != CheckupTaskStatus.Completed;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsStillOpenForWork =>
+        WorkStatus == CheckupTaskStatus.Open && !IsClosedByControlScan;
+
     public int SuccessfulActionCount { get; set; }
 
     public int FailedActionCount { get; set; }
@@ -179,6 +188,12 @@ public sealed class CustomerCheckupActionSummary
     public string ActionTitle { get; set; } = string.Empty;
 
     public string TargetDescription { get; set; } = string.Empty;
+
+    // Optionale strukturierte Kennzahlen; historische Vergleiche bleiben lesbar.
+    public long? CleanupDeletedFileCount { get; set; }
+    public ulong? CleanupDeletedSizeBytes { get; set; }
+    public bool? CleanupWorkCompleted { get; set; }
+    public bool? CleanupHasExceptions { get; set; }
 
     public CheckupTaskActionStatus Status { get; set; } =
         CheckupTaskActionStatus.Unknown;
