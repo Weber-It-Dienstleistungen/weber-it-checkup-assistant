@@ -5,6 +5,7 @@ using WeberIT.Checkup.App.Services.Cleanup;
 using WeberIT.Checkup.App.Services.Reports;
 using WeberIT.Checkup.App.Services.Tasks;
 using WeberIT.Checkup.App.Services.Updates;
+using WeberIT.Checkup.App.Services.Startup;
 
 namespace WeberIT.Checkup.SandboxTestRunner;
 
@@ -13,7 +14,7 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 ///
 /// Eigenständiger C#-Sandbox-TestRunner.
 ///
-/// 179 aktive Sicherheits- und Regressionstests:
+/// 187 aktive Sicherheits- und Regressionstests:
 ///
 /// - 56 Windows-Temp-Sicherheitstests.
 /// - 13 Bereinigungs-Zwischenprüfungstests.
@@ -330,6 +331,10 @@ internal static class Program
                 "TESTBLOCK 20 - MANUELLE VERSIONSPRUEFUNG",
                 ManualProgramUpdateVerificationRegressionTests.RunAll);
 
+            RunTestBlock(
+                "TESTBLOCK 21 - AUTOSTART-FREIGABEN",
+                StartupApprovalRegressionTests.RunAll);
+
             // =================================
             // GESAMTERGEBNIS
             // =================================
@@ -338,7 +343,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 179 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 187 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");

@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using Microsoft.Win32;
 using System.Security.Cryptography;
 using System.Text;
 using WeberIT.Checkup.App.Models;
@@ -135,6 +136,13 @@ public class StartupFolderSourceReader
                 return;
             }
 
+            if (StartupApprovalReader.IsFolderMetadata(fileInformation.Name))
+            {
+                result.ExcludedEntryCount++;
+                return;
+            }
+
+            var state = ReadFolderApproval(context, fileInformation.Name);
             var extension =
                 fileInformation.Extension;
 
@@ -145,6 +153,7 @@ public class StartupFolderSourceReader
                 ReadShortcutEntry(
                     fileInformation,
                     context,
+                    state,
                     result);
 
                 return;
@@ -156,7 +165,8 @@ public class StartupFolderSourceReader
                 result.Entries.Add(
                     CreateUnsupportedEntry(
                         fileInformation,
-                        context));
+                        context,
+                        state));
 
                 return;
             }
@@ -170,7 +180,7 @@ public class StartupFolderSourceReader
                     StartupSourceType.StartupFolder,
                     context,
                     StartupRegistryView.NotApplicable,
-                    StartupEntryState.Enabled);
+                    state);
 
             entry.SourceIdentifier =
                 CreateFolderSourceIdentifier(
@@ -192,6 +202,7 @@ public class StartupFolderSourceReader
     private void ReadShortcutEntry(
         FileInfo shortcutInformation,
         StartupEntryContext context,
+        StartupEntryState state,
         StartupFolderReadResult result)
     {
         var displayName =
@@ -225,7 +236,7 @@ public class StartupFolderSourceReader
                         StartupRegistryView.NotApplicable,
 
                     State =
-                        StartupEntryState.Enabled,
+                        state,
 
                     TargetType =
                         StartupTargetType.Shortcut,
@@ -275,7 +286,7 @@ public class StartupFolderSourceReader
                         StartupRegistryView.NotApplicable,
 
                     State =
-                        StartupEntryState.Enabled,
+                        state,
 
                     TargetType =
                         StartupTargetType.Shortcut,
@@ -309,7 +320,7 @@ public class StartupFolderSourceReader
                 StartupSourceType.StartupFolder,
                 context,
                 StartupRegistryView.NotApplicable,
-                StartupEntryState.Enabled);
+                state);
 
         entry.TargetType =
             StartupTargetType.Shortcut;
@@ -330,7 +341,8 @@ public class StartupFolderSourceReader
     private static StartupEntryInformation
         CreateUnsupportedEntry(
             FileInfo fileInformation,
-            StartupEntryContext context)
+            StartupEntryContext context,
+            StartupEntryState state)
     {
         var displayName =
             Path.GetFileNameWithoutExtension(
@@ -357,7 +369,7 @@ public class StartupFolderSourceReader
                 StartupRegistryView.NotApplicable,
 
             State =
-                StartupEntryState.Enabled,
+                state,
 
             TargetType =
                 StartupTargetType.Unknown,
@@ -432,6 +444,12 @@ public class StartupFolderSourceReader
         };
     }
 
+    private static StartupEntryState ReadFolderApproval(StartupEntryContext context, string fileName) =>
+        StartupApprovalReader.Read(
+            context == StartupEntryContext.CurrentUser ? RegistryHive.CurrentUser : RegistryHive.LocalMachine,
+            StartupApprovalReader.NativeView(Environment.Is64BitOperatingSystem),
+            StartupSourceType.StartupFolder, fileName);
+
     private static bool IsSupportedDirectStartupFile(
         string extension)
     {
@@ -461,6 +479,11 @@ public class StartupFolderSourceReader
     private static string BuildShortcutDescription(
         StartupEntryInformation entry)
     {
+        if (entry.State == StartupEntryState.Disabled)
+            return "Die Autostartverknüpfung ist laut Windows deaktiviert.";
+        if (entry.State == StartupEntryState.Unknown)
+            return "Der Freigabestatus der Autostartverknüpfung ist nicht eindeutig.";
+
         if (entry.TargetExists == false)
         {
             return "Die Autostartverknüpfung ist aktiv, "

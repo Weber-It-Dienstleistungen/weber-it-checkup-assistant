@@ -4,5 +4,6 @@ public enum StartupRegistryView
 {
     NotApplicable,
     Registry32,
-    Registry64
+    Registry64,
+    Shared
 }

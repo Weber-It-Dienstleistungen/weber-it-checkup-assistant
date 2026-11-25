@@ -11,14 +11,6 @@ public class StartupRegistrySourceReader
     private const string RunOncePath =
         @"Software\Microsoft\Windows\CurrentVersion\RunOnce";
 
-    private const string StartupApprovedRunPath =
-        @"Software\Microsoft\Windows\CurrentVersion"
-        + @"\Explorer\StartupApproved\Run";
-
-    private const string StartupApprovedRun32Path =
-        @"Software\Microsoft\Windows\CurrentVersion"
-        + @"\Explorer\StartupApproved\Run32";
-
     private readonly StartupCommandAnalyzer
         _commandAnalyzer;
 
@@ -35,77 +27,20 @@ public class StartupRegistrySourceReader
         var result =
             new StartupRegistryReadResult();
 
-        ReadRegistrySource(
-            RegistryHive.CurrentUser,
-            RegistryView.Registry64,
-            RunPath,
-            StartupSourceType.RegistryRun,
-            StartupEntryContext.CurrentUser,
-            result,
-            deadline);
+        foreach (var hive in new[] { RegistryHive.CurrentUser, RegistryHive.LocalMachine })
+        {
+            var context = hive == RegistryHive.CurrentUser
+                ? StartupEntryContext.CurrentUser : StartupEntryContext.AllUsers;
 
-        ReadRegistrySource(
-            RegistryHive.CurrentUser,
-            RegistryView.Registry32,
-            RunPath,
-            StartupSourceType.RegistryRun,
-            StartupEntryContext.CurrentUser,
-            result,
-            deadline);
-
-        ReadRegistrySource(
-            RegistryHive.CurrentUser,
-            RegistryView.Registry64,
-            RunOncePath,
-            StartupSourceType.RegistryRunOnce,
-            StartupEntryContext.CurrentUser,
-            result,
-            deadline);
-
-        ReadRegistrySource(
-            RegistryHive.CurrentUser,
-            RegistryView.Registry32,
-            RunOncePath,
-            StartupSourceType.RegistryRunOnce,
-            StartupEntryContext.CurrentUser,
-            result,
-            deadline);
-
-        ReadRegistrySource(
-            RegistryHive.LocalMachine,
-            RegistryView.Registry64,
-            RunPath,
-            StartupSourceType.RegistryRun,
-            StartupEntryContext.AllUsers,
-            result,
-            deadline);
-
-        ReadRegistrySource(
-            RegistryHive.LocalMachine,
-            RegistryView.Registry32,
-            RunPath,
-            StartupSourceType.RegistryRun,
-            StartupEntryContext.AllUsers,
-            result,
-            deadline);
-
-        ReadRegistrySource(
-            RegistryHive.LocalMachine,
-            RegistryView.Registry64,
-            RunOncePath,
-            StartupSourceType.RegistryRunOnce,
-            StartupEntryContext.AllUsers,
-            result,
-            deadline);
-
-        ReadRegistrySource(
-            RegistryHive.LocalMachine,
-            RegistryView.Registry32,
-            RunOncePath,
-            StartupSourceType.RegistryRunOnce,
-            StartupEntryContext.AllUsers,
-            result,
-            deadline);
+            foreach (var view in StartupApprovalReader.GetSourceViews(
+                         hive, Environment.Is64BitOperatingSystem))
+            {
+                ReadRegistrySource(hive, view, RunPath, StartupSourceType.RegistryRun,
+                    context, result, deadline);
+                ReadRegistrySource(hive, view, RunOncePath, StartupSourceType.RegistryRunOnce,
+                    context, result, deadline);
+            }
+        }
 
         result.Entries =
             RemoveExactSourceDuplicates(
@@ -166,7 +101,7 @@ public class StartupRegistrySourceReader
                 }
 
                 ReadRegistryEntry(
-                    baseKey,
+                    registryHive,
                     startupKey,
                     valueName,
                     registryView,
@@ -184,7 +119,7 @@ public class StartupRegistrySourceReader
     }
 
     private void ReadRegistryEntry(
-        RegistryKey baseKey,
+        RegistryHive registryHive,
         RegistryKey startupKey,
         string valueName,
         RegistryView registryView,
@@ -204,11 +139,8 @@ public class StartupRegistrySourceReader
                 ?? string.Empty;
 
             var state =
-                DetermineEntryState(
-                    baseKey,
-                    valueName,
-                    registryView,
-                    sourceType);
+                StartupApprovalReader.Read(
+                    registryHive, registryView, sourceType, valueName);
 
             var entry =
                 _commandAnalyzer.Analyze(
@@ -216,8 +148,7 @@ public class StartupRegistrySourceReader
                     command,
                     sourceType,
                     context,
-                    ConvertRegistryView(
-                        registryView),
+                    ConvertRegistryView(registryView, context),
                     state);
 
             result.Entries.Add(
@@ -231,63 +162,6 @@ public class StartupRegistrySourceReader
                     sourceType,
                     context,
                     registryView));
-        }
-    }
-
-    private static StartupEntryState DetermineEntryState(
-        RegistryKey baseKey,
-        string valueName,
-        RegistryView registryView,
-        StartupSourceType sourceType)
-    {
-        if (sourceType
-            == StartupSourceType.RegistryRunOnce)
-        {
-            return StartupEntryState.Enabled;
-        }
-
-        var startupApprovedPath =
-            registryView == RegistryView.Registry32
-                ? StartupApprovedRun32Path
-                : StartupApprovedRunPath;
-
-        try
-        {
-            using var startupApprovedKey =
-                baseKey.OpenSubKey(
-                    startupApprovedPath,
-                    writable: false);
-
-            if (startupApprovedKey is null)
-            {
-                return StartupEntryState.Enabled;
-            }
-
-            var stateValue =
-                startupApprovedKey.GetValue(
-                    valueName);
-
-            if (stateValue is not byte[] stateBytes
-                || stateBytes.Length == 0)
-            {
-                return StartupEntryState.Enabled;
-            }
-
-            return stateBytes[0] switch
-            {
-                0x02 =>
-                    StartupEntryState.Enabled,
-
-                0x03 =>
-                    StartupEntryState.Disabled,
-
-                _ =>
-                    StartupEntryState.Unknown
-            };
-        }
-        catch
-        {
-            return StartupEntryState.Unknown;
         }
     }
 
@@ -318,8 +192,7 @@ public class StartupRegistrySourceReader
                 context,
 
             RegistryView =
-                ConvertRegistryView(
-                    registryView),
+                ConvertRegistryView(registryView, context),
 
             State =
                 StartupEntryState.Unknown,
@@ -340,8 +213,11 @@ public class StartupRegistrySourceReader
     }
 
     private static StartupRegistryView ConvertRegistryView(
-        RegistryView registryView)
+        RegistryView registryView, StartupEntryContext context)
     {
+        if (context == StartupEntryContext.CurrentUser)
+            return StartupRegistryView.Shared;
+
         return registryView switch
         {
             RegistryView.Registry32 =>

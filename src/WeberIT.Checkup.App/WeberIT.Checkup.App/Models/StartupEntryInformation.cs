@@ -117,6 +117,9 @@ public class StartupEntryInformation
             StartupRegistryView.Registry64 =>
                 "64-Bit-Registryansicht",
 
+            StartupRegistryView.Shared =>
+                "Gemeinsamer Benutzer-Registryschlüssel",
+
             _ =>
                 "Nicht zutreffend"
         };
