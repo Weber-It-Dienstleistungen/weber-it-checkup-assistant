@@ -110,9 +110,12 @@ public sealed class CheckupCompletionCheckService
             sourceCheckup,
             verificationCheckup);
 
+        var visit = sourceCheckup.CurrentCustomerCheckupVisit;
         verificationCheckup.Assessment =
-            _checkupAssessmentService.Assess(
-                verificationCheckup);
+            visit is not null && !visit.IsCompletionPrepared
+                ? _checkupAssessmentService.AssessCompletion(
+                    verificationCheckup, sourceCheckup, visit, startedAt)
+                : _checkupAssessmentService.Assess(verificationCheckup);
 
         var currentTaskCodes =
             verificationCheckup.TaskList.Tasks
