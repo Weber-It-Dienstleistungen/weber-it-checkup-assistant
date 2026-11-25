@@ -1076,6 +1076,8 @@ public class CustomerDevicesViewModel : BaseViewModel
         if (!confirmed)
             return;
 
+        var scanStartedAt = DateTimeOffset.Now;
+
         var afterCheckup =
             await TryCreateCheckupSessionAsync(
                 "Abschlusskontrolle",
@@ -1142,6 +1144,12 @@ public class CustomerDevicesViewModel : BaseViewModel
 
         try
         {
+            // Erst nach erfolgreicher Geraeteidentifikation darf die
+            // Wartungshistorie in die Nachher-Bewertung einfließen.
+            afterCheckup.Assessment = _checkupAssessmentService.AssessCompletion(
+                afterCheckup, selectedDevice.CheckupSession,
+                currentVisit, scanStartedAt);
+
             comparison =
                 _customerCheckupComparisonService.Compare(
                     currentVisit,
