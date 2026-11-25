@@ -432,6 +432,11 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
         }
         catch (Exception exception)
         {
+            // Ein nicht untersuchbarer Unterordner kann einen ganzen
+            // unbekannten Teilbaum enthalten. Kein kompletter Nachweis.
+            if (entry.IsListedDirectory)
+                state.HadTraversalFailure = true;
+
             state.RecordEntryException(
                 exception,
                 allowDirectoryNotEmpty: false);
@@ -591,6 +596,7 @@ internal static class WindowsTemporaryFilesHandleCleanupEngine
 
         if (parentDepth >= MaximumDirectoryDepth)
         {
+            state.HadTraversalFailure = true;
             state.RecordSkip(
                 CleanupSkippedEntryReason.OtherSafetySkip);
 
