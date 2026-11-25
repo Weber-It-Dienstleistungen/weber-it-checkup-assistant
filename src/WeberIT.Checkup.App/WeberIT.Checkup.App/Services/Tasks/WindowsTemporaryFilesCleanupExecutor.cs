@@ -31,8 +31,9 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 /// Kein automatischer Wiederanlauf.
 ///
 /// WICHTIG:
-/// Die allgemeine Produktivfreigabe bleibt
-/// ausdrücklich deaktiviert.
+/// Die kontrollierte Produktivfreigabe ist
+/// ab Sprint 55.14.49 aktiviert. Die echte
+/// WPF-Anwendung bleibt zwingende Voraussetzung.
 ///
 /// Für einen beaufsichtigten Echt-Test
 /// existiert eine zusätzliche Freigabe,
@@ -60,18 +61,13 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
     // =============================================
 
     /*
-     * Diese allgemeine Freigabesperre bleibt
-     * ausdrücklich geschlossen.
-     *
-     * Sie darf erst nach abgeschlossener
-     * Produktivbewertung bewusst geändert
-     * werden.
-     *
-     * Unsere bestehenden Regressionstests
-     * überwachen weiterhin diesen Wert.
+     * Bewusste Freigabe nach 134 bestandenen
+     * Sicherheits- und Regressionstests.
+     * Der SandboxTestRunner bleibt ausgeschlossen.
+     * Bei einer Rücknahme der Freigabe auf false setzen.
      */
     private static readonly bool HandleCleanupReleaseApproved =
-        false;
+        true;
 
     // =============================================
     // BEAUFSICHTIGTER DEBUG-ECHT-TEST
@@ -240,7 +236,7 @@ public sealed class WindowsTemporaryFilesCleanupExecutor
          * Zwei strikt getrennte Wege:
          *
          * 1. Allgemeine Produktivfreigabe.
-         *    Diese bleibt geschlossen.
+         *    Diese setzt die echte WPF-Anwendung voraus.
          *
          * 2. Beaufsichtigter Debug-Echt-Test.
          *    Nur mit aktivem Debugger und
