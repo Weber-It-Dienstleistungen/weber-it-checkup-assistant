@@ -14,7 +14,7 @@ namespace WeberIT.Checkup.App.Views.Dialogs;
 /// Bereinigungsaktionen.
 ///
 /// Windows-Temp:
-/// - Beaufsichtigten Debug-Echt-Test anzeigen.
+/// - Aktuellen Freigabestatus anzeigen.
 /// - Tatsächliche Löschwirkung klar benennen.
 /// - Keine zusätzliche UAC-Abfrage behaupten.
 /// - Scanwerte als Momentaufnahme kennzeichnen.
@@ -136,8 +136,9 @@ public partial class CleanupActionPlanPreviewDialog : Window
                 ApplyWindowsTempTrialNotice();
 
                 FooterStatusTextBlock.Text =
-                    "Debug-Echt-Test: Administratorrechte "
-                    + "bereits beim Programmstart erforderlich";
+                    (WindowsTemporaryFilesCleanupExecutor.IsProductionReleaseApproved
+                        ? "" : "Debug-Echt-Test: ")
+                    + "Administratorrechte bereits beim Programmstart erforderlich";
             }
             else if (_isBrowserCachePlan)
             {
@@ -209,8 +210,11 @@ public partial class CleanupActionPlanPreviewDialog : Window
             return;
         }
 
-        noticeTitle.Text =
-            "Beaufsichtigter Windows-Temp-Echt-Test";
+        var productionApproved =
+            WindowsTemporaryFilesCleanupExecutor.IsProductionReleaseApproved;
+        noticeTitle.Text = productionApproved
+            ? "Kontrollierte Windows-Temp-Bereinigung"
+            : "Beaufsichtigter Windows-Temp-Echt-Test";
 
         noticeDescription.Text =
             "ACHTUNG: Dies ist keine Simulation. "
@@ -218,11 +222,11 @@ public partial class CleanupActionPlanPreviewDialog : Window
             + "führt der Checkup Assistent echte "
             + "Löschoperationen im lokalen "
             + "Windows-Temp-Verzeichnis aus. "
-            + "Die allgemeine Produktivfreigabe "
-            + "bleibt geschlossen. "
-            + "Diese Ausführung ist ausschließlich "
-            + "in der aktuell zugelassenen "
-            + "Debug-Sitzung möglich.";
+            + (productionApproved
+                ? "Gelöschte Dateien werden nicht automatisch wiederhergestellt."
+                : "Die allgemeine Produktivfreigabe bleibt geschlossen. "
+                    + "Diese Ausführung ist ausschließlich in der aktuell "
+                    + "zugelassenen Debug-Sitzung möglich.");
     }
 
     // =============================================
@@ -268,16 +272,15 @@ public partial class CleanupActionPlanPreviewDialog : Window
                 + "wiederhergestellt.");
 
             AddExecutionWarning(
-                "Administratorrechte und Testbedingungen",
+                "Administratorrechte und Ausführungsbedingungen",
                 "Die Anwendung fordert Administratorrechte "
                 + "gemäß ihrem Manifest bereits beim "
                 + "Programmstart an. "
                 + "Beim Start dieser Bereinigung erfolgt "
                 + "keine zusätzliche UAC-Abfrage. "
-                + "Der Test sollte nur bei inaktiven "
-                + "Windows-Updates und Installationen "
-                + "sowie mit geeigneter Systemsicherung "
-                + "ausgeführt werden.");
+                + "Führen Sie die Bereinigung nur bei inaktiven "
+                + "Windows-Updates und Installationen sowie mit geeigneter "
+                + "Systemsicherung aus.");
         }
     }
 
