@@ -96,6 +96,11 @@ public static class CustomerCheckupCustomerSummaryRegressionTests
         Execute("Offene Aufgaben und manuell erledigte Aufgaben getrennt halten",
             TestTaskStatusSeparation, results);
 
+        Execute("Akzeptiertes Risiko bleibt Befund und wird nicht als behoben gezählt",
+            TestRiskAcceptedSummary, results);
+        Execute("Nur eindeutig erfolgreiche WinGet-Protokolle komprimieren",
+            TestCompactProgramActions, results);
+
         return
             $"Alle {results.Count} Tests zur "
             + "Kundenzusammenfassung erfolgreich."
@@ -104,6 +109,50 @@ public static class CustomerCheckupCustomerSummaryRegressionTests
             + string.Join(
                 Environment.NewLine,
                 results);
+    }
+
+    private static void TestRiskAcceptedSummary()
+    {
+        var comparison = CreateComparison();
+        comparison.AfterScoringVersion = 4;
+        comparison.Findings.Add(new CustomerCheckupFindingComparison
+        {
+            Code = "system.security.mobile-drive-not-encrypted",
+            Title = "Laufwerksverschlüsselung",
+            Status = CustomerCheckupFindingComparisonStatus.StillOpen,
+            AfterSeverity = FindingSeverity.Recommendation,
+            IsCustomerRiskAccepted = true
+        });
+        var summary = CustomerCheckupCustomerSummary.Create(comparison);
+        Require(summary.OpenFindingCount == 0 && summary.ResolvedFindingCount == 0,
+            "Bewusste Risikoakzeptanz darf nicht als Reparatur erscheinen.");
+        RequireContains(summary.RecommendationText, "bewusst akzeptierte");
+        RequireContains(summary.RecommendationText, "ohne Punktabzug");
+        Require(comparison.StillOpenFindingCount == 1,
+            "Der technische Befund muss weiterhin gezählt werden.");
+    }
+
+    private static void TestCompactProgramActions()
+    {
+        var action = CreateAction(ProgramUpdates, CheckupTaskActionStatus.Successful);
+        action.StartedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+        action.FinishedAt = DateTimeOffset.UtcNow;
+        action.TargetDescription = "• Test (Example.Test): 1 → 2";
+        action.Details = "winget.exe upgrade --id Example.Test --version 2 --source winget --exact"
+            + Environment.NewLine + "Gestartet: Ja" + Environment.NewLine + "Exitcode: 0";
+        Require(CustomerCheckupPdfReportService.CanSummarizeProgramAction(action),
+            "Eindeutiges Erfolgsprotokoll sollte komprimiert werden.");
+        action.RestartRequired = true;
+        Require(!CustomerCheckupPdfReportService.CanSummarizeProgramAction(action),
+            "Neustarthinweise müssen einzeln dokumentiert bleiben.");
+        action.RestartRequired = false;
+        action.Status = CheckupTaskActionStatus.Failed;
+        Require(!CustomerCheckupPdfReportService.CanSummarizeProgramAction(action),
+            "Fehlerprotokolle müssen vollständig ausgegeben werden.");
+        action.Status = CheckupTaskActionStatus.Successful;
+        action.Details = string.Empty;
+        Require(!CustomerCheckupPdfReportService.CanSummarizeProgramAction(action),
+            "Unvollständige Protokolle dürfen nicht entfallen.");
     }
 
     private static void TestLaptopMaintenance()

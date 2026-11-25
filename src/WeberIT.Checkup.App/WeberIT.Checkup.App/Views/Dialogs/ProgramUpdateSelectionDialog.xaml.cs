@@ -282,6 +282,13 @@ public partial class ProgramUpdateSelectionDialog :
 
         if (reviewCount > 0)
         {
+            var reviewNames = statuses
+                .Where(status => status.State == ProgramUpdatePackageWorkState.NeedsReview)
+                .Take(5)
+                .Select(status => string.IsNullOrWhiteSpace(status.Update.Name)
+                    ? status.Update.PackageId : status.Update.Name);
+            messages.Add("Manuell prüfen: " + string.Join(", ", reviewNames)
+                + (reviewCount > 5 ? " und weitere." : "."));
             messages.Add(
                 reviewCount == 1
                     ? "Ein Paket besitzt ein unklar "

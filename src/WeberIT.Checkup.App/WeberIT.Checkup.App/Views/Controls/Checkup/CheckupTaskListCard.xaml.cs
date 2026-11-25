@@ -56,6 +56,7 @@ public partial class CheckupTaskListCard : UserControl
         RoutedEventArgs e)
     {
         EnsureStandardCustomerCheckupTasks();
+        VerifyPendingControlledRestartOnOpen();
     }
 
     private void CheckupTaskListCard_OnDataContextChanged(
@@ -68,6 +69,7 @@ public partial class CheckupTaskListCard : UserControl
         }
 
         EnsureStandardCustomerCheckupTasks();
+        VerifyPendingControlledRestartOnOpen();
     }
 
     private void EnsureStandardCustomerCheckupTasks()

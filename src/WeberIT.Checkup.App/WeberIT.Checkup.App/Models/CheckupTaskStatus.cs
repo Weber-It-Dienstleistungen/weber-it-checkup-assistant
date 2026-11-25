@@ -5,5 +5,6 @@ public enum CheckupTaskStatus
     Open,
     Completed,
     Skipped,
-    NotFeasible
+    NotFeasible,
+    RiskAccepted
 }

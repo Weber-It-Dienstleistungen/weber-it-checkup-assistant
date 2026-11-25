@@ -79,6 +79,13 @@ public partial class CheckupTaskListCard
             return;
         }
 
+        if (task.TaskCode == ControlledRestartEvidencePolicy.TaskCode
+            && CheckupSession.HasInProgressCustomerCheckupVisit)
+        {
+            await RunControlledRestartAsync(task, interactive: true);
+            return;
+        }
+
         // =============================================
         // WARTUNGSAKTIONEN
         // =============================================
@@ -134,7 +141,12 @@ public partial class CheckupTaskListCard
         var detailsDialog =
             new TaskActionDetailsDialog(
                 definition,
-                allowStatusDecision: true)
+                allowStatusDecision: true,
+                allowRiskAcceptance:
+                    CheckupSession.CurrentCustomerCheckupVisit is { IsInProgress: true,
+                        IsCompletionPrepared: false } currentVisit
+                    && currentVisit.BeforeCheckup.Assessment.ScoringVersion == 4
+                    && CheckupRiskAcceptancePolicy.CanAccept(task))
             {
                 Owner =
                     Window.GetWindow(this)

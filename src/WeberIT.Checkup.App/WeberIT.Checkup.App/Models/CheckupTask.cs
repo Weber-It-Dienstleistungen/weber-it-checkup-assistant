@@ -279,6 +279,9 @@ public class CheckupTask : INotifyPropertyChanged
             CheckupTaskStatus.NotFeasible =>
                 "Nicht durchführbar",
 
+            CheckupTaskStatus.RiskAccepted =>
+                "Risiko bewusst akzeptiert",
+
             _ =>
                 "Offen"
         };
@@ -338,6 +341,13 @@ public class CheckupTask : INotifyPropertyChanged
                 "Für eine Statusänderung ist eine "
                 + "Begründung erforderlich.",
                 nameof(statusReason));
+        }
+
+        if (status == CheckupTaskStatus.RiskAccepted
+            && !CheckupRiskAcceptancePolicy.CanAccept(this))
+        {
+            throw new InvalidOperationException(
+                "Dieser Befund ist nicht zur bewussten Risikoakzeptanz freigegeben.");
         }
 
         Status =

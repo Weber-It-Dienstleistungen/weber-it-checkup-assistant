@@ -44,7 +44,7 @@ public class CheckupAssessmentService :
      */
     // Version 3 beruecksichtigt nachgewiesenen Cleanup-Arbeitsabschluss.
     // Laufende V2-Vorgaenge behalten die unveraenderte V2-Bewertung.
-    private const int CurrentScoringVersion = 3;
+    private const int CurrentScoringVersion = 4;
 
     private readonly IEnumerable<ICheckupAssessmentRule>
         _assessmentRules;
@@ -75,7 +75,8 @@ public class CheckupAssessmentService :
     public CheckupAssessment Assess(
         CheckupSession checkupSession)
     {
-        return AssessCore(checkupSession, CurrentScoringVersion, null);
+        return AssessCore(checkupSession, CurrentScoringVersion, null,
+            includeRoutineCleanup: true);
     }
 
     public CheckupAssessment AssessCompletion(
@@ -106,7 +107,7 @@ public class CheckupAssessmentService :
         if (beforeVersion == 2)
             return AssessCore(afterCheckup, 2, null);
 
-        ulong? relevantBytes = beforeVersion == CurrentScoringVersion
+        ulong? relevantBytes = beforeVersion is 3 or 4
             ? CleanupScorePotentialService.GetScoreRelevantSafePotentialBytes(
                 afterCheckup.CleanupPotentialInformation,
                 workingCheckup.TaskList,
@@ -115,7 +116,13 @@ public class CheckupAssessmentService :
                 scanStartedAt)
             : null;
 
-        return AssessCore(afterCheckup, CurrentScoringVersion, relevantBytes);
+        var version = beforeVersion == 3 ? 3 : CurrentScoringVersion;
+        return AssessCore(afterCheckup, version, relevantBytes,
+            acceptRisk: beforeVersion == 4
+                ? finding => CheckupRiskAcceptancePolicy.IsAcceptedForFinding(
+                    finding, workingCheckup.TaskList, visit.BeforeCheckup.TaskList,
+                    ToOffset(entranceDate), scanStartedAt)
+                : null);
     }
 
     private static DateTimeOffset ToOffset(DateTime value) =>
@@ -126,7 +133,9 @@ public class CheckupAssessmentService :
     private CheckupAssessment AssessCore(
         CheckupSession checkupSession,
         int scoringVersion,
-        ulong? relevantCleanupBytes)
+        ulong? relevantCleanupBytes,
+        bool includeRoutineCleanup = false,
+        Func<CheckupFinding, bool>? acceptRisk = null)
     {
         var assessment =
             new CheckupAssessment
@@ -147,28 +156,45 @@ public class CheckupAssessmentService :
                     : assessmentRule.Evaluate(checkupSession));
         }
 
+        foreach (var finding in assessment.Findings)
+            finding.IsCustomerRiskAccepted = scoringVersion == 4
+                && acceptRisk is not null && acceptRisk(finding);
+
+        var scoreFindings = assessment.Findings
+            .Where(finding => !finding.IsCustomerRiskAccepted).ToList();
+
         assessment.SystemCondition =
             _systemConditionAssessmentService.Assess(
                 checkupSession,
-                assessment.Findings);
+                scoreFindings);
 
         var hardwareAssessment =
             _hardwareConditionAssessmentService.Assess(
                 checkupSession,
-                assessment.Findings);
+                scoreFindings);
+
+        // Hardwareplanung beschreibt weiterhin den technischen Istzustand.
+        var hardwarePlanning = scoreFindings.Count == assessment.Findings.Count
+            ? hardwareAssessment
+            : _hardwareConditionAssessmentService.Assess(checkupSession, assessment.Findings);
 
         assessment.HardwareCondition =
             hardwareAssessment.Condition;
 
         assessment.HardwarePlanningHorizon =
-            hardwareAssessment.PlanningHorizon;
+            hardwarePlanning.PlanningHorizon;
 
         assessment.HardwarePlanningSummary =
-            hardwareAssessment.PlanningSummary;
+            hardwarePlanning.PlanningSummary;
 
         checkupSession.TaskList =
             CheckupTaskGenerator.Generate(
-                assessment.Findings);
+                assessment.Findings,
+                includeRoutineCleanup && scoringVersion == 4
+                    && checkupSession.CleanupPotentialInformation.AnalysisDate.HasValue
+                    && checkupSession.CleanupPotentialInformation.AnalysisStatus
+                        != CleanupMeasurementStatus.NotAnalyzed
+                    && !string.IsNullOrWhiteSpace(checkupSession.CleanupPotentialInformation.TargetVolume));
 
         return assessment;
     }

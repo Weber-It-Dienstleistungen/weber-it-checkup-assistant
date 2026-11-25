@@ -4,6 +4,7 @@ using System.Security.Principal;
 using WeberIT.Checkup.App.Services.Cleanup;
 using WeberIT.Checkup.App.Services.Reports;
 using WeberIT.Checkup.App.Services.Tasks;
+using WeberIT.Checkup.App.Services.Updates;
 
 namespace WeberIT.Checkup.SandboxTestRunner;
 
@@ -12,7 +13,7 @@ namespace WeberIT.Checkup.SandboxTestRunner;
 ///
 /// Eigenständiger C#-Sandbox-TestRunner.
 ///
-/// 134 aktive Sicherheits- und Regressionstests:
+/// 158 aktive Sicherheits- und Regressionstests:
 ///
 /// - 56 Windows-Temp-Sicherheitstests.
 /// - 13 Bereinigungs-Zwischenprüfungstests.
@@ -317,6 +318,10 @@ internal static class Program
                 "TESTBLOCK 17 - KUNDENZUSAMMENFASSUNG",
                 CustomerCheckupCustomerSummaryRegressionTests.RunAll);
 
+            RunTestBlock(
+                "TESTBLOCK 18 - WINGET-PAKETSTATUS",
+                ProgramUpdatePackageWorkStatusRegressionTests.RunAll);
+
             // =================================
             // GESAMTERGEBNIS
             // =================================
@@ -325,7 +330,7 @@ internal static class Program
                 "========================================");
 
             Console.WriteLine(
-                " ERGEBNIS: ALLE 134 TESTS BESTANDEN");
+                " ERGEBNIS: ALLE 158 TESTS BESTANDEN");
 
             Console.WriteLine(
                 "========================================");

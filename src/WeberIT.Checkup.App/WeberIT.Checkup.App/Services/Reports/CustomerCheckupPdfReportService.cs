@@ -637,8 +637,9 @@ public sealed class CustomerCheckupPdfReportService :
                 CustomerCheckupReportWording
                     .GetFindingPriorityText(severity),
                 SafeText(finding.Title),
-                CustomerCheckupReportWording
-                    .GetFindingStatusText(finding.Status));
+                finding.IsCustomerRiskAccepted
+                    ? "Risiko akzeptiert"
+                    : CustomerCheckupReportWording.GetFindingStatusText(finding.Status));
 
             row.Cells[0].Format.Font.Color =
                 GetSeverityColor(severity);
@@ -1386,6 +1387,23 @@ public sealed class CustomerCheckupPdfReportService :
     // DOKUMENTIERTE WARTUNGSAKTIONEN
     // ===========================================
 
+    internal static bool CanSummarizeProgramAction(CustomerCheckupActionSummary action)
+    {
+        if (!IsProgramUpdateAction(action)
+            || action.Status != CheckupTaskActionStatus.Successful
+            || action.RestartRequired || !action.RestartStatusWasConclusive
+            || !action.StartedAt.HasValue || !action.FinishedAt.HasValue
+            || action.FinishedAt.Value < action.StartedAt.Value)
+            return false;
+
+        var overview = CustomerCheckupProgramUpdateExecutionReport.Create(new[] { action });
+        return overview.HasEntries && overview.Entries.All(entry =>
+            entry.Status == CustomerCheckupProgramUpdateExecutionStatus.TechnicallySuccessful
+            && entry.RecordedCommandCount > 0
+            && entry.SuccessfulCommandCount == entry.RecordedCommandCount
+            && entry.FailedCommandCount == 0);
+    }
+
     private static void AddActions(
         Section section,
         CustomerCheckupComparison comparison)
@@ -1447,8 +1465,21 @@ public sealed class CustomerCheckupPdfReportService :
             section,
             programUpdateOverview);
 
+        var compactProgramActions = actions.Where(CanSummarizeProgramAction).ToHashSet();
+        if (compactProgramActions.Count > 0)
+        {
+            var compactNote = section.AddParagraph(
+                $"{compactProgramActions.Count} vollständig erfolgreiche WinGet-Aktionsprotokolle "
+                + "ohne besonderen Neustarthinweis sind in der Paketübersicht zusammengefasst. "
+                + "Die Einzelprotokolle bleiben im Checkup gespeichert.");
+            compactNote.Format.SpaceAfter = Unit.FromPoint(7);
+        }
+
         foreach (var action in actions)
         {
+            if (compactProgramActions.Contains(action))
+                continue;
+
             var isProgramUpdate =
                 IsProgramUpdateAction(action);
 
@@ -1734,7 +1765,9 @@ public sealed class CustomerCheckupPdfReportService :
                 table,
                 SafeText(finding.Title),
                 GetSeverityText(severity),
-                GetFindingStatusText(finding.Status),
+                finding.IsCustomerRiskAccepted
+                    ? "Risiko akzeptiert – Befund besteht"
+                    : GetFindingStatusText(finding.Status),
                 SafeText(
                     finding.AfterDescription,
                     finding.BeforeDescription));
@@ -2586,6 +2619,9 @@ public sealed class CustomerCheckupPdfReportService :
 
             CustomerCheckupTaskComparisonStatus.NoLongerDetected =>
                 "Abgeschlossen – Befund nicht mehr erkannt",
+
+            CustomerCheckupTaskComparisonStatus.RiskAccepted =>
+                "Risiko bewusst akzeptiert",
 
             CustomerCheckupTaskComparisonStatus.Skipped =>
                 "Übersprungen",

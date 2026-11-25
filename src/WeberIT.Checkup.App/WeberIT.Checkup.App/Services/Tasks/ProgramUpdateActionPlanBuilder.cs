@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using WeberIT.Checkup.App.Models;
 using WeberIT.Checkup.App.Services.Interfaces;
+using WeberIT.Checkup.App.Services.Updates;
 
 namespace WeberIT.Checkup.App.Services.Tasks;
 
@@ -38,6 +39,18 @@ public sealed class ProgramUpdateActionPlanBuilder :
             ResolveSelectedUpdates(
                 programUpdateInformation,
                 selections);
+
+        var statuses = ProgramUpdatePackageWorkStatusService.Evaluate(
+            programUpdateInformation, new CheckupTaskList { Tasks = new List<CheckupTask> { task } });
+        if (selectedUpdates.Any(update => !statuses.Any(status =>
+                status.CanOfferInstallation
+                && string.Equals(status.Update.PackageId, update.PackageId, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(status.Update.Source, update.Source, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(status.Update.AvailableVersion, update.AvailableVersion, StringComparison.OrdinalIgnoreCase))))
+        {
+            throw new InvalidOperationException(
+                "Mindestens ein Paket erfordert eine manuelle Prüfung. Dieselbe bereits erfolgreich ausgeführte Zielversion darf nicht erneut installiert werden.");
+        }
 
         var actionDefinition =
             CheckupTaskActionCatalog.GetDefinition(

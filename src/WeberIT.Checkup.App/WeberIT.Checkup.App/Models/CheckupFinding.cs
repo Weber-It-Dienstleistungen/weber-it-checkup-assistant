@@ -15,6 +15,9 @@ public class CheckupFinding
 
     public FindingSeverity Severity { get; set; }
 
+    // V4: Tatsächlicher Befund bleibt erhalten; nur der Sollzustand wird entlastet.
+    public bool IsCustomerRiskAccepted { get; set; }
+
     public FindingAssessmentTarget AssessmentTarget
     {
         get;

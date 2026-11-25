@@ -141,7 +141,8 @@ public static class ProgramUpdatePackageWorkStatusService
             statuses.Add(
                 CreateWorkStatus(
                     update,
-                    latestAttempt));
+                    latestAttempt,
+                    analysisAt));
         }
 
         return statuses;
@@ -150,7 +151,8 @@ public static class ProgramUpdatePackageWorkStatusService
     private static ProgramUpdatePackageWorkStatus
         CreateWorkStatus(
             AvailableProgramUpdate update,
-            ProgramUpdateCommandAttempt? attempt)
+            ProgramUpdateCommandAttempt? attempt,
+            DateTimeOffset analysisAt)
     {
         if (attempt is null)
         {
@@ -189,6 +191,17 @@ public static class ProgramUpdatePackageWorkStatusService
         if (attempt.WasStarted == true
             && attempt.ExitCode == 0)
         {
+            if (attempt.ActionAt <= analysisAt || attempt.StartedBeforeAnalysis)
+            {
+                return new ProgramUpdatePackageWorkStatus
+                {
+                    Update = update,
+                    State = ProgramUpdatePackageWorkState.NeedsReview,
+                    LastExitCode = 0,
+                    Explanation = "WinGet meldete Erfolg, der erneute Scan führt dieselbe Zielversion aber weiterhin auf. Nicht erneut installieren; installierte Version manuell prüfen und bei Bedarf manuell aktualisieren."
+                };
+            }
+
             return new ProgramUpdatePackageWorkStatus
             {
                 Update = update,
@@ -314,8 +327,7 @@ public static class ProgramUpdatePackageWorkStatusService
                     action.FinishedAt
                     ?? action.StartedAt;
 
-                if (!actionAt.HasValue
-                    || actionAt.Value <= analysisAt)
+                if (!actionAt.HasValue)
                 {
                     continue;
                 }
@@ -326,21 +338,23 @@ public static class ProgramUpdatePackageWorkStatusService
                  * vollständig nach der Analyse
                  * gestartet worden.
                  */
-                if (action.StartedAt.HasValue
-                    && action.StartedAt.Value
-                        <= analysisAt)
-                {
-                    continue;
-                }
+                var startedBeforeAnalysis = action.StartedAt.HasValue
+                    && action.StartedAt.Value <= analysisAt;
 
                 var parsedAttempts =
                     ParseActionDetails(
                         action.Details,
                         actionAt.Value,
                         action.FinishedAt.HasValue,
-                        actionOrder);
+                        actionOrder,
+                        startedBeforeAnalysis);
 
-                attempts.AddRange(parsedAttempts);
+                // Ein aelterer Erfolg dient nur als Wiederholungsschutz,
+                // nie als Beweis, dass ein neuer Befund behoben wurde.
+                attempts.AddRange(parsedAttempts.Where(attempt =>
+                    (actionAt.Value > analysisAt && !startedBeforeAnalysis)
+                    || (attempt.HasConclusiveTimestamp
+                        && attempt.WasStarted == true && attempt.ExitCode == 0)));
             }
         }
 
@@ -367,7 +381,8 @@ public static class ProgramUpdatePackageWorkStatusService
             string? details,
             DateTimeOffset actionAt,
             bool hasConclusiveTimestamp,
-            int actionOrder)
+            int actionOrder,
+            bool startedBeforeAnalysis)
     {
         var attempts =
             new List<ProgramUpdateCommandAttempt>();
@@ -490,7 +505,8 @@ public static class ProgramUpdatePackageWorkStatusService
                         hasConclusiveTimestamp,
 
                     ActionOrder = actionOrder,
-                    CommandOrder = commandOrder
+                    CommandOrder = commandOrder,
+                    StartedBeforeAnalysis = startedBeforeAnalysis
                 });
         }
 
@@ -554,6 +570,8 @@ public static class ProgramUpdatePackageWorkStatusService
             get;
             init;
         }
+
+        public bool StartedBeforeAnalysis { get; init; }
 
         public int ActionOrder { get; init; }
 

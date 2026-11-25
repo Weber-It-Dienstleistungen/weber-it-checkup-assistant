@@ -158,8 +158,7 @@ public sealed class CustomerCheckupCustomerSummary
                    + "abschließend bestätigt werden.";
         }
 
-        if (comparison.StillOpenFindingCount > 0
-            || comparison.NewlyDetectedFindingCount > 0)
+        if (findings.Any(IsConfirmedOpen))
         {
             return "Der Rechner wurde überprüft. "
                    + "Einige Empfehlungen sind "
@@ -182,6 +181,9 @@ public sealed class CustomerCheckupCustomerSummary
                    + "konnten jedoch nicht vollständig "
                    + "abgeschlossen werden.";
         }
+
+        if (findings.Any(finding => finding.IsCustomerRiskAccepted))
+            return "In den überprüfbaren Bereichen wurden keine weiteren offenen Empfehlungen festgestellt. Bewusst akzeptierte Risiken bleiben technisch bestehen.";
 
         return "Bei der Abschlusskontrolle wurden "
                + "keine offenen technischen Probleme festgestellt.";
@@ -654,6 +656,10 @@ public sealed class CustomerCheckupCustomerSummary
             .Where(IsConfirmedOpen)
             .ToList();
 
+        var acceptedCount = findings.Count(finding => finding.IsCustomerRiskAccepted);
+        var acceptedText = acceptedCount == 0 ? string.Empty
+            : $"{acceptedCount} bewusst akzeptierte Empfehlung(en) bleiben technisch bestehen und sind in der Sollzustandsbewertung ohne Punktabzug berücksichtigt.";
+
         var uncertainCount = findings.Count(finding =>
             finding.Status ==
             CustomerCheckupFindingComparisonStatus.NotReevaluatable);
@@ -661,7 +667,8 @@ public sealed class CustomerCheckupCustomerSummary
         if (openFindings.Count == 0
             && uncertainCount == 0)
         {
-            return "Aus der Abschlusskontrolle ergeben "
+            return acceptedCount > 0 ? acceptedText
+                : "Aus der Abschlusskontrolle ergeben "
                    + "sich derzeit keine offenen "
                    + "technischen Befundempfehlungen.";
         }
@@ -743,6 +750,9 @@ public sealed class CustomerCheckupCustomerSummary
                       + "nicht zuverlässig überprüft werden.");
         }
 
+        if (acceptedCount > 0)
+            parts.Add(acceptedText);
+
         return string.Join(" ", parts);
     }
 
@@ -813,9 +823,9 @@ public sealed class CustomerCheckupCustomerSummary
     private static bool IsConfirmedOpen(
         CustomerCheckupFindingComparison finding)
     {
-        return finding.Status is
+        return !finding.IsCustomerRiskAccepted && (finding.Status is
             CustomerCheckupFindingComparisonStatus.StillOpen
-            or CustomerCheckupFindingComparisonStatus.NewlyDetected;
+            or CustomerCheckupFindingComparisonStatus.NewlyDetected);
     }
 
     private static bool IsCurrentlyOpen(

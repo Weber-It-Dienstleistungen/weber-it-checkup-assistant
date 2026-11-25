@@ -6,7 +6,8 @@ namespace WeberIT.Checkup.App.Services.Tasks;
 public static class CheckupTaskGenerator
 {
     public static CheckupTaskList Generate(
-        IReadOnlyCollection<CheckupFinding> findings)
+        IReadOnlyCollection<CheckupFinding> findings,
+        bool includeRoutineCleanup = false)
     {
         ArgumentNullException.ThrowIfNull(
             findings);
@@ -57,6 +58,23 @@ public static class CheckupTaskGenerator
 
             tasks.Add(
                 standardTask);
+        }
+
+        if (includeRoutineCleanup && !tasks.Any(task =>
+                task.TaskCode is "task.storage.controlled-cleanup"
+                    or "task.storage.restore-system-volume-capacity"))
+        {
+            tasks.Add(new CheckupTask
+            {
+                TaskCode = "task.storage.controlled-cleanup",
+                SourceCauseGroup = "system.cleanup.routine",
+                Title = "Kontrollierte Bereinigung prüfen",
+                Description = "Sichere Bereinigungskategorien zum Ende der Wartung prüfen und bei Bedarf einzeln ausführen. Auch bei geringem Eingangspotenzial können während der Wartung neue Dateien entstehen.",
+                Priority = CheckupTaskPriority.Optional,
+                Category = CheckupTaskCategory.Storage,
+                Status = CheckupTaskStatus.Open,
+                CreatedAt = createdAt
+            });
         }
 
         tasks =

@@ -512,6 +512,9 @@ public sealed class CustomerCheckupComparisonService :
                                 ?? string.Empty,
             AfterDescription = afterRepresentative?.Description
                                ?? string.Empty,
+            IsCustomerRiskAccepted = afterEvaluation.IsEvaluable
+                && afterFindings.Count > 0
+                && afterFindings.All(item => item.IsCustomerRiskAccepted),
             Category = representative.Category,
             AssessmentTarget = representative.AssessmentTarget,
             BeforeSeverity = beforeRepresentative?.Severity,
@@ -623,9 +626,12 @@ public sealed class CustomerCheckupComparisonService :
 
         var isRecurringMaintenanceTask =
             sourceFindingCodes.Count == 0
-            && StartsWithCode(
-                representative.TaskCode,
-                "task.maintenance.");
+            && (StartsWithCode(representative.TaskCode, "task.maintenance.")
+                || (representative.TaskCode == "task.storage.controlled-cleanup"
+                    && afterTasks.Count == 0
+                    && !actionResults.Any(action =>
+                        action.CleanupExecutionResult?.IsWorkCompleted == true
+                        && action.Status == CheckupTaskActionStatus.Successful)));
 
         var isAfterEvaluable = area.Evaluate(afterCheckup).IsEvaluable;
         var status = DetermineTaskStatus(
@@ -675,6 +681,11 @@ public sealed class CustomerCheckupComparisonService :
             return isRecurringMaintenanceTask
                 ? CustomerCheckupTaskComparisonStatus.StillOpen
                 : CustomerCheckupTaskComparisonStatus.NewlyDetected;
+        }
+
+        if (sourceTask.Status == CheckupTaskStatus.RiskAccepted)
+        {
+            return CustomerCheckupTaskComparisonStatus.RiskAccepted;
         }
 
         if (sourceTask.Status == CheckupTaskStatus.Skipped)

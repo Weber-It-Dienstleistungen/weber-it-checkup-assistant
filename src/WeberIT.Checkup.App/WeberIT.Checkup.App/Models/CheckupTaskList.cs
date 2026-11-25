@@ -71,6 +71,10 @@ public class CheckupTaskList : INotifyPropertyChanged
                 == CheckupTaskStatus.Skipped);
 
     [JsonIgnore]
+    public int RiskAcceptedTaskCount =>
+        Tasks.Count(task => task.Status == CheckupTaskStatus.RiskAccepted);
+
+    [JsonIgnore]
     public int NotFeasibleTaskCount =>
         Tasks.Count(
             task =>
@@ -179,7 +183,8 @@ public class CheckupTaskList : INotifyPropertyChanged
                     task =>
                         task.Status
                             is CheckupTaskStatus.Skipped
-                            or CheckupTaskStatus.NotFeasible)
+                            or CheckupTaskStatus.NotFeasible
+                            or CheckupTaskStatus.RiskAccepted)
                 .ToList();
 
     [JsonIgnore]
@@ -192,7 +197,8 @@ public class CheckupTaskList : INotifyPropertyChanged
             task =>
                 task.Status
                     is CheckupTaskStatus.Skipped
-                    or CheckupTaskStatus.NotFeasible);
+                    or CheckupTaskStatus.NotFeasible
+                            or CheckupTaskStatus.RiskAccepted);
 
     [JsonIgnore]
     public int ProcessedTaskCount =>
@@ -270,6 +276,11 @@ public class CheckupTaskList : INotifyPropertyChanged
                         ? "1 nicht durchführbar"
                         : $"{NotFeasibleTaskCount} "
                           + "nicht durchführbar");
+            }
+
+            if (RiskAcceptedTaskCount > 0)
+            {
+                parts.Add($"{RiskAcceptedTaskCount} bewusst akzeptiert");
             }
 
             if (SkippedTaskCount > 0)
@@ -907,6 +918,8 @@ public class CheckupTaskList : INotifyPropertyChanged
             || string.Equals(
                 task.TaskCode,
                 "task.storage.restore-system-volume-capacity",
+                StringComparison.Ordinal)
+            || string.Equals(task.TaskCode, "task.restart.perform-controlled-restart",
                 StringComparison.Ordinal))
         {
             return true;
@@ -923,6 +936,10 @@ public class CheckupTaskList : INotifyPropertyChanged
     private bool IsTaskAwaitingVerificationCore(
         CheckupTask task)
     {
+        // Der Neustart besitzt eine eigene Bootzeit- und Bedarfspruefung.
+        if (task.TaskCode == "task.restart.perform-controlled-restart")
+            return false;
+
         if (task.Status
             != CheckupTaskStatus.Open)
         {
@@ -1232,8 +1249,13 @@ public class CheckupTaskList : INotifyPropertyChanged
                 nameof(actionResult));
         }
 
-        if (actionResult.Status
-            == CheckupTaskActionStatus.Unknown)
+        if (actionResult.Status == CheckupTaskActionStatus.Unknown
+            && !(actionResult.ActionCode == "action.restart.controlled-request"
+                && actionResult.ControlledRestartVisitId.HasValue
+                && actionResult.ControlledRestartVisitId.Value != Guid.Empty
+                && actionResult.ControlledRestartBootTimeUtc.HasValue
+                && actionResult.StartedAt.HasValue
+                && actionResult.ControlledRestartBootTimeUtc.Value < actionResult.StartedAt.Value))
         {
             throw new ArgumentException(
                 "Das technische Aktionsergebnis muss "
@@ -1409,6 +1431,8 @@ public class CheckupTaskList : INotifyPropertyChanged
 
         OnPropertyChanged(
             nameof(SkippedTaskCount));
+
+        OnPropertyChanged(nameof(RiskAcceptedTaskCount));
 
         OnPropertyChanged(
             nameof(NotFeasibleTaskCount));

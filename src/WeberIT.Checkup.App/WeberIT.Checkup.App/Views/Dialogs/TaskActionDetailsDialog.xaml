@@ -327,6 +327,16 @@
                                     Foreground="{StaticResource TextPrimaryBrush}"
                                     Tag="{x:Static models:CheckupTaskStatus.Skipped}" />
 
+                                <RadioButton
+                                    x:Name="RiskAcceptedOption"
+                                    Margin="0,10,0,0"
+                                    Padding="5"
+                                    Content="Risiko nach Beratung bewusst akzeptiert"
+                                    GroupName="ResolutionStatus"
+                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Visibility="Collapsed"
+                                    Tag="{x:Static models:CheckupTaskStatus.RiskAccepted}" />
+
                             </StackPanel>
 
                         </Border>

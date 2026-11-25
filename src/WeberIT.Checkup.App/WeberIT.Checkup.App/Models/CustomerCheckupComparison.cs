@@ -103,6 +103,8 @@ public sealed class CustomerCheckupFindingComparison
 
     public string AfterDescription { get; set; } = string.Empty;
 
+    public bool IsCustomerRiskAccepted { get; set; }
+
     public FindingCategory Category { get; set; }
 
     public FindingAssessmentTarget AssessmentTarget { get; set; } =
@@ -158,7 +160,8 @@ public sealed class CustomerCheckupTaskComparison
 
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsStillOpenForWork =>
-        WorkStatus == CheckupTaskStatus.Open && !IsClosedByControlScan;
+        (WorkStatus == CheckupTaskStatus.Open && !IsClosedByControlScan)
+        || Status == CustomerCheckupTaskComparisonStatus.NewlyDetected;
 
     public int SuccessfulActionCount { get; set; }
 
@@ -294,7 +297,8 @@ public enum CustomerCheckupTaskComparisonStatus
     Skipped,
     NotFeasible,
     NewlyDetected,
-    NotReevaluatable
+    NotReevaluatable,
+    RiskAccepted
 }
 
 public enum CustomerCheckupAreaComparisonStatus

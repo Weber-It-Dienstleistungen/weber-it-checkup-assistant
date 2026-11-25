@@ -40,6 +40,11 @@ public class CheckupTaskActionResult
 
     public DateTimeOffset? FinishedAt { get; set; }
 
+    // Kontrollierter Neustart: gespeicherter Auftrag und spaeterer Nachweis.
+    public Guid? ControlledRestartVisitId { get; set; }
+    public Guid? ControlledRestartRequestId { get; set; }
+    public DateTimeOffset? ControlledRestartBootTimeUtc { get; set; }
+
     // =============================================
     // SPRINT 55.14.34n
     // STRUKTURIERTES BEREINIGUNGSPROTOKOLL

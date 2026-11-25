@@ -737,10 +737,19 @@
                                                 MinWidth="130"
                                                 Height="38"
                                                 HorizontalAlignment="Left"
-                                                Content="Beheben"
                                                 CommandParameter="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
-                                                Click="ResolveTaskButton_OnClick"
-                                                Style="{StaticResource AccentButtonStyle}" />
+                                                Click="ResolveTaskButton_OnClick">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+                                                        <Setter Property="Content" Value="Beheben" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding TaskCode}" Value="task.restart.perform-controlled-restart">
+                                                                <Setter Property="Content" Value="Neustart / prüfen" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
 
                                         </StackPanel>
 

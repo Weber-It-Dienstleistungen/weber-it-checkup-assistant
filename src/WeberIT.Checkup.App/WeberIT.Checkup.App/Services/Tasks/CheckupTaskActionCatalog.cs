@@ -28,12 +28,11 @@ public static class CheckupTaskActionCatalog
             "task.restart.perform-controlled-restart" =>
                 CreateManualDefinition(
                     taskCode,
-                    "Neustart manuell vorbereiten",
-                    "Für den Neustart ist noch keine kontrollierte "
-                    + "technische Ausführung freigegeben. Vor der "
-                    + "manuellen Durchführung müssen alle Arbeiten "
-                    + "gespeichert und geöffnete Programme geschlossen "
-                    + "werden.",
+                    "Kontrollierten Neustart durchführen / prüfen",
+                    "Im laufenden Kundencheckup kann der Neustart ausdrücklich "
+                    + "bestätigt und ohne erzwungenes Schließen anderer Programme "
+                    + "ausgelöst werden. Die Aufgabe wird erst nach nachgewiesener "
+                    + "neuer Systemstartzeit und geklärtem Neustartbedarf abgeschlossen.",
                     "Nicht gespeicherte Arbeiten in anderen Anwendungen "
                     + "können verloren gehen. Ein Neustart darf deshalb "
                     + "nicht allein aufgrund eines vorhandenen Befehls "

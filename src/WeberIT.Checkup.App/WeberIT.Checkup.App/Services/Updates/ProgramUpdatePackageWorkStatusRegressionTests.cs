@@ -115,12 +115,12 @@ public static class ProgramUpdatePackageWorkStatusRegressionTests
             results);
 
         Execute(
-            "Ältere Aktion erledigt neuen Scan nicht",
+            "Erneut erkannte Zielversion nach Erfolg erfordert manuelle Prüfung",
             TestOldActionDoesNotHideUpdate,
             results);
 
         Execute(
-            "Scan während einer Aktion schützt aktuellen Befund",
+            "Überlappender Scan nach Erfolg verhindert Wiederholung",
             TestActionStartedBeforeScan,
             results);
 
@@ -388,38 +388,19 @@ public static class ProgramUpdatePackageWorkStatusRegressionTests
 
     private static void TestOldActionDoesNotHideUpdate()
     {
-        var status = Evaluate(
-            CreateAttempt(
-                startMinute: -10,
-                finishMinute: -9));
-
-        Require(
-            status.State ==
-            ProgramUpdatePackageWorkState.Pending,
-            "Ein alter erfolgreicher "
-            + "WinGet-Aufruf darf einen "
-            + "neueren Scanbefund nicht erledigen.");
-
-        Require(
-            status.CanOfferInstallation,
-            "Das erneut erkannte Update "
-            + "muss auswählbar sein.");
+        var status = Evaluate(CreateAttempt(startMinute: -10, finishMinute: -9));
+        Require(status.State == ProgramUpdatePackageWorkState.NeedsReview,
+            "Der weiterhin erkannte Bedarf bleibt als manuell zu prüfen sichtbar.");
+        Require(!status.CanOfferInstallation && status.NeedsManualReview,
+            "Dieselbe Zielversion darf nicht erneut angeboten werden.");
     }
 
     private static void TestActionStartedBeforeScan()
     {
-        var status = Evaluate(
-            CreateAttempt(
-                startMinute: -1,
-                finishMinute: 1));
-
-        Require(
-            status.State ==
-            ProgramUpdatePackageWorkState.Pending,
-            "Eine bereits vor dem Scan "
-            + "gestartete Aktion darf den "
-            + "aktuellen Scanbefund nicht "
-            + "automatisch ausblenden.");
+        var status = Evaluate(CreateAttempt(startMinute: -1, finishMinute: 1));
+        Require(status.State == ProgramUpdatePackageWorkState.NeedsReview
+            && !status.CanOfferInstallation,
+            "Überlappender Scan ist kein Nachweis für erneute Installation.");
     }
 
     private static void TestUnreliableScan()

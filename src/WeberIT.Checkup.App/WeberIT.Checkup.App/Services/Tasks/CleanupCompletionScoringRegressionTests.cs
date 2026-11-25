@@ -88,24 +88,126 @@ public static class CleanupCompletionScoringRegressionTests
             Require(rejected);
         }, results);
 
+        Run("V4 akzeptiert nur ausdruecklich dokumentierte Empfehlung und erhaelt Befund", () =>
+        {
+            var (service, working, visit, after) = Scenario(version: 4, includeRiskRule: true);
+            var task = working.TaskList.Tasks.Single(t => t.TaskCode == "task.security.drive-encryption");
+            task.ApplyStatus(CheckupTaskStatus.RiskAccepted, "Kunde nach Beratung dagegen", "");
+            task.StatusChangedAt = Entrance.AddMinutes(30).LocalDateTime;
+            after.Assessment = service.AssessCompletion(after, working, visit, ScanStart);
+            Require(after.Assessment.ScoringVersion == 4);
+            Require(after.Assessment.SystemCondition.Score == 100);
+            Require(after.Assessment.Findings.Any(f => f.Code == "system.security.mobile-drive-not-encrypted"
+                && f.IsCustomerRiskAccepted));
+            Require(CheckupSnapshot.Capture(after).RestoreAsSession().Assessment.Findings
+                .Any(f => f.IsCustomerRiskAccepted));
+            Require(visit.BeforeCheckup.Assessment.Findings.All(f => !f.IsCustomerRiskAccepted));
+        }, results);
+
+        Run("Erledigt, uebersprungen und kritische Befunde erhalten keine Risikoentlastung", () =>
+        {
+            var (service, working, visit, after) = Scenario(version: 4, includeRiskRule: true);
+            var task = working.TaskList.Tasks.Single(t => t.TaskCode == "task.security.drive-encryption");
+            task.ApplyStatus(CheckupTaskStatus.Completed, "Geprueft", "");
+            Require(service.AssessCompletion(after, working, visit, ScanStart)
+                .Findings.All(f => !f.IsCustomerRiskAccepted));
+            task.ApplyStatus(CheckupTaskStatus.Skipped, "Uebersprungen", "");
+            Require(service.AssessCompletion(after, working, visit, ScanStart)
+                .Findings.All(f => !f.IsCustomerRiskAccepted));
+            var critical = new CheckupTask { TaskCode = "task.security.antivirus",
+                SourceFindingCodes = new() { "system.security.antivirus-disabled" } };
+            bool rejected = false;
+            try { critical.ApplyStatus(CheckupTaskStatus.RiskAccepted, "Kunde", ""); }
+            catch (InvalidOperationException) { rejected = true; }
+            Require(rejected);
+        }, results);
+
+        Run("V3 bleibt ohne Kundenrisikoentlastung", () =>
+        {
+            var (service, working, visit, after) = Scenario(version: 3, includeRiskRule: true);
+            var task = working.TaskList.Tasks.Single(t => t.TaskCode == "task.security.drive-encryption");
+            task.ApplyStatus(CheckupTaskStatus.RiskAccepted, "Kunde", "");
+            task.StatusChangedAt = Entrance.AddMinutes(30).LocalDateTime;
+            var assessment = service.AssessCompletion(after, working, visit, ScanStart);
+            Require(assessment.ScoringVersion == 3 && assessment.Findings.All(f => !f.IsCustomerRiskAccepted));
+        }, results);
+
+        Run("Unpassender Entscheidungszeitpunkt erhaelt keine Entlastung", () =>
+        {
+            var (service, working, visit, after) = Scenario(version: 4, includeRiskRule: true);
+            var task = working.TaskList.Tasks.Single(t => t.TaskCode == "task.security.drive-encryption");
+            task.ApplyStatus(CheckupTaskStatus.RiskAccepted, "Kunde", "");
+            task.StatusChangedAt = Entrance.AddMinutes(-1).LocalDateTime;
+            Require(service.AssessCompletion(after, working, visit, ScanStart)
+                .Findings.All(f => !f.IsCustomerRiskAccepted));
+        }, results);
+
+        Run("Routinebereinigung ist auch ohne Eingangsbefund verfuegbar", () =>
+        {
+            Require(CheckupTaskGenerator.Generate(Array.Empty<CheckupFinding>(), true)
+                .Tasks.Count(t => t.TaskCode == "task.storage.controlled-cleanup") == 1);
+            Require(!CheckupTaskGenerator.Generate(Array.Empty<CheckupFinding>())
+                .Tasks.Any(t => t.TaskCode == "task.storage.controlled-cleanup"));
+        }, results);
+
+        Run("Neustartnachweis verlangt tatsaechlich neuen Bootzeitpunkt nach Auftrag", () =>
+        {
+            var before = Entrance.AddHours(-1);
+            Require(!ControlledRestartEvidencePolicy.IsRebootVerified(before, Entrance, before, ScanStart));
+            Require(!ControlledRestartEvidencePolicy.IsRebootVerified(before, Entrance,
+                Entrance.AddMinutes(-1), ScanStart));
+            Require(ControlledRestartEvidencePolicy.IsRebootVerified(before, Entrance,
+                Entrance.AddMinutes(1), ScanStart));
+            Require(!ControlledRestartEvidencePolicy.IsRebootVerified(before, Entrance,
+                ScanStart.AddMinutes(1), ScanStart));
+        }, results);
+
+        Run("Neustartauftrag ist vorgangsgebunden und nur einmal verifizierbar", () =>
+        {
+            var visitId = Guid.NewGuid();
+            var task = new CheckupTask { TaskCode = ControlledRestartEvidencePolicy.TaskCode };
+            var request = new CheckupTaskActionResult
+            {
+                ActionCode = ControlledRestartEvidencePolicy.RequestCode,
+                Status = CheckupTaskActionStatus.Unknown,
+                ControlledRestartVisitId = visitId,
+                ControlledRestartBootTimeUtc = Entrance.AddHours(-1),
+                StartedAt = Entrance
+            };
+            task.ActionResults.Add(request);
+            Require(ReferenceEquals(ControlledRestartEvidencePolicy.GetPendingRequest(task, visitId), request));
+            Require(ControlledRestartEvidencePolicy.GetPendingRequest(task, Guid.NewGuid()) is null);
+            task.ActionResults.Add(new CheckupTaskActionResult
+            {
+                ActionCode = ControlledRestartEvidencePolicy.VerificationCode,
+                ControlledRestartVisitId = visitId,
+                ControlledRestartRequestId = request.Id
+            });
+            Require(ControlledRestartEvidencePolicy.GetPendingRequest(task, visitId) is null);
+        }, results);
+
         return $"Alle {results.Count} Abschlussbewertungs-Regressionstests erfolgreich."
             + Environment.NewLine + string.Join(Environment.NewLine, results);
     }
 
     private static (CheckupAssessmentService Service, CheckupSession Working,
         CustomerCheckupVisit Visit, CheckupSession After) Scenario(
-        bool traversal = true, bool lowSpace = false)
+        bool traversal = true, bool lowSpace = false,
+        int version = 3, bool includeRiskRule = false)
     {
+        var rules = new List<ICheckupAssessmentRule>
+        {
+            new StorageAssessmentRule(), new CleanupPotentialAssessmentRule()
+        };
+        if (includeRiskRule)
+            rules.Add(new SyntheticRiskRule());
         var service = new CheckupAssessmentService(
-            new ICheckupAssessmentRule[]
-            {
-                new StorageAssessmentRule(),
-                new CleanupPotentialAssessmentRule()
-            },
+            rules,
             new SystemConditionAssessmentService(),
             new HardwareConditionAssessmentService());
         var working = MakeSession(Entrance, lowSpace);
         working.Assessment = service.Assess(working);
+        working.Assessment.ScoringVersion = version;
         var visit = new CustomerCheckupVisit
         {
             StartedAt = Entrance.LocalDateTime,
@@ -148,6 +250,19 @@ public static class CleanupCompletionScoringRegressionTests
             }
         });
         return (service, working, visit, MakeSession(ScanStart.AddMinutes(5), lowSpace));
+    }
+
+    private sealed class SyntheticRiskRule : ICheckupAssessmentRule
+    {
+        public IEnumerable<CheckupFinding> Evaluate(CheckupSession session) =>
+            new[] { new CheckupFinding
+            {
+                Code = "system.security.mobile-drive-not-encrypted",
+                CauseGroup = "system.security.drive-encryption",
+                Title = "Laufwerk nicht verschluesselt",
+                Severity = FindingSeverity.Recommendation,
+                AssessmentTarget = FindingAssessmentTarget.SystemCondition
+            } };
     }
 
     private static CheckupSession MakeSession(DateTimeOffset scanDate, bool lowSpace) => new()
