@@ -130,6 +130,15 @@ public class ProgramUpdateInformationProvider :
                 ],
                 AnalysisTimeoutMilliseconds);
 
+        return ApplyUpgradeListingResult(information, analysisResult);
+    }
+
+    // Ausschließlich für den ungefilterten, lesenden Aufruf
+    // "winget upgrade --source winget" ohne Paket-ID oder --all.
+    private static ProgramUpdateInformation ApplyUpgradeListingResult(
+        ProgramUpdateInformation information,
+        WingetExecutionResult analysisResult)
+    {
         if (!analysisResult.WasStarted)
         {
             information.IsAnalysisSuccessful = false;
@@ -185,6 +194,23 @@ public class ProgramUpdateInformationProvider :
         var parseResult =
             ParseAvailableUpdates(
                 analysisResult.StandardOutput);
+
+        // WinGet meldet bei einer leeren Upgrade-Liste teilweise
+        // "kein installiertes Paket ...", auch mit Exitcode 0.
+        // Diese Meldung ist bei gezielten Paketbefehlen mehrdeutig.
+        // Deshalb nur hier, fuer die ungefilterte Upgrade-Abfrage,
+        // unter strenger Pruefung der vollstaendigen Ausgabe akzeptieren.
+        var isConfirmedEmptyListing = !parseResult.IsRecognized
+            && IsConfirmedEmptyUpgradeListing(analysisResult);
+
+        if (isConfirmedEmptyListing)
+        {
+            parseResult = new ProgramUpdateParseResult
+            {
+                IsRecognized = true,
+                ReportedUpdateCount = 0
+            };
+        }
 
         var isConfirmedNoApplicableUpdateResult =
             IsConfirmedNoApplicableUpdateResult(
@@ -302,8 +328,83 @@ public class ProgramUpdateInformationProvider :
                 + "Aktualisierungen bestätigt.";
         }
 
+        if (isConfirmedEmptyListing)
+        {
+            information.AnalysisDetails +=
+                " Die leere ungefilterte Upgrade-Liste wurde durch WinGet "
+                + "mit Rückgabecode 0 bestätigt. Dies ist kein Nachweis "
+                + "für den Aktualisierungsstand aller installierten Programme.";
+        }
+
         return information;
     }
+
+    private static bool IsConfirmedEmptyUpgradeListing(WingetExecutionResult result)
+    {
+        if (!result.WasStarted || result.TimedOut || result.ExitCode != 0
+            || !string.IsNullOrWhiteSpace(result.ErrorMessage)
+            || !string.IsNullOrWhiteSpace(CleanOutput(result.StandardError)))
+            return false;
+
+        var emptyMessageCount = 0;
+        var unknownNoticeCount = 0;
+
+        foreach (var rawLine in CleanOutput(result.StandardOutput).Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (line.Length == 0 || line is "-" or "/" or "\\" or "|")
+                continue;
+
+            if (line.Equals("Es wurde kein installiertes Paket gefunden, das den Eingabekriterien entspricht.",
+                    StringComparison.OrdinalIgnoreCase)
+                || line.Equals("No installed package found matching input criteria.",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                emptyMessageCount++;
+                continue;
+            }
+
+            // Nur die bekannte, vollstaendige Hinweismeldung zulassen,
+            // nicht beliebigen Text, der zufaellig --include-unknown enthaelt.
+            var normalizedNotice = line.Replace("„", "").Replace("“", "")
+                .Replace("”", "").Replace("\"", "");
+            if (Regex.IsMatch(normalizedNotice,
+                @"^(?:Mindestens [1-9][0-9]* Paket(?:e)? (?:verfügt|verfügen) über Versionsnummern, die nicht ermittelt werden können\. Verwenden Sie --include-unknown, um alle Ergebnisse anzuzeigen\.|[1-9][0-9]* package(?:\(s\)|s)? (?:have|has) version numbers that cannot be determined\. Use --include-unknown to see all results\.)$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            {
+                unknownNoticeCount++;
+                continue;
+            }
+
+            // Keine unbekannten Warnungen, Tabellenzeilen oder
+            // widerspruechlichen Summen als Nullbefund interpretieren.
+            return false;
+        }
+
+        return emptyMessageCount == 1 && unknownNoticeCount <= 1;
+    }
+
+#if DEBUG
+    internal static ProgramUpdateInformation EvaluateUpgradeListingForRegression(
+        string output, int? exitCode = 0, string errorOutput = "",
+        bool wasStarted = true, bool timedOut = false, string processError = "")
+    {
+        return ApplyUpgradeListingResult(new ProgramUpdateInformation
+        {
+            IsWingetAvailable = true,
+            IsAnalysisPerformed = true,
+            AnalysisDate = DateTime.Now
+        }, new WingetExecutionResult
+        {
+            WasStarted = wasStarted,
+            TimedOut = timedOut,
+            ExitCode = exitCode,
+            StandardOutput = output,
+            StandardError = errorOutput,
+            ErrorMessage = processError
+        });
+    }
+#endif
 
     // =====================================================
     // SCHRITT 44: ABGESICHERTES WINGET-NULLERGEBNIS
